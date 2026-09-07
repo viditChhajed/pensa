@@ -16,7 +16,7 @@ import {
   saveLedger,
 } from "@/background/sessionLedger";
 import { CONTENT_SCRIPT_FILE, DETECTOR_SCRIPT_ID } from "@/shared/constants";
-import { Message } from "@/shared/messages";
+import { Message } from "@/shared/messages.schema";
 import { ALLOWLIST_ORIGINS, DEFAULT_PROMPT_THRESHOLD, scoreUrl } from "@/shared/urlScore";
 
 /**

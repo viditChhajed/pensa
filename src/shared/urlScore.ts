@@ -10,10 +10,24 @@
 
 import allowlistJson from "../../rulepacks/allowlist.v1.json";
 import denylistJson from "../../rulepacks/denylist.v1.json";
-import { AllowlistFile, DenylistFile, type OriginCategory } from "./schema";
+import type { OriginCategory } from "./schema";
 
-const denylist = DenylistFile.parse(denylistJson);
-const allowlist = AllowlistFile.parse(allowlistJson);
+/**
+ * The rulepacks are OUR OWN build artifacts, inlined by the bundler and fixed at compile
+ * time. They are not a runtime trust boundary, so validating them here bought nothing and
+ * cost ~30 KB gzipped: it dragged Zod into the content script and the popup, both of which
+ * otherwise need none of it. Shape is asserted in `tests/unit/rulepacks.test.ts` instead,
+ * which is where a build-time fact belongs.
+ */
+const denylist = denylistJson as {
+  hostSuffixes: string[];
+  hostPatterns: string[];
+  schemes: string[];
+};
+const allowlist = allowlistJson as {
+  version: string;
+  entries: { origin: string; category: OriginCategory; note?: string }[];
+};
 
 const denyPatterns = denylist.hostPatterns.map((p) => new RegExp(p, "i"));
 
