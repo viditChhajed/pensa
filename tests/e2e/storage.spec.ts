@@ -148,26 +148,74 @@ test("the offers store accumulates across visits and yields a temporal claim", a
   expect(stored.timers, "timer sightings were not persisted").toBe(2);
 });
 
-test("delete all my data actually empties the stores", async () => {
+test("delete all my data — CLICKED FROM THE OPTIONS UI — empties IndexedDB", async () => {
+  // Deliberately drives the real button rather than calling clear-data directly. The
+  // underlying handler was already covered; what was not covered is whether the control the
+  // user actually sees is wired to it. A privacy control that is not connected to its button
+  // is indistinguishable, from the user's side, from having no control at all.
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
-  await page.evaluate(
-    () => new Promise((res) => chrome.runtime.sendMessage({ type: "clear-data" }, res)),
-  );
-  await page.close();
 
-  const after = await inExtensionPage<number>(`(async () => {
-    const db = await new Promise((res, rej) => {
+  // Seed data so the assertion cannot pass against an already-empty store.
+  await page.evaluate(async () => {
+    const send = (msg: unknown) => new Promise((res) => chrome.runtime.sendMessage(msg, res));
+    await send({
+      type: "observation",
+      origin: "http://localhost",
+      offerKey: "sku:DELETE-ME",
+      offerKeySource: "sku",
+      observation: {
+        timers: [],
+        stockCounts: [7],
+        viewerCounts: [],
+        prices: [],
+        referencePrices: [],
+      },
+    });
+  });
+  await page.waitForTimeout(400);
+
+  const before = await countOffers(page);
+  expect(before, "nothing to delete — the test would pass vacuously").toBeGreaterThan(0);
+
+  // The actual user action.
+  await page.locator("#clear").click();
+  await expect(page.locator("#cleared")).toBeVisible();
+  await page.waitForTimeout(600);
+
+  expect(await countOffers(page), "clear-data left rows behind").toBe(0);
+
+  // Settings and session state must go too, not just the offers table.
+  const leftovers = await page.evaluate(async () => {
+    const local = await chrome.storage.local.get(null);
+    const session = await chrome.storage.session.get(null);
+    return { localKeys: Object.keys(local), sessionKeys: Object.keys(session) };
+  });
+  expect(
+    leftovers.localKeys,
+    `chrome.storage.local not cleared: ${leftovers.localKeys}`,
+  ).not.toContain("settings");
+  expect(
+    leftovers.sessionKeys.filter((k) => k.startsWith("ledger:")),
+    "session ledgers survived the wipe",
+  ).toEqual([]);
+
+  await page.close();
+});
+
+async function countOffers(page: import("@playwright/test").Page): Promise<number> {
+  return page.evaluate(async () => {
+    const db: IDBDatabase = await new Promise((res, rej) => {
       const r = indexedDB.open("persuasion-patterns");
-      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
     });
     if (!db.objectStoreNames.contains("offers")) return 0;
-    return await new Promise((res, rej) => {
+    return await new Promise<number>((res, rej) => {
       const tx = db.transaction("offers", "readonly");
       const rq = tx.objectStore("offers").count();
-      rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error);
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => rej(rq.error);
     });
-  })()`);
-
-  expect(after, "clear-data left rows behind").toBe(0);
-});
+  });
+}

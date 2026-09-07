@@ -76,12 +76,81 @@ export interface Viewport {
 }
 
 /**
- * Pure geometry. Given the boxes of everything clickable, pick the corner whose footprint
- * covers the fewest of them — zero if any corner is clear.
+ * Placement modes, in descending order of usefulness.
  *
- * Pure so it can be tested without a browser, and because the DOM reads belong in one place
- * (the caller) rather than interleaved with the decision, same as the detector phases.
+ * Real retailer pages have NO free corner. Measured on live storefronts: target 1 collision,
+ * ikea 3, newegg 9, rei 0. The original "least-obstructed corner" fallback therefore covered
+ * between 3 and 9 real controls on three of four sites — violating the one rule the plan
+ * calls non-negotiable.
+ *
+ * So the card degrades rather than intrudes: full card if it fits, a compact pill if not,
+ * and nothing at all if even the pill would cover a control. A suppressed digest is not
+ * lost — every detection is still recorded and shown in the popup summary, which the user
+ * reads on their own schedule.
  */
+export type PlacementMode = "card" | "pill" | "suppressed";
+
+export interface Placement {
+  mode: PlacementMode;
+  corner: Corner;
+  size: Viewport;
+}
+
+/** Compact fallback: one line, no prompt body, expands on click. */
+export const PILL_WIDTH = 260;
+export const PILL_HEIGHT = 44;
+
+function collisionsAt(
+  controls: readonly Rect[],
+  viewport: Viewport,
+  size: Viewport,
+  corner: Corner,
+): number {
+  const left = corner.horizontal === "right" ? viewport.w - MARGIN - size.w : MARGIN;
+  const top = corner.vertical === "bottom" ? viewport.h - MARGIN - size.h : MARGIN;
+  let hits = 0;
+  for (const r of controls) {
+    // Exact rectangle intersection, NOT point sampling. A 4x4 sample grid was tried first
+    // and silently failed in a real browser: with 74px vertical steps it stepped straight
+    // over a 48px-tall checkout button and reported the corner as clear.
+    if (r.left < left + size.w && r.right > left && r.top < top + size.h && r.bottom > top) {
+      hits++;
+    }
+  }
+  return hits;
+}
+
+/**
+ * Pure geometry. Given the boxes of everything clickable, find a placement that covers
+ * NOTHING. Returns `suppressed` rather than settling for a least-bad option.
+ */
+export function choosePlacement(
+  controls: readonly Rect[],
+  viewport: Viewport,
+  itemCount: number,
+): Placement {
+  const full = cardSize(itemCount, viewport);
+  for (const corner of CORNERS) {
+    if (collisionsAt(controls, viewport, full, corner) === 0) {
+      return { mode: "card", corner, size: full };
+    }
+  }
+
+  const pill: Viewport = {
+    w: Math.min(PILL_WIDTH, viewport.w - MARGIN * 2),
+    h: Math.min(PILL_HEIGHT, viewport.h - MARGIN * 2),
+  };
+  for (const corner of CORNERS) {
+    if (collisionsAt(controls, viewport, pill, corner) === 0) {
+      return { mode: "pill", corner, size: pill };
+    }
+  }
+
+  // Nowhere is clear. Covering a control is worse than saying nothing right now.
+  return { mode: "suppressed", corner: CORNERS[0] as Corner, size: pill };
+}
+
+/** Retained for the existing unit tests: which corner is least obstructed. */
 export function chooseCorner(
   controls: readonly Rect[],
   viewport: Viewport,
@@ -89,32 +158,14 @@ export function chooseCorner(
 ): Corner {
   let best: Corner = CORNERS[0] as Corner;
   let bestHits = Number.POSITIVE_INFINITY;
-
   for (const corner of CORNERS) {
-    const left = corner.horizontal === "right" ? viewport.w - MARGIN - card.w : MARGIN;
-    const top = corner.vertical === "bottom" ? viewport.h - MARGIN - card.h : MARGIN;
-
-    // Exact rectangle intersection, NOT point sampling. A 4x4 sample grid was tried first
-    // and silently failed in a real browser: with 74px vertical steps it stepped straight
-    // over a 48px-tall checkout button and reported the corner as clear.
-    let hits = 0;
-    for (const rect of controls) {
-      const intersects =
-        rect.left < left + card.w &&
-        rect.right > left &&
-        rect.top < top + card.h &&
-        rect.bottom > top;
-      if (intersects) hits++;
-    }
-
+    const hits = collisionsAt(controls, viewport, card, corner);
     if (hits === 0) return corner;
     if (hits < bestHits) {
       bestHits = hits;
       best = corner;
     }
   }
-
-  // Nothing is fully clear — take the least-obstructed corner rather than a fixed one.
   return best;
 }
 
@@ -127,7 +178,7 @@ export function cardSize(itemCount: number, viewport: Viewport): Viewport {
 }
 
 /** DOM reads, then delegate to the pure chooser. */
-function findSafeCorner(itemCount: number): Corner {
+function findPlacement(itemCount: number): Placement {
   const viewport: Viewport = { w: window.innerWidth, h: window.innerHeight };
 
   const controls: Rect[] = [];
@@ -140,7 +191,7 @@ function findSafeCorner(itemCount: number): Corner {
     controls.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
   }
 
-  return chooseCorner(controls, viewport, cardSize(itemCount, viewport));
+  return choosePlacement(controls, viewport, itemCount);
 }
 
 /**
@@ -169,7 +220,14 @@ export class DigestCard {
     // re-enables pointer events, so wherever the card actually renders it still wins the
     // hit test. Verified in a real browser — a checkout button at bottom-right was covered.
     // So the position is chosen by hit-testing the page first (see findSafeCorner).
-    const corner = findSafeCorner(items.length);
+    const placement = findPlacement(items.length);
+    if (placement.mode === "suppressed") {
+      // Nowhere on this page can hold the card without covering something clickable. The
+      // detections are already logged and appear in the popup summary.
+      console.debug("[patterns] digest suppressed: no placement free of interactive controls");
+      return;
+    }
+    const corner = placement.corner;
     // Every layout-critical property carries !important: an inline important declaration
     // beats an author stylesheet's important declaration, so a page cannot hide the card by
     // selector. Verified against a fixture that tries exactly that.
@@ -179,7 +237,7 @@ export class DigestCard {
       `${corner.vertical}:16px !important`,
       "z-index:2147483647 !important",
       "pointer-events:none !important",
-      `width:min(${CARD_WIDTH}px, calc(100vw - 32px)) !important`,
+      `width:${placement.size.w}px !important`,
       "contain:layout style",
       "display:block !important",
       "visibility:visible !important",
@@ -193,7 +251,7 @@ export class DigestCard {
     ].join(";");
 
     const root = host.attachShadow({ mode: "closed" });
-    root.append(this.styles(), this.card(items));
+    root.append(this.styles(), placement.mode === "pill" ? this.pill(items) : this.card(items));
 
     document.documentElement.append(host);
     this.host = host;
@@ -236,6 +294,7 @@ export class DigestCard {
         padding: 2px 6px; border-radius: 6px; color: inherit; opacity: .6;
       }
       button:hover, button:focus-visible { opacity: 1; outline: 2px solid #2b5cff; }
+      .pill { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; }
       ul { list-style: none; padding: 0; }
       li { padding: 8px 0; }
       li + li { border-top: 1px solid #eceef2; }
@@ -279,6 +338,30 @@ export class DigestCard {
     }
 
     card.append(head, list);
+    return card;
+  }
+
+  /** Compact fallback when a full card would cover something clickable. */
+  private pill(items: CardItem[]): HTMLElement {
+    const card = document.createElement("div");
+    card.className = "card pill";
+    card.setAttribute("role", "complementary");
+    card.setAttribute("aria-live", "polite");
+
+    const label = document.createElement("span");
+    label.className = "label";
+    label.textContent =
+      items.length === 1
+        ? `1 thing to notice on this page`
+        : `${items.length} things to notice on this page`;
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.setAttribute("data-close", "");
+    close.setAttribute("aria-label", "Dismiss");
+    close.textContent = "×";
+
+    card.append(label, close);
     return card;
   }
 

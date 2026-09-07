@@ -7,53 +7,45 @@ and, at add-to-cart or checkout, asks a question about what was actually on scre
 ("this page showed a countdown timer") and asks a question. It never asserts intent,
 deception, or illegality — an ethical constraint first, and a store-review one second.
 
-## Status — pilot, end of Day 3
+## Status — pilot, scope-locked for v1 submission
 
-Working locally, not submitted, not published.
+Working locally, verified in real Chromium, **not submitted**.
 
 | | |
 |---|---|
-| Page detectors | 14 (9 Tier 1 + 5 Tier 2) |
-| Cross-stage detectors | `pricing.drip`, `basket.sneak` |
-| Temporal claims (§18A) | 4, needing repeat visits by construction |
-| Unit tests | 180 passing |
-| Bundle | 106.9 KB gzipped (budget 120) |
-| `host_permissions` | empty, asserted at build and in CI |
-| Network requests | zero |
+| Detectors shipped in v1 | **11** — 9 page + 2 cross-stage |
+| Built but deferred to v1.1 | 9 — 5 Tier-2 page + 4 §18A temporal |
+| Unit tests | 233 |
+| Real-browser e2e | 26 (1 skipped: native permission dialog) |
+| Bundle | 108 KB gzipped (budget 120) |
+| `host_permissions` | empty — build throws otherwise, verified by regression |
+| Network requests | **zero, asserted** — including with telemetry enabled |
 
-**Tier 1:** `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
+**Shipped (11):** `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
 `urgency.countdown`, `defaults.preselected`, `social_proof.live_activity`,
-`confirmshaming.decline_copy`, `goal_gradient.threshold`, `bnpl.installments`
+`confirmshaming.decline_copy`, `goal_gradient.threshold`, `bnpl.installments`,
+`pricing.drip`, `basket.sneak`
 
-**Tier 2:** `interference.visual_asymmetry` (WCAG contrast, area, weight),
-`decoy.asymmetric_dominance`, `nagging.repeat_interstitial`, `framing.savings_ratio`,
-`loss_aversion.exit_intent`
-
-**Temporal (§18A):** `temporal.evergreen_countdown`, `temporal.stock_nonmonotonic`,
-`temporal.reference_price_ungrounded`, `temporal.social_proof_synthetic`
-
-The temporal engine is the part that is hard to replicate. Every other tool in this space
-judges a page in isolation; this one keeps a local per-offer history and derives claims no
-single page can support — a countdown whose deadline advances with the clock, a stock count
-that rises as well as falls, a reference price never once observed as the actual price. It
-needs no server and no consent beyond install, and it gets stronger the longer it is used.
-It also, by construction, says nothing on a first visit.
+**Deferred to v1.1** (plan §13 scopes both post-submission; they were built early — real
+scope drift): the 5 Tier-2 page detectors and the 4 §18A temporal claims. Enforced by
+exclusion from the import graph, not a flag — `tests/unit/scope.test.ts` asserts their
+implementations are absent from the built bundles. `src/shared/classifier.ts` is unwired
+scaffolding with no trained weights and ships nothing.
 
 ### Known gaps — not claimed as done
 
-- **Precision is unmeasured.** The manual spot-check across real retailers (§10) has not
-  run. Thresholds are hand-set guesses, marked `hand_set` in the schema so they cannot be
-  mistaken for calibrated values. No precision claim should be made until that happens.
-- **Never loaded in a real browser.** All 180 tests are jsdom and unit-level. The permission
-  grant flow, runtime script registration, IndexedDB round-trip, and overlay rendering have
-  not been exercised in Chrome.
-- **No telemetry backend**, by design for now — consent flow and local queue only.
-- **§18D–G not built.** The n-gram classifier, empirical interference baselines, structural
-  pattern mining and cross-user verification. Interfaces exist so they drop in without a
-  rewrite.
-- **`offerKey.ts` title-similarity matching is written but unused** — offer identity resolves
-  via JSON-LD/SKU/GTIN/URL-hash; the trigram fallback for matching cart lines to PDP products
-  is not yet wired.
+- **Precision is unmeasured.** The 30–40 page spot-check has not run. Every threshold is a
+  hand-set guess, marked `hand_set` in the schema. See [EVAL.md](EVAL.md) and
+  [SPOT-CHECK.md](SPOT-CHECK.md). **No precision claim may be made until that file has data.**
+- **The permission gesture is unverified.** `permissions.request()` raises a native dialog no
+  automation can accept. Checklist in [SPOT-CHECK.md](SPOT-CHECK.md).
+- **The digest suppresses itself often on dense pages.** Measured on live storefronts: target,
+  ikea and newegg had no placement free of interactive controls, so nothing showed; rei fit a
+  full card. Correct safety behaviour, but it may mean the core interaction rarely fires.
+  Storefronts are a pessimistic sample — the digest triggers at cart/checkout, which are
+  sparser — and the spot-check will give the real rate.
+- **No icons.** The manifest declares none; Chrome shows a placeholder.
+- **No telemetry backend**, by design — consent flow and local queue only.
 
 ## Permissions
 
