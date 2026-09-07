@@ -11,7 +11,9 @@
     "test:watch": "vitest",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "fixtures:scan": "tsx scripts/scan-fixtures.ts",
+    "fixtures:normalize": "tsx scripts/normalize-fixture.ts"
   },
   "author": "",
   "license": "ISC",
@@ -29,6 +31,7 @@
     "@types/chrome": "0.2.9",
     "@types/node": "26.4.1",
     "jsdom": "30.0.1",
+    "tsx": "4.23.13",
     "typescript": "7.0.2",
     "vitest": "5.0.0"
   }
