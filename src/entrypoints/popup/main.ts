@@ -43,9 +43,10 @@ async function init(): Promise<void> {
   }
 
   if (isDenied(parsed)) {
-    statusEl.textContent = "Not offered on this site.";
+    statusEl.textContent = `Not available on ${parsed.hostname}.`;
     detailEl.textContent =
-      "This looks like a site where page access should not be requested — banking, health, mail, or similar.";
+      "This extension never asks for access to banking, health, government or mail sites. " +
+      "It cannot be enabled here, and it is not reading this page.";
     return;
   }
 
@@ -66,6 +67,7 @@ async function init(): Promise<void> {
     statusEl.textContent = `${parsed.hostname} looks like a shopping site.`;
   } else {
     statusEl.textContent = `${parsed.hostname} does not look like a shopping site.`;
+    // Still offered: the user may know better than the URL heuristic (plan §14.3, Tier B).
   }
   detailEl.textContent =
     "Enabling lets this extension read this site’s pages, on your device only. Nothing is sent anywhere.";

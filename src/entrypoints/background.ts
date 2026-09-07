@@ -34,9 +34,17 @@ import { decodePriceSnapshot } from "@/shared/wire";
  */
 export default defineBackground(() => {
   chrome.runtime.onInstalled.addListener(async () => {
-    // MV3 has no declarativeContent.HideAction. `ShowAction` can only enable, so the action
-    // must start disabled for greyscale-by-default to work at all.
-    await chrome.action.disable();
+    // The action stays ENABLED everywhere on purpose.
+    //
+    // It used to be disabled by default so `ShowAction` could grey it out on non-shopping
+    // pages. That worked visually and failed as UX: a disabled action is unclickable, so on
+    // a bank or a wiki the user got no response and no explanation at all. Silence is a
+    // worse answer than "not offered here", especially for the denylist case where the
+    // refusal is the most important thing this product does.
+    //
+    // The popup now always opens and says which of the three states applies. The
+    // declarativeContent rules below still run and still mark shopping pages.
+    await chrome.action.enable();
     await installPageRules();
     await reconcileRegistrations();
   });

@@ -3,6 +3,8 @@
 .DS_Store
 .output/
 .wxt/
+build
+dist
 node_modules/
 playwright-report/
 stats.html

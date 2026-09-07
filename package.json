@@ -14,7 +14,8 @@
     "postinstall": "wxt prepare",
     "fixtures:scan": "tsx scripts/scan-fixtures.ts",
     "fixtures:normalize": "tsx scripts/normalize-fixture.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build:dist": "wxt build && rm -rf dist && cp -R .output/chrome-mv3 dist"
   },
   "author": "",
   "license": "ISC",
