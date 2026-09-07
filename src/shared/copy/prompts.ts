@@ -100,6 +100,45 @@ export const PROMPTS: Partial<Record<PatternId, readonly string[]>> = {
     "Fees were added after the first number you saw. Is this still the option you would choose?",
   ],
 
+  "interference.visual_asymmetry": [
+    "The two choices here were not given equal weight on screen. If both had looked the same, which would you have picked?",
+    "One option here was far easier to see than the other. Does the quieter one say what you actually want?",
+    "The accept and decline controls were styled very differently. Would your answer change if they matched?",
+    "One button here was much larger and brighter than the other. Which choice did you come here to make?",
+    "The page gave one option more visual weight. Is that the option you would have chosen unprompted?",
+  ],
+
+  "decoy.asymmetric_dominance": [
+    "One option here is labelled as the popular choice, and it costs more per unit than another. Which works out cheaper for what you need?",
+    "The options here are not priced evenly per unit. Have you worked out which is actually the better rate?",
+    "A badge marks one plan out from the others. Does the arithmetic agree with the badge?",
+    "One of these choices costs more and gives no more than another. What is it doing on the page?",
+    "The middle option is highlighted here. Is the amount it offers the amount you want?",
+  ],
+
+  "nagging.repeat_interstitial": [
+    "This page interrupted you more than once. Has repeating the request changed what you want?",
+    "The same kind of prompt has appeared several times here. Would you say yes if it had only asked once?",
+    "You have been asked more than once on this page. Is agreeing easier than declining again?",
+    "This site has interrupted you repeatedly. Does that tell you anything about the offer itself?",
+  ],
+
+  "framing.savings_ratio": [
+    "The saving here is shown in whichever form looks larger. What is it in the other form?",
+    "This discount is presented one way rather than the other. Does it read the same as a plain amount?",
+    "The page picked a way of describing the saving. Do you know what you are actually paying?",
+    "This saving looks different as a percentage than as an amount. Which one matters to your budget?",
+    "The discount was framed in the flattering direction. What does the other framing say?",
+  ],
+
+  "loss_aversion.exit_intent": [
+    "This offer appeared as you were about to leave. Would it have interested you before you decided to go?",
+    "The page made an offer at the moment you tried to leave. Does the timing change its value?",
+    "Something new was offered right as you were leaving. Was the original price the real one?",
+    "This appeared only when you moved to close the page. Would you have wanted it a minute ago?",
+    "An offer arrived at the exit. Is it better than the reason you were leaving?",
+  ],
+
   "basket.sneak": [
     "There is an item here you may not have added. Did you choose it?",
     "Something in this order does not match anything you selected. Do you want it?",

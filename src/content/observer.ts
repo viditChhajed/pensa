@@ -10,6 +10,7 @@
  *
  * Mutations coalesce into a dirty-root set; nothing is re-scanned per record.
  */
+import { selectorPath } from "./harvest";
 import type { TextObservation } from "./types";
 
 const MAX_HISTORY = 12;
@@ -19,13 +20,25 @@ export interface ObserverState {
   textHistories: Map<Element, TextObservation[]>;
   ephemeral: Map<Element, { insertedAt: number; removedAt: number | null }>;
   dirtyRoots: Set<Element>;
+  /** Modal/interstitial insertions this page-session. Feeds the nagging detector. */
+  modalsInsertedAt: number[];
+  /** Last mouseleave toward the viewport top, or a visibilitychange to hidden. */
+  lastExitIntentAt: number | null;
+  /** selectorPaths of modals that appeared inside the exit-intent window. */
+  exitIntentModals: string[];
 }
+
+/** Within this of an exit gesture, a modal insertion is treated as a response to it. */
+export const EXIT_INTENT_WINDOW_MS = 500;
 
 export class PageObserver {
   readonly state: ObserverState = {
     textHistories: new Map(),
     ephemeral: new Map(),
     dirtyRoots: new Set(),
+    modalsInsertedAt: [],
+    lastExitIntentAt: null,
+    exitIntentModals: [],
   };
 
   private mo: MutationObserver | null = null;
@@ -35,6 +48,28 @@ export class PageObserver {
 
   start(root: Node = document.body): void {
     if (!root) return;
+
+    // Exit intent: the pointer leaving toward the top of the viewport, or the tab being
+    // hidden. Recorded here rather than in the detector because a pure function has no clock.
+    document.addEventListener(
+      "mouseout",
+      (e) => {
+        const ev = e as MouseEvent;
+        if (ev.relatedTarget !== null) return; // still inside the document
+        if (ev.clientY > 40) return; // leaving sideways or downward is not exit intent
+        this.state.lastExitIntentAt = performance.now();
+      },
+      { passive: true },
+    );
+    document.addEventListener(
+      "visibilitychange",
+      () => {
+        if (document.visibilityState === "hidden") {
+          this.state.lastExitIntentAt = performance.now();
+        }
+      },
+      { passive: true },
+    );
     this.mo = new MutationObserver((records) => this.handle(records));
     this.mo.observe(root, {
       subtree: true,
@@ -63,6 +98,20 @@ export class PageObserver {
           this.state.ephemeral.set(el, { insertedAt: now, removedAt: null });
           this.state.dirtyRoots.add(el);
           this.recordText(el, now);
+
+          if (this.looksModal(el)) {
+            this.state.modalsInsertedAt.push(now);
+            if (this.state.modalsInsertedAt.length > 32) this.state.modalsInsertedAt.shift();
+
+            const since =
+              this.state.lastExitIntentAt === null
+                ? Number.POSITIVE_INFINITY
+                : now - this.state.lastExitIntentAt;
+            if (since <= EXIT_INTENT_WINDOW_MS) {
+              this.state.exitIntentModals.push(selectorPath(el));
+              if (this.state.exitIntentModals.length > 16) this.state.exitIntentModals.shift();
+            }
+          }
         }
         for (const node of r.removedNodes) {
           if (node.nodeType !== 1) continue;
@@ -84,6 +133,29 @@ export class PageObserver {
         this.scheduled = false;
         this.onDirty();
       });
+    }
+  }
+
+  /**
+   * Modal-ish: an explicit dialog role, or a fixed/absolute overlay covering a large share of
+   * the viewport. Read here in the observer, where reading layout is already happening.
+   */
+  private looksModal(el: Element): boolean {
+    const role = el.getAttribute("role");
+    if (role === "dialog" || role === "alertdialog") return true;
+    if (el.tagName === "DIALOG") return true;
+    if (el.getAttribute("aria-modal") === "true") return true;
+
+    if (el.querySelector('[role="dialog"], [role="alertdialog"], dialog')) return true;
+
+    try {
+      const cs = getComputedStyle(el);
+      if (cs.position !== "fixed" && cs.position !== "absolute") return false;
+      const r = el.getBoundingClientRect();
+      const coverage = (r.width * r.height) / Math.max(1, window.innerWidth * window.innerHeight);
+      return coverage > 0.25 && Number.parseInt(cs.zIndex || "0", 10) > 100;
+    } catch {
+      return false;
     }
   }
 

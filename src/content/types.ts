@@ -98,10 +98,27 @@ export interface DocumentMeta {
   readonly hasOrderSummaryTriple: boolean;
 }
 
+/**
+ * Time-dependent facts the observer accumulates. Detectors are pure and have no clock, so
+ * anything about *when* something happened has to arrive as a value, the same way
+ * `textHistory` carries a countdown's decrement.
+ */
+export interface PageSignals {
+  /** Modal/interstitial insertions observed this page-session. Drives nagging. */
+  modalInsertionCount: number;
+  /** Timestamps (performance.now) of each modal insertion. */
+  modalsInsertedAt: readonly number[];
+  /** Last mouseleave toward the top of the viewport, or visibilitychange to hidden. */
+  lastExitIntentAt: number | null;
+  /** selectorPaths of modals inserted within the exit-intent window. */
+  exitIntentModals: readonly string[];
+}
+
 export interface PageContext {
   readonly candidates: readonly CandidateNode[];
   readonly meta: DocumentMeta;
   readonly funnelStage: FunnelStage;
+  readonly signals: PageSignals;
   /** Milliseconds since the context was created. Detectors must not read the clock. */
   readonly now: number;
   /** Viewport, for viewportFraction arithmetic. */

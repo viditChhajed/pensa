@@ -5,62 +5,14 @@ import { defaultsDetector } from "@/content/detectors/defaults";
 import { scarcityDetector } from "@/content/detectors/scarcity";
 import { urgencyDetector } from "@/content/detectors/urgency";
 import { classifyStage } from "@/content/funnel";
-import { harvest, readDocumentMeta } from "@/content/harvest";
-import type { PageContext } from "@/content/types";
-import type { FunnelStage } from "@/shared/schema";
-
-/**
- * jsdom returns zeroed boxes and default styles, so the harvested snapshots are patched to
- * the values a real browser would report. That patching is exactly what the read/write
- * phase separation buys us: the detectors are pure functions over plain data, so a fixture
- * is just data, and no headless DOM needs to lay anything out.
- */
-function contextFrom(
-  html: string,
-  url = "https://shop.example.com/products/thing",
-  stage: FunnelStage = "pdp",
-  patch?: (n: ReturnType<typeof harvest>[number], el: Element | null) => void,
-): PageContext {
-  document.body.innerHTML = html;
-  const meta = readDocumentMeta(document, url);
-  const candidates = harvest(document);
-
-  for (const n of candidates) {
-    const mutable = n as { box: { x: number; y: number; w: number; h: number } };
-    mutable.box = { x: 0, y: 100, w: 200, h: 24 };
-    let el: Element | null = null;
-    try {
-      el = document.querySelector(n.selectorPath);
-    } catch {
-      el = null;
-    }
-    patch?.(n, el);
-  }
-
-  return {
-    candidates,
-    meta,
-    funnelStage: stage,
-    now: 0,
-    viewport: { w: 1280, h: 900 },
-  };
-}
-
-/** jsdom does not compute line-through from markup; apply what a browser would report. */
-function applyStrike(n: ReturnType<typeof harvest>[number], el: Element | null): void {
-  if (!el) return;
-  if (el.closest("del, s, strike") || (el as HTMLElement).style?.textDecoration) {
-    (n.style as { textDecorationLine: string }).textDecorationLine = "line-through";
-  }
-}
+import { readDocumentMeta } from "@/content/harvest";
+import { applyStrike, contextFrom } from "./helpers";
 
 describe("anchoring.reference_price", () => {
   it("fires on a struck-through was/now pair", () => {
     const ctx = contextFrom(
       `<div class="price"><del>$89.99</del> <span>$49.99</span> <span>45% off</span></div>`,
-      undefined,
-      "pdp",
-      applyStrike,
+      { stage: "pdp", patch: applyStrike },
     );
     const out = anchoringDetector.run(ctx);
     expect(out).toHaveLength(1);
@@ -70,9 +22,7 @@ describe("anchoring.reference_price", () => {
   it('fires on "Was $X" lexeme wording', () => {
     const ctx = contextFrom(
       `<div><span class="was">Was <s>$120.00</s></span><span>$79.00</span></div>`,
-      undefined,
-      "pdp",
-      applyStrike,
+      { stage: "pdp", patch: applyStrike },
     );
     expect(anchoringDetector.run(ctx).length).toBeGreaterThanOrEqual(1);
   });
@@ -89,12 +39,10 @@ describe("anchoring.reference_price", () => {
 
   it("does NOT fire when the struck price is LOWER than the live one", () => {
     // A rendering artifact, not an anchor. Firing here would be a false accusation.
-    const ctx = contextFrom(
-      `<div><del>$19.99</del> <span>$49.99</span></div>`,
-      undefined,
-      "pdp",
-      applyStrike,
-    );
+    const ctx = contextFrom(`<div><del>$19.99</del> <span>$49.99</span></div>`, {
+      stage: "pdp",
+      patch: applyStrike,
+    });
     expect(anchoringDetector.run(ctx)).toHaveLength(0);
   });
 });
@@ -164,8 +112,7 @@ describe("defaults.preselected", () => {
   it("fires on a preselected protection plan", () => {
     const ctx = contextFrom(
       `<label><input type="checkbox" checked name="warranty"> Add 2-year protection plan $12.99</label>`,
-      undefined,
-      "checkout",
+      { stage: "checkout" },
     );
     const out = defaultsDetector.run(ctx);
     expect(out).toHaveLength(1);
@@ -175,8 +122,7 @@ describe("defaults.preselected", () => {
   it("fires on a preselected marketing opt-in", () => {
     const ctx = contextFrom(
       `<label><input type="checkbox" checked> Send me promotional emails</label>`,
-      undefined,
-      "checkout",
+      { stage: "checkout" },
     );
     expect(defaultsDetector.run(ctx)).toHaveLength(1);
   });
@@ -184,18 +130,15 @@ describe("defaults.preselected", () => {
   it("does NOT fire on an UNchecked add-on", () => {
     const ctx = contextFrom(
       `<label><input type="checkbox"> Add 2-year protection plan $12.99</label>`,
-      undefined,
-      "checkout",
+      { stage: "checkout" },
     );
     expect(defaultsDetector.run(ctx)).toHaveLength(0);
   });
 
   it("does NOT fire on a benign preselected checkbox", () => {
-    const ctx = contextFrom(
-      `<label><input type="checkbox" checked> Remember me</label>`,
-      undefined,
-      "checkout",
-    );
+    const ctx = contextFrom(`<label><input type="checkbox" checked> Remember me</label>`, {
+      stage: "checkout",
+    });
     expect(defaultsDetector.run(ctx)).toHaveLength(0);
   });
 });

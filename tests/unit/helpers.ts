@@ -1,5 +1,5 @@
 import { harvest, readDocumentMeta } from "@/content/harvest";
-import type { CandidateNode, PageContext } from "@/content/types";
+import type { CandidateNode, PageContext, PageSignals } from "@/content/types";
 import type { FunnelStage } from "@/shared/schema";
 
 /**
@@ -16,6 +16,7 @@ export function contextFrom(
     url?: string;
     stage?: FunnelStage;
     patch?: (n: CandidateNode, el: Element | null) => void;
+    signals?: Partial<PageSignals>;
   } = {},
 ): PageContext {
   const url = opts.url ?? "https://shop.example.com/products/thing";
@@ -42,6 +43,13 @@ export function contextFrom(
     candidates,
     meta,
     funnelStage: stage,
+    signals: {
+      modalInsertionCount: 0,
+      modalsInsertedAt: [],
+      lastExitIntentAt: null,
+      exitIntentModals: [],
+      ...opts.signals,
+    },
     now: 0,
     viewport: { w: 1280, h: 900 },
   };

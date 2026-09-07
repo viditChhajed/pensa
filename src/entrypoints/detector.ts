@@ -76,6 +76,12 @@ export default defineUnlistedScript(() => {
       candidates,
       meta,
       funnelStage: stage,
+      signals: {
+        modalInsertionCount: observer.state.modalsInsertedAt.length,
+        modalsInsertedAt: observer.state.modalsInsertedAt,
+        lastExitIntentAt: observer.state.lastExitIntentAt,
+        exitIntentModals: observer.state.exitIntentModals,
+      },
       now: performance.now(),
       viewport: { w: window.innerWidth, h: window.innerHeight },
     };

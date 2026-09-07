@@ -141,6 +141,7 @@ const ATTRS_OF_INTEREST = [
   "aria-label",
   "aria-hidden",
   "role",
+  "id",
   "data-testid",
   "data-action",
   "data-test",
@@ -274,8 +275,11 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
     }
     return p;
   });
+  // `textContent` concatenates children with NO separator: a parent holding
+  // <span>$12.00</span><span>25% off</span> yields "$12.0025% off", which runs the digits
+  // together and defeats every word-boundary regex downstream. Join on element boundaries.
   const containerTexts: string[] = selected.map((el) =>
-    normalizeText(collapse(el.parentElement?.textContent ?? "")),
+    normalizeText(joinedText(el.parentElement)),
   );
 
   // Whether a progress element sits inside this node. A wrapper's progress bar is usually
@@ -336,6 +340,17 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
       removedAt: eph?.removedAt ?? null,
     } satisfies CandidateNode;
   });
+}
+
+/** Text of an element's children, separated so adjacent nodes do not merge into one token. */
+function joinedText(el: Element | null): string {
+  if (!el) return "";
+  const parts: string[] = [];
+  for (const n of el.childNodes) {
+    if (n.nodeType === 3) parts.push(n.nodeValue ?? "");
+    else if (n.nodeType === 1) parts.push((n as Element).textContent ?? "");
+  }
+  return collapse(parts.join(" "));
 }
 
 /** Text belonging directly to this element, not to its descendants. */
