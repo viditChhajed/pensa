@@ -177,10 +177,44 @@ export function cardSize(itemCount: number, viewport: Viewport): Viewport {
   };
 }
 
-/** DOM reads, then delegate to the pure chooser. */
-function findPlacement(itemCount: number): Placement {
-  const viewport: Viewport = { w: window.innerWidth, h: window.innerHeight };
+/**
+ * How much the page can currently accommodate, measured BEFORE the worker ranks anything.
+ *
+ * The worker has to know this up front. It previously recorded `surfaced: true` and only
+ * then handed the items to the card, which could still refuse to place them — so the event
+ * log claimed a card had been shown that the user never saw, and the popup's Noticed/Shown
+ * split was wrong. Measuring first makes the record accurate in a single round trip.
+ */
+export interface PlacementCapacity {
+  /** Largest digest, 0-4, that fits somewhere covering nothing clickable. */
+  maxCardItems: number;
+  /** Whether the compact pill fits, when a full card does not. */
+  pillFits: boolean;
+}
 
+export function measureCapacity(): PlacementCapacity {
+  const viewport: Viewport = { w: window.innerWidth, h: window.innerHeight };
+  const controls = readControls(viewport);
+
+  let maxCardItems = 0;
+  for (let n = 4; n >= 1; n--) {
+    const size = cardSize(n, viewport);
+    if (CORNERS.some((c) => collisionsAt(controls, viewport, size, c) === 0)) {
+      maxCardItems = n;
+      break;
+    }
+  }
+
+  const pill: Viewport = {
+    w: Math.min(PILL_WIDTH, viewport.w - MARGIN * 2),
+    h: Math.min(PILL_HEIGHT, viewport.h - MARGIN * 2),
+  };
+  const pillFits = CORNERS.some((c) => collisionsAt(controls, viewport, pill, c) === 0);
+
+  return { maxCardItems, pillFits };
+}
+
+function readControls(viewport: Viewport): Rect[] {
   const controls: Rect[] = [];
   for (const el of document.querySelectorAll(INTERACTIVE)) {
     const r = el.getBoundingClientRect();
@@ -190,8 +224,13 @@ function findPlacement(itemCount: number): Placement {
     if (r.right < 0 || r.left > viewport.w) continue;
     controls.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
   }
+  return controls;
+}
 
-  return choosePlacement(controls, viewport, itemCount);
+/** DOM reads, then delegate to the pure chooser. */
+function findPlacement(itemCount: number): Placement {
+  const viewport: Viewport = { w: window.innerWidth, h: window.innerHeight };
+  return choosePlacement(readControls(viewport), viewport, itemCount);
 }
 
 /**
@@ -209,8 +248,13 @@ export class DigestCard {
   private host: HTMLElement | null = null;
   private timer: number | null = null;
 
-  show(items: CardItem[]): void {
-    if (items.length === 0) return;
+  /**
+   * Renders and returns what was ACTUALLY displayed. Layout can shift between the capacity
+   * measurement and the render, so placement is re-checked here and this return value — not
+   * the earlier estimate — is what gets recorded.
+   */
+  show(items: CardItem[]): PlacementMode {
+    if (items.length === 0) return "suppressed";
     this.dismiss();
 
     const host = document.createElement("div");
@@ -225,7 +269,7 @@ export class DigestCard {
       // Nowhere on this page can hold the card without covering something clickable. The
       // detections are already logged and appear in the popup summary.
       console.debug("[patterns] digest suppressed: no placement free of interactive controls");
-      return;
+      return "suppressed";
     }
     const corner = placement.corner;
     // Every layout-critical property carries !important: an inline important declaration
@@ -261,6 +305,8 @@ export class DigestCard {
     const close = root.querySelector("[data-close]");
     close?.addEventListener("click", () => this.dismiss());
     (close as HTMLElement | null)?.focus();
+
+    return placement.mode;
   }
 
   private styles(): HTMLStyleElement {

@@ -24,7 +24,7 @@ import { SalienceTracker } from "@/content/salience";
 import { drainAcrossIdle } from "@/content/scheduler";
 import { TriggerWatcher } from "@/content/triggers";
 import type { PageContext } from "@/content/types";
-import { DigestCard } from "@/content/ui/card";
+import { DigestCard, measureCapacity } from "@/content/ui/card";
 import { INJECTION_FLAG } from "@/shared/constants";
 import { type ShowDigest, send } from "@/shared/messages";
 import type { DetectionCandidate, FunnelStage } from "@/shared/schema";
@@ -200,9 +200,12 @@ export default defineUnlistedScript(() => {
       stage,
       items: items.slice(0, 200),
       ...(offerKey ? { offerKey } : {}),
+      // Measured BEFORE the worker ranks, so the event log can record what was actually
+      // displayed rather than what was intended.
+      placement: measureCapacity(),
     });
 
-    if (reply?.items && reply.items.length > 0) {
+    if (reply?.items && reply.items.length > 0 && reply.mode !== "suppressed") {
       card.show(reply.items);
     }
   }

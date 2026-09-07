@@ -36,6 +36,11 @@ export interface CandidatesPayload {
   items: CandidateItem[];
   /** Resolved offer identity, so the worker can attach §18A temporal claims. */
   offerKey?: string;
+  /**
+   * How much this page can display, measured before ranking. The worker needs it up front
+   * so the event log records what was actually shown rather than what it hoped to show.
+   */
+  placement?: { maxCardItems: number; pillFits: boolean };
 }
 
 export interface TriggerPayload {
@@ -101,6 +106,8 @@ export type Message =
 export interface ShowDigest {
   type: "show-digest";
   items: { patternId: string; prompt: string; label: string }[];
+  /** What the worker decided the page can hold. "suppressed" means render nothing. */
+  mode: "card" | "pill" | "suppressed";
 }
 
 export async function send<T = unknown>(msg: Message): Promise<T | null> {

@@ -72,6 +72,11 @@ The extension is not directed at children and collects no personal information f
 
 Material changes will be reflected here with an updated date, and in the extension's listing.
 
+## Where this is published
+
+The authoritative copy is served at
+<https://viditchhajed.github.io/persuasion-patterns-docs/privacy.html>.
+
 ## Contact
 
 Open an issue on the project repository.

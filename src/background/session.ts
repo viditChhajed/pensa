@@ -67,6 +67,16 @@ export interface DigestItem {
   label: string;
 }
 
+export interface PlacementCapacity {
+  maxCardItems: number;
+  pillFits: boolean;
+}
+
+export interface DigestDecision {
+  items: DigestItem[];
+  mode: "card" | "pill" | "suppressed";
+}
+
 const PROMPTS_SHOWN_KEY = "prompts-shown";
 
 async function usedPrompts(): Promise<Set<string>> {
@@ -98,7 +108,8 @@ export async function decideDigest(
   stage: FunnelStage,
   inputs: CandidateInput[],
   offerKey?: string,
-): Promise<DigestItem[]> {
+  capacity?: PlacementCapacity,
+): Promise<DigestDecision> {
   const sessionId = await currentSessionId();
   const settings = await readSettings();
   let ledger = await loadLedger(sessionId, origin);
@@ -138,13 +149,31 @@ export async function decideDigest(
     originsShown: freq.origins,
   });
 
+  // How much the page can actually display, measured page-side before ranking. Absent
+  // capacity means an older content script; assume a full card rather than suppressing.
+  const cap: PlacementCapacity = capacity ?? { maxCardItems: 4, pillFits: true };
+  const displayable = result.items.slice(0, Math.max(0, cap.maxCardItems));
+  const mode: DigestDecision["mode"] =
+    displayable.length > 0
+      ? "card"
+      : cap.pillFits && result.items.length > 0
+        ? "pill"
+        : "suppressed";
+
+  // A pill shows a count, not prompts, so nothing is individually surfaced in that mode.
+  const shownIds = new Set(mode === "card" ? displayable.map((i) => i.patternId) : []);
+
   const now = Date.now();
   const events: DetectionEvent[] = [];
 
   for (const decision of result.decisions) {
     const source = pool.find((p) => p.candidate.patternId === decision.patternId);
     if (!source) continue;
-    const surfaced = decision.surfaced && gate.show;
+    // `surfaced` must mean "the user saw this", not "we intended to show it". Previously it
+    // was set before the card attempted placement, so a suppressed digest still recorded
+    // surfaced:true and the popup's Noticed/Shown split was wrong.
+    const rankedIn = decision.surfaced && gate.show;
+    const surfaced = rankedIn && shownIds.has(decision.patternId);
     events.push({
       id: crypto.randomUUID(),
       sessionId,
@@ -161,7 +190,13 @@ export async function decideDigest(
         ephemeral: false,
       },
       surfaced,
-      suppressionReason: surfaced ? "none" : decision.surfaced ? gate.reason : decision.reason,
+      suppressionReason: surfaced
+        ? "none"
+        : rankedIn
+          ? "placement_suppressed"
+          : decision.surfaced
+            ? gate.reason
+            : decision.reason,
       funnelStage: stage,
       evidence: source.candidate.evidence,
       rulepackVersion: ALLOWLIST_VERSION,
@@ -173,14 +208,14 @@ export async function decideDigest(
   ledger = noteEvents(ledger, events);
   await putEvents(events);
 
-  if (!gate.show || result.items.length === 0) {
+  if (!gate.show || result.items.length === 0 || mode === "suppressed") {
     await saveLedger(ledger);
-    return [];
+    return { items: [], mode: "suppressed" };
   }
 
   const used = await usedPrompts();
   const items: DigestItem[] = [];
-  for (const ranked of result.items) {
+  for (const ranked of mode === "card" ? displayable : result.items.slice(0, 1)) {
     const prompt = pickPrompt(ranked.patternId as PatternId, used);
     if (!prompt) continue;
     used.add(prompt);
@@ -193,7 +228,7 @@ export async function decideDigest(
 
   if (items.length === 0) {
     await saveLedger(ledger);
-    return [];
+    return { items: [], mode: "suppressed" };
   }
 
   freq.shown.add(`${origin}:${stage}`);
@@ -209,7 +244,7 @@ export async function decideDigest(
   );
   await saveLedger(ledger);
 
-  return items;
+  return { items, mode };
 }
 
 export type { SessionLedger };

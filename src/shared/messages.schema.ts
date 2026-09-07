@@ -72,6 +72,9 @@ export const CandidatesPayload = z.object({
     .array(z.object({ candidate: DetectionCandidate, salience: Salience, passedGate: z.boolean() }))
     .max(200),
   offerKey: z.string().max(128).optional(),
+  placement: z
+    .object({ maxCardItems: z.number().int().min(0).max(4), pillFits: z.boolean() })
+    .optional(),
 });
 
 export const TriggerPayload = z.object({

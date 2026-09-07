@@ -95,6 +95,8 @@ async function renderSummary(): Promise<void> {
     ["Where", ""],
     ["Noticed", "num"],
     ["Shown", "num"],
+    ["No room", "num"],
+    ["Off-screen", "num"],
     ["Sites", "num"],
   ] as const) {
     const th = document.createElement("th");
@@ -108,7 +110,13 @@ async function renderSummary(): Promise<void> {
     const tr = body.insertRow();
     tr.insertCell().textContent = row.patternId;
     tr.insertCell().textContent = row.funnelStage;
-    for (const n of [row.detected, row.surfaced, row.origins]) {
+    for (const n of [
+      row.detected,
+      row.surfaced,
+      row.placementSuppressed,
+      row.belowSalience,
+      row.origins,
+    ]) {
       const cell = tr.insertCell();
       cell.className = "num";
       cell.textContent = String(n);

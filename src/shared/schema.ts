@@ -158,6 +158,8 @@ export const SuppressionReason = z.enum([
   "dedup_family",
   "user_disabled",
   "digest_full",
+  /** Ranked in, but no on-screen placement was free of interactive controls. */
+  "placement_suppressed",
 ]);
 export type SuppressionReason = z.infer<typeof SuppressionReason>;
 

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!--
+    A pause.
+
+    The product's function is inserting a beat between impulse and purchase, and a pause is
+    an action the tool performs — not a deficiency. That was the problem with the earlier
+    question mark: "?" reads as help, unknown, or missing.
+
+    Rejected along the way: an eye (surveillance), a warning triangle (accusation), a
+    magnifier (search), and a rotated square meant as a price tag (renders as a diamond).
+
+    The two bars are deliberately UNEVEN so it also reads as two prices side by side rather
+    than a media control. Two solid shapes is all that survives 16px.
+  -->
+  <rect width="128" height="128" rx="28" fill="#2B5CFF"/>
+  <rect x="40" y="30" width="17" height="68" rx="8.5" fill="#fff"/>
+  <rect x="71" y="46" width="17" height="52" rx="8.5" fill="#fff"/>
+</svg>
