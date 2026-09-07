@@ -29,6 +29,7 @@ import { INJECTION_FLAG } from "@/shared/constants";
 import { type ShowDigest, send } from "@/shared/messages";
 import type { DetectionCandidate, FunnelStage } from "@/shared/schema";
 import { originOf, pathTemplate } from "@/shared/urlScore";
+import { encodePriceSnapshot } from "@/shared/wire";
 
 /** Day-1 hand-set value. Below this, a candidate is not even worth reporting upward. */
 const LOG_THRESHOLD = 0.35;
@@ -142,7 +143,7 @@ export default defineUnlistedScript(() => {
         origin: pageOrigin,
         pathTemplate: pathTemplate(location.href),
         stage,
-        priceSnapshot: extractPriceSnapshot(ctx),
+        priceSnapshot: encodePriceSnapshot(extractPriceSnapshot(ctx)),
       });
     }
 

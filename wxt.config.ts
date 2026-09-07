@@ -58,17 +58,21 @@ export default defineConfig({
     "build:manifestGenerated": (_wxt, manifest) => {
       const m = manifest as chrome.runtime.ManifestV3 & Record<string, unknown>;
 
-      const leaked = (m.host_permissions ?? []) as string[];
-      if (leaked.length > 0) {
-        const optional = new Set((m.optional_host_permissions ?? []) as string[]);
-        for (const p of leaked) optional.add(p);
-        m.optional_host_permissions = [...optional].sort();
-        m.host_permissions = [];
-      }
-
-      if (Array.isArray(m.host_permissions) && m.host_permissions.length > 0) {
+      // NOTE: this used to MOVE any leaked host_permissions into
+      // optional_host_permissions and then assert the array was empty. The assertion was
+      // therefore unreachable dead code — verified by deliberately reintroducing a host
+      // permission, which built cleanly and silently downgraded it to optional. Output was
+      // safe by accident, but nothing detected the change, and a developer who added a
+      // required permission on purpose would have had its semantics quietly altered.
+      //
+      // The auto-move is also no longer needed: the detector is built with
+      // defineUnlistedScript, so nothing injects host permissions in the first place.
+      const hosts = (m.host_permissions ?? []) as string[];
+      if (hosts.length > 0) {
         throw new Error(
-          `host_permissions must be empty (plan §1.2). Found: ${JSON.stringify(m.host_permissions)}`,
+          `host_permissions must be empty (plan §1.2). Found: ${JSON.stringify(hosts)}. ` +
+            "Declaring a host permission grants it at install and produces a 150-site " +
+            "install warning. Put it in optional_host_permissions and request it at runtime.",
         );
       }
 

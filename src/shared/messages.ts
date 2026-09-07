@@ -10,14 +10,16 @@
  * `messages.schema.ts` has a compile-time assertion that the schemas still match these types,
  * so the two files cannot drift apart silently.
  */
-import type { DetectionCandidate, FunnelStage, PriceSnapshot, Salience, Settings } from "./schema";
+import type { DetectionCandidate, FunnelStage, Salience, Settings } from "./schema";
+import { findUnserializable, type WirePriceSnapshot } from "./wire";
 
 export interface StagePayload {
   type: "stage";
   origin: string;
   pathTemplate: string;
   stage: FunnelStage;
-  priceSnapshot?: PriceSnapshot;
+  /** WIRE shape: money as decimal strings. JSON cannot carry BigInt. See wire.ts. */
+  priceSnapshot?: WirePriceSnapshot;
 }
 
 export interface CandidateItem {
@@ -102,10 +104,20 @@ export interface ShowDigest {
 }
 
 export async function send<T = unknown>(msg: Message): Promise<T | null> {
+  // A message that CANNOT be serialised is a programming error, not a transient condition.
+  // Conflating the two is what hid a dead cross-stage pipeline for the whole build: a
+  // BigInt in the payload made sendMessage throw, the catch below swallowed it, and the
+  // ledger silently never received a price snapshot.
+  const problem = findUnserializable(msg);
+  if (problem) {
+    console.error(`[patterns] unsendable ${msg.type} message: ${problem}`);
+    return null;
+  }
+
   try {
     return (await chrome.runtime.sendMessage(msg)) as T;
   } catch {
-    // The worker may be asleep or the extension reloading. Never throw into a host page.
+    // The worker may genuinely be asleep or the extension reloading. That is not an error.
     return null;
   }
 }

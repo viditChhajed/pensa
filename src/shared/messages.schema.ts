@@ -14,18 +14,53 @@ import {
   FunnelStage,
   Origin,
   PathTemplate,
-  PriceSnapshot,
   Salience,
   Settings,
   Sha256,
 } from "./schema";
+
+const WireMoney = z.object({
+  minor: z.string().regex(/^-?\d{1,18}$/),
+  currency: z.string().length(3),
+  confidence: z.number().min(0).max(1),
+});
+
+/** Money crosses the boundary as a decimal STRING — JSON has no BigInt. See wire.ts. */
+const WirePriceSnapshot = z.object({
+  displayedPrice: WireMoney.optional(),
+  subtotal: WireMoney.optional(),
+  shipping: WireMoney.optional(),
+  tax: WireMoney.optional(),
+  total: WireMoney.optional(),
+  fees: z
+    .array(
+      z.object({
+        labelHash: Sha256,
+        labelSample: z.string().max(120).optional(),
+        amount: WireMoney,
+        kind: z.enum([
+          "product",
+          "shipping",
+          "tax",
+          "mandatory_fee",
+          "optional_addon",
+          "discount",
+          "unknown",
+        ]),
+        kindConfidence: z.number().min(0).max(1),
+        userAttributed: z.boolean(),
+      }),
+    )
+    .max(40),
+  capturedAt: z.number().int(),
+});
 
 export const StagePayload = z.object({
   type: z.literal("stage"),
   origin: Origin,
   pathTemplate: PathTemplate,
   stage: FunnelStage,
-  priceSnapshot: PriceSnapshot.optional(),
+  priceSnapshot: WirePriceSnapshot.optional(),
 });
 
 export const CandidatesPayload = z.object({

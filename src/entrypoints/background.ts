@@ -19,6 +19,7 @@ import {
 import { CONTENT_SCRIPT_FILE, DETECTOR_SCRIPT_ID } from "@/shared/constants";
 import { Message } from "@/shared/messages.schema";
 import { ALLOWLIST_ORIGINS, DEFAULT_PROMPT_THRESHOLD, scoreUrl } from "@/shared/urlScore";
+import { decodePriceSnapshot } from "@/shared/wire";
 
 /**
  * Service worker.
@@ -180,7 +181,8 @@ async function handleMessage(raw: unknown): Promise<unknown> {
     case "stage": {
       const sessionId = await currentSessionId();
       const ledger = await loadLedger(sessionId, msg.origin);
-      await saveLedger(noteStage(ledger, msg.stage, msg.priceSnapshot));
+      const snapshot = msg.priceSnapshot ? decodePriceSnapshot(msg.priceSnapshot) : undefined;
+      await saveLedger(noteStage(ledger, msg.stage, snapshot));
       return { ok: true };
     }
 

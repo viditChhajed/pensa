@@ -12,7 +12,28 @@
  * Day 1 ships one hardcoded prompt per pattern. The 4–6 variant pools land Day 2.
  */
 
-const HOST_ID = "persuasion-patterns-host";
+/**
+ * The shadow root protects what is INSIDE the card. It does nothing for the host element,
+ * which lives in the page's own DOM and is fully styleable by the page. A real fixture with
+ * `#persuasion-patterns-host { display: none !important }` and
+ * `[id^="persuasion"] { visibility: hidden !important }` hid the card completely.
+ *
+ * Two defences: a per-injection random id, so there is no stable selector to target, and
+ * the layout-critical properties set inline with `!important`, which outranks an author
+ * stylesheet's `!important` in the cascade.
+ */
+const HOST_ID_PREFIX = "pp-";
+
+function randomHostId(): string {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return (
+    HOST_ID_PREFIX +
+    Array.from(bytes, (b) => b.toString(36))
+      .join("")
+      .slice(0, 10)
+  );
+}
 const AUTO_DISMISS_MS = 20_000;
 const CARD_WIDTH = 360;
 const MARGIN = 16;
@@ -142,21 +163,33 @@ export class DigestCard {
     this.dismiss();
 
     const host = document.createElement("div");
-    host.id = HOST_ID;
+    host.id = randomHostId();
 
     // `pointer-events: none` on the host is necessary but NOT sufficient: the card inside
     // re-enables pointer events, so wherever the card actually renders it still wins the
     // hit test. Verified in a real browser — a checkout button at bottom-right was covered.
     // So the position is chosen by hit-testing the page first (see findSafeCorner).
     const corner = findSafeCorner(items.length);
+    // Every layout-critical property carries !important: an inline important declaration
+    // beats an author stylesheet's important declaration, so a page cannot hide the card by
+    // selector. Verified against a fixture that tries exactly that.
     host.style.cssText = [
-      "position:fixed",
-      `${corner.horizontal}:16px`,
-      `${corner.vertical}:16px`,
-      "z-index:2147483647",
-      "pointer-events:none",
-      `width:min(${CARD_WIDTH}px, calc(100vw - 32px))`,
+      "position:fixed !important",
+      `${corner.horizontal}:16px !important`,
+      `${corner.vertical}:16px !important`,
+      "z-index:2147483647 !important",
+      "pointer-events:none !important",
+      `width:min(${CARD_WIDTH}px, calc(100vw - 32px)) !important`,
       "contain:layout style",
+      "display:block !important",
+      "visibility:visible !important",
+      "opacity:1 !important",
+      "transform:none !important",
+      "clip-path:none !important",
+      "max-width:none !important",
+      "max-height:none !important",
+      "margin:0 !important",
+      "filter:none !important",
     ].join(";");
 
     const root = host.attachShadow({ mode: "closed" });
