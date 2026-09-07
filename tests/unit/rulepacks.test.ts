@@ -91,6 +91,19 @@ describe("denylist label anchoring", () => {
    * and silent, so an over-broad pattern here is the most expensive kind of mistake.
    */
   const mustBeDenied = [
+    // Found in manual testing: hdfcbank.com was OFFERED enablement. Naming institutions
+    // one by one is US-centric and does not scale, hence the generic label rules.
+    "https://www.hdfcbank.com",
+    "https://hdfcbank.com",
+    "https://www.icicibank.com",
+    "https://www.monzo.com",
+    "https://www.natwest.com",
+    "https://www.sofi.com",
+    "https://www.americanexpress.com",
+    "https://somelocalbank.co.uk",
+    "https://firstcreditunion.org",
+    "https://apollohospitals.com",
+    "https://anytownpharmacy.com",
     "https://x.com",
     "https://www.facebook.com",
     "https://chase.com",
