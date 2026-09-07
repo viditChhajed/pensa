@@ -111,6 +111,12 @@ export default defineUnlistedScript(() => {
     });
 
     latest = collected;
+    if (collected.length > 0) {
+      console.info(
+        `[patterns] ${stage}: ${collected.length} detection(s) —`,
+        collected.map((c) => c.candidate.patternId).join(", "),
+      );
+    }
 
     // §18A: resolve this page's offer identity and contribute one observation per visit.
     // Rate-limited so an SPA re-rendering ten times a minute does not inflate the history
@@ -231,6 +237,12 @@ export default defineUnlistedScript(() => {
   }
 
   // --- boot ---
+  // Visible at default log level, deliberately. Injection was previously only observable by
+  // inferring it from chrome.storage.session, which is cleared on every extension reload —
+  // so "no ledger key" was ambiguous between "not injected" and "you reloaded the extension
+  // and have not revisited the page yet". One line removes the ambiguity.
+  console.info(`[patterns] active on ${pageOrigin}`);
+
   observer.start();
   triggers.attach();
   void pass();
