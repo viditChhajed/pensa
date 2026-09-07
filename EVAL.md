@@ -166,10 +166,28 @@ Tick off as you go. The target is breadth across categories, not depth on one re
 
 Fill this in as you go — it is the input to whether the card needs to shrink.
 
-Measured on live storefronts, the card is often suppressed because no placement is free of
-interactive controls (target, ikea, newegg suppressed; rei placed a full card). Storefronts
-are nav-dense and are **not** where the digest fires, so this is a pessimistic sample — cart
-and checkout pages are usually sparser. Record the real rate here.
+### Baseline measured before the spot-check
+
+21 samples — 6 reachable sites x 3 scroll depths — running the production placement logic.
+
+| | raw | excluding bad samples |
+|---|---|---|
+| full card | 52% | **33%** |
+| pill | 5% | **7%** |
+| suppressed | 43% | **60%** |
+
+**Use the right-hand column.** uniqlo and wayfair reported *zero* interactive controls across
+all three scroll depths, which is a blocked or JS-gated render rather than a genuinely empty
+page. Those 6 samples inflate the card rate and are excluded.
+
+Scroll depth dominates: target went SUPPRESSED at 0% and 35% scroll, then fitted a full
+4-item card at 70%. Header and nav clusters are what fill the corners.
+
+Caveats: these are storefront and category pages, **not** cart or checkout, which is where
+the digest actually fires and which are usually sparser. And this measures PLACEMENT only —
+no detectors ran, so it says nothing about firing rates.
+
+Record the real rate here as you go.
 
 | Retailer | Stage | Card shown? | Mode (card / pill / suppressed) |
 |---|---|---|---|
