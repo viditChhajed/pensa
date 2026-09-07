@@ -34,6 +34,9 @@ import { encodePriceSnapshot } from "@/shared/wire";
 /** Day-1 hand-set value. Below this, a candidate is not even worth reporting upward. */
 const LOG_THRESHOLD = 0.35;
 const PASS_DEBOUNCE_MS = 300;
+/** Never let detection occupy more than this share of the main thread. */
+const MAX_DUTY_CYCLE = 0.1;
+const MAX_DEBOUNCE_MS = 15_000;
 const PERF_BUDGET_MS = 50;
 /** One temporal observation per visit, not per re-render (plan §18A). */
 const OBSERVATION_INTERVAL_MS = 60_000;
@@ -57,6 +60,21 @@ export default defineUnlistedScript(() => {
   let stage: FunnelStage = "browse";
   let latest: Scored[] = [];
   let passScheduled = false;
+  /**
+   * Adaptive, because a full re-harvest on every mutation batch is the wrong algorithm and
+   * the right one is not a quick fix.
+   *
+   * Plan §18C specifies dirty-subtree invalidation: coalesce MutationObserver records into
+   * dirty roots and re-score only those, memoised by subtree fingerprint. `PageObserver`
+   * already collects the roots (`takeDirtyRoots`) but `pass()` still re-harvests the whole
+   * document, so a busy SPA re-scans everything continuously. Measured on target.com: passes
+   * of 1839ms, and still ~1000ms after trimming the two biggest constant factors.
+   *
+   * Until §18C lands, this bounds the damage rather than hiding it: the gap before the next
+   * pass scales with how long the last one took, so detection can never occupy more than
+   * MAX_DUTY_CYCLE of the main thread no matter how hostile the page.
+   */
+  let debounceMs = PASS_DEBOUNCE_MS;
   let lastReportedStage: FunnelStage | null = null;
   let offerKey: string | undefined;
   let lastObservationAt = 0;
@@ -154,8 +172,15 @@ export default defineUnlistedScript(() => {
     }
 
     const elapsed = performance.now() - started;
+    debounceMs = Math.min(
+      MAX_DEBOUNCE_MS,
+      Math.max(PASS_DEBOUNCE_MS, Math.round(elapsed / MAX_DUTY_CYCLE)),
+    );
     if (elapsed > PERF_BUDGET_MS) {
-      console.warn(`[patterns] pass took ${elapsed.toFixed(1)}ms (budget ${PERF_BUDGET_MS}ms)`);
+      console.warn(
+        `[patterns] pass took ${elapsed.toFixed(0)}ms (budget ${PERF_BUDGET_MS}ms) — ` +
+          `backing off to ${debounceMs}ms between passes`,
+      );
     }
   }
 
@@ -165,7 +190,7 @@ export default defineUnlistedScript(() => {
     setTimeout(() => {
       passScheduled = false;
       void pass();
-    }, PASS_DEBOUNCE_MS);
+    }, debounceMs);
   }
 
   async function onTrigger(kind: string, label: string): Promise<void> {
