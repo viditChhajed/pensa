@@ -36,6 +36,7 @@ export const CandidatesPayload = z.object({
   items: z
     .array(z.object({ candidate: DetectionCandidate, salience: Salience, passedGate: z.boolean() }))
     .max(200),
+  offerKey: z.string().max(128).optional(),
 });
 
 export const TriggerPayload = z.object({
@@ -46,6 +47,26 @@ export const TriggerPayload = z.object({
   kind: z.enum(["add_to_cart", "checkout_intent"]),
   labelHash: Sha256,
   labelSample: z.string().max(120).optional(),
+});
+
+export const ObservationPayload = z.object({
+  type: z.literal("observation"),
+  origin: Origin,
+  offerKey: z.string().max(128),
+  offerKeySource: z.enum(["jsonld_id", "sku", "gtin", "url_title_hash"]),
+  observation: z.object({
+    // Money crosses this boundary as a decimal STRING: BigInt has no JSON representation,
+    // and chrome.runtime.sendMessage serialises as JSON.
+    timers: z
+      .array(z.object({ containerPathHash: Sha256, observedEndEpoch: z.number().int() }))
+      .max(8),
+    stockCounts: z.array(z.number().int()).max(8),
+    viewerCounts: z.array(z.number().int()).max(8),
+    prices: z
+      .array(z.object({ minor: z.string().regex(/^\d{1,15}$/), currency: z.string().length(3) }))
+      .max(8),
+    referencePrices: z.array(z.object({ minor: z.string().regex(/^\d{1,15}$/) })).max(8),
+  }),
 });
 
 export const QueryEnablement = z.object({
@@ -64,6 +85,7 @@ export const Ping = z.object({ type: z.literal("ping") });
 
 export const Message = z.discriminatedUnion("type", [
   StagePayload,
+  ObservationPayload,
   CandidatesPayload,
   TriggerPayload,
   QueryEnablement,

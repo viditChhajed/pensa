@@ -18,10 +18,11 @@ import type {
 } from "@/shared/schema";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
 import { ALLOWLIST_VERSION } from "@/shared/urlScore";
-import { putEvents, readSettings } from "./db";
+import { putEvents, readOffer, readSettings } from "./db";
 import { buildDigest, type RankInput, shouldShowDigest } from "./digest";
 import { detectDrip, detectSneak, dripCandidate } from "./dripPricing";
 import { loadLedger, noteDigest, noteEvents, saveLedger } from "./sessionLedger";
+import { temporalCandidates } from "./temporal";
 
 const SESSION_KEY = "session";
 
@@ -97,6 +98,7 @@ export async function decideDigest(
   pathTemplate: string,
   stage: FunnelStage,
   inputs: CandidateInput[],
+  offerKey?: string,
 ): Promise<DigestItem[]> {
   const sessionId = await currentSessionId();
   const settings = await readSettings();
@@ -119,6 +121,18 @@ export async function decideDigest(
 
   const sneak = detectSneak(ledger);
   if (sneak) pool.push({ candidate: sneak, visibleMs: 2000, passedGate: true });
+
+  // §18A temporal claims. These come from history across visits, not from this page, so
+  // they carry no dwell of their own — they are credited the gate and a nominal dwell, the
+  // same as the cross-stage findings. By construction there are none on a first sighting.
+  if (offerKey) {
+    const history = await readOffer(origin, offerKey);
+    if (history) {
+      for (const c of temporalCandidates(history)) {
+        pool.push({ candidate: c, visibleMs: 2000, passedGate: true });
+      }
+    }
+  }
 
   const result = buildDigest(pool, {
     surfaceThreshold: 0.75,

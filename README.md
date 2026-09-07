@@ -7,43 +7,53 @@ and, at add-to-cart or checkout, asks a question about what was actually on scre
 ("this page showed a countdown timer") and asks a question. It never asserts intent,
 deception, or illegality — an ethical constraint first, and a store-review one second.
 
-## Status — pilot, end of Day 2
+## Status — pilot, end of Day 3
 
 Working locally, not submitted, not published.
 
 | | |
 |---|---|
-| Page detectors | 9 of 9 Tier 1 |
+| Page detectors | 14 (9 Tier 1 + 5 Tier 2) |
 | Cross-stage detectors | `pricing.drip`, `basket.sneak` |
-| Unit tests | 115 passing |
-| Bundle | **153.8 KB gzipped — over the 120 KB budget** |
+| Temporal claims (§18A) | 4, needing repeat visits by construction |
+| Unit tests | 180 passing |
+| Bundle | 106.9 KB gzipped (budget 120) |
 | `host_permissions` | empty, asserted at build and in CI |
 | Network requests | zero |
 
-Tier 1: `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`, `urgency.countdown`,
-`defaults.preselected`, `social_proof.live_activity`, `confirmshaming.decline_copy`,
-`goal_gradient.threshold`, `bnpl.installments`.
+**Tier 1:** `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
+`urgency.countdown`, `defaults.preselected`, `social_proof.live_activity`,
+`confirmshaming.decline_copy`, `goal_gradient.threshold`, `bnpl.installments`
 
-Also working: session ledger across funnel stages, IndexedDB persistence with 30-day
-retention, digest ranking with family dedup, 4–6 copy variants per pattern under CI lint,
-the sensitivity control, popup and options summaries.
+**Tier 2:** `interference.visual_asymmetry` (WCAG contrast, area, weight),
+`decoy.asymmetric_dominance`, `nagging.repeat_interstitial`, `framing.savings_ratio`,
+`loss_aversion.exit_intent`
+
+**Temporal (§18A):** `temporal.evergreen_countdown`, `temporal.stock_nonmonotonic`,
+`temporal.reference_price_ungrounded`, `temporal.social_proof_synthetic`
+
+The temporal engine is the part that is hard to replicate. Every other tool in this space
+judges a page in isolation; this one keeps a local per-offer history and derives claims no
+single page can support — a countdown whose deadline advances with the clock, a stock count
+that rises as well as falls, a reference price never once observed as the actual price. It
+needs no server and no consent beyond install, and it gets stronger the longer it is used.
+It also, by construction, says nothing on a first visit.
 
 ### Known gaps — not claimed as done
 
-- **Bundle is 34 KB over budget.** Cause is identified, not fixed: Zod is bundled into the
-  content script and popup because `urlScore.ts` validates the bundled rulepacks at runtime
-  and `messages.ts` exports schemas alongside `send()`. Bundled rulepacks are our own build
-  artifacts, not a runtime trust boundary — that validation belongs in a test. Splitting the
-  worker-only schemas out of `messages.ts` and moving rulepack validation to CI should
-  recover most of it.
 - **Precision is unmeasured.** The manual spot-check across real retailers (§10) has not
   run. Thresholds are hand-set guesses, marked `hand_set` in the schema so they cannot be
   mistaken for calibrated values. No precision claim should be made until that happens.
-- **Never loaded in a real browser.** Every check so far is jsdom and unit-level. The
-  permission grant flow, runtime script registration, and overlay rendering have not been
-  exercised in Chrome.
+- **Never loaded in a real browser.** All 180 tests are jsdom and unit-level. The permission
+  grant flow, runtime script registration, IndexedDB round-trip, and overlay rendering have
+  not been exercised in Chrome.
 - **No telemetry backend**, by design for now — consent flow and local queue only.
-- **§18 modules D–G not built.** Interfaces exist so they drop in without a rewrite.
+- **§18D–G not built.** The n-gram classifier, empirical interference baselines, structural
+  pattern mining and cross-user verification. Interfaces exist so they drop in without a
+  rewrite.
+- **`offerKey.ts` title-similarity matching is written but unused** — offer identity resolves
+  via JSON-LD/SKU/GTIN/URL-hash; the trigram fallback for matching cart lines to PDP products
+  is not yet wired.
 
 ## Permissions
 

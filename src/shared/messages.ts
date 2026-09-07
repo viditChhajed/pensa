@@ -32,6 +32,8 @@ export interface CandidatesPayload {
   pathTemplate: string;
   stage: FunnelStage;
   items: CandidateItem[];
+  /** Resolved offer identity, so the worker can attach §18A temporal claims. */
+  offerKey?: string;
 }
 
 export interface TriggerPayload {
@@ -42,6 +44,21 @@ export interface TriggerPayload {
   kind: "add_to_cart" | "checkout_intent";
   labelHash: string;
   labelSample?: string;
+}
+
+/** A page's contribution to the §18A temporal history, keyed by resolved offer identity. */
+export interface ObservationPayload {
+  type: "observation";
+  origin: string;
+  offerKey: string;
+  offerKeySource: "jsonld_id" | "sku" | "gtin" | "url_title_hash";
+  observation: {
+    timers: { containerPathHash: string; observedEndEpoch: number }[];
+    stockCounts: number[];
+    viewerCounts: number[];
+    prices: { minor: string; currency: string }[];
+    referencePrices: { minor: string }[];
+  };
 }
 
 export interface QueryEnablement {
@@ -68,6 +85,7 @@ export interface Ping {
 
 export type Message =
   | StagePayload
+  | ObservationPayload
   | CandidatesPayload
   | TriggerPayload
   | QueryEnablement

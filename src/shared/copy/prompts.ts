@@ -139,6 +139,38 @@ export const PROMPTS: Partial<Record<PatternId, readonly string[]>> = {
     "An offer arrived at the exit. Is it better than the reason you were leaving?",
   ],
 
+  // The temporal claims. These are the strongest statements this tool makes, so the wording
+  // is the most careful: every one reports what THIS BROWSER observed, and none asserts that
+  // the merchant did anything. "The timer showed a different deadline on your last visit" is
+  // checkable from our own records. "The timer is fake" would not be.
+  "temporal.evergreen_countdown": [
+    "This timer showed a different deadline the last time you visited. Does a deadline that moves change what it means to you?",
+    "The countdown here has restarted since your last visit. If it resets again tomorrow, is it a deadline?",
+    "You have seen this timer before, ending at a different moment. What would you do if there were no clock?",
+    "The end time on this timer has moved between your visits. Does the offer feel different now?",
+  ],
+
+  "temporal.stock_nonmonotonic": [
+    "The number left has gone up as well as down across your visits. Does the count tell you how many there are?",
+    "This count has shown the same figure on every visit for over a week. Is it tracking anything you can use?",
+    "The remaining-units number has moved in both directions since you first saw it. What would you rely on instead?",
+    "You have seen this count before and it did not simply fall. Does it change how quickly you want to decide?",
+  ],
+
+  "temporal.reference_price_ungrounded": [
+    "The higher price here has not been the actual price on any visit you have made. Is it a useful comparison?",
+    "You have seen this item several times and always at the same price. What is the crossed-out number describing?",
+    "Across your visits, the was-price has never been the price. Does the saving mean what it appears to?",
+    "This item has cost the same every time you looked. Is the comparison price telling you anything?",
+  ],
+
+  "temporal.social_proof_synthetic": [
+    "The viewer count here has stayed within a very narrow range across your visits. Does it move the way real traffic would?",
+    "You have seen this number many times and it barely changes. What would it look like if it were counting people?",
+    "This count has been remarkably steady across times of day. Does it tell you anything about demand?",
+    "The number of people viewing has varied little over your visits. Would you decide differently without it?",
+  ],
+
   "basket.sneak": [
     "There is an item here you may not have added. Did you choose it?",
     "Something in this order does not match anything you selected. Do you want it?",

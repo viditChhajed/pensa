@@ -7,6 +7,7 @@ import {
   readSettings,
   writeSettings,
 } from "@/background/db";
+import { recordObservation } from "@/background/recordOffer";
 import { currentSessionId, decideDigest } from "@/background/session";
 import {
   clearLedgers,
@@ -199,8 +200,20 @@ async function handleMessage(raw: unknown): Promise<unknown> {
     }
 
     case "candidates": {
-      const items = await decideDigest(msg.origin, msg.pathTemplate, msg.stage, msg.items);
+      const items = await decideDigest(
+        msg.origin,
+        msg.pathTemplate,
+        msg.stage,
+        msg.items,
+        msg.offerKey,
+      );
       return { type: "show-digest", items };
+    }
+
+    case "observation": {
+      // Record first; claims are derived at digest time from the accumulated history.
+      await recordObservation(msg.origin, msg.offerKey, msg.offerKeySource, msg.observation);
+      return { ok: true };
     }
 
     case "get-summary":

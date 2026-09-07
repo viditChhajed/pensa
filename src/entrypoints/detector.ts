@@ -16,7 +16,9 @@ import { runDetectors } from "@/content/detectors";
 import { createHash } from "@/content/detectors/hash";
 import { classifyStage } from "@/content/funnel";
 import { harvest, readDocumentMeta } from "@/content/harvest";
+import { extractObservations, isEmpty } from "@/content/observations";
 import { PageObserver } from "@/content/observer";
+import { resolveOffer } from "@/content/offerKey";
 import { extractPriceSnapshot } from "@/content/priceSummary";
 import { SalienceTracker } from "@/content/salience";
 import { drainAcrossIdle } from "@/content/scheduler";
@@ -32,6 +34,8 @@ import { originOf, pathTemplate } from "@/shared/urlScore";
 const LOG_THRESHOLD = 0.35;
 const PASS_DEBOUNCE_MS = 300;
 const PERF_BUDGET_MS = 50;
+/** One temporal observation per visit, not per re-render (plan §18A). */
+const OBSERVATION_INTERVAL_MS = 60_000;
 
 interface Scored {
   candidate: DetectionCandidate;
@@ -53,6 +57,8 @@ export default defineUnlistedScript(() => {
   let latest: Scored[] = [];
   let passScheduled = false;
   let lastReportedStage: FunnelStage | null = null;
+  let offerKey: string | undefined;
+  let lastObservationAt = 0;
 
   const observer = new PageObserver(() => schedulePass());
   const triggers = new TriggerWatcher(
@@ -104,6 +110,28 @@ export default defineUnlistedScript(() => {
     });
 
     latest = collected;
+
+    // §18A: resolve this page's offer identity and contribute one observation per visit.
+    // Rate-limited so an SPA re-rendering ten times a minute does not inflate the history
+    // into ten "sightings" and manufacture a temporal claim out of a single visit.
+    const offer = resolveOffer(ctx.meta, document);
+    if (offer) {
+      offerKey = offer.offerKey;
+      const sinceLast = Date.now() - lastObservationAt;
+      if (sinceLast > OBSERVATION_INTERVAL_MS) {
+        const observation = extractObservations(ctx, Date.now());
+        if (!isEmpty(observation)) {
+          lastObservationAt = Date.now();
+          await send({
+            type: "observation",
+            origin: pageOrigin,
+            offerKey: offer.offerKey,
+            offerKeySource: offer.source,
+            observation,
+          });
+        }
+      }
+    }
 
     // Report the stage and its price snapshot so the worker can do cross-stage work. The
     // snapshot is what makes drip pricing possible, and it only exists page-side.
@@ -170,6 +198,7 @@ export default defineUnlistedScript(() => {
       pathTemplate: path,
       stage,
       items: items.slice(0, 200),
+      ...(offerKey ? { offerKey } : {}),
     });
 
     if (reply?.items && reply.items.length > 0) {
