@@ -8,18 +8,26 @@
 import type { DetectionCandidate, FunnelStage } from "@/shared/schema";
 import type { Detector, PageContext } from "../types";
 import { anchoringDetector } from "./anchoring";
+import { bnplDetector } from "./bnpl";
 import { charmDetector } from "./charm";
+import { confirmshamingDetector } from "./confirmshaming";
 import { defaultsDetector } from "./defaults";
+import { goalGradientDetector } from "./goalGradient";
 import { scarcityDetector } from "./scarcity";
+import { socialProofDetector } from "./socialProof";
 import { urgencyDetector } from "./urgency";
 
-/** Day 1 set (plan T13). Tier-1 remainder lands Day 2. */
+/** All nine Tier-1 detectors (plan T13 + T19). */
 export const DETECTORS: readonly Detector[] = [
   anchoringDetector,
   charmDetector,
   scarcityDetector,
   urgencyDetector,
   defaultsDetector,
+  socialProofDetector,
+  confirmshamingDetector,
+  goalGradientDetector,
+  bnplDetector,
 ];
 
 export const DETECTORS_BY_ID = new Map(DETECTORS.map((d) => [d.id, d]));

@@ -74,6 +74,8 @@ export interface CandidateNode {
    */
   readonly containerPath: string | null;
   readonly containerText: string;
+  /** A <progress> or [role=progressbar] anywhere inside. Usually not itself a candidate. */
+  readonly hasProgressDescendant: boolean;
   readonly childIdxs: readonly number[];
   /** Populated only for nodes observed changing. Empty for the vast majority. */
   readonly textHistory: readonly TextObservation[];

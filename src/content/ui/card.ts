@@ -11,7 +11,6 @@
  *
  * Day 1 ships one hardcoded prompt per pattern. The 4–6 variant pools land Day 2.
  */
-import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
 
 const HOST_ID = "persuasion-patterns-host";
 const AUTO_DISMISS_MS = 20_000;
@@ -123,23 +122,15 @@ function findSafeCorner(itemCount: number): Corner {
   return chooseCorner(controls, viewport, cardSize(itemCount, viewport));
 }
 
-/** One template per pattern for Day 1. Every one is an observation plus a question. */
-const PROMPTS: Partial<Record<PatternId, string>> = {
-  "anchoring.reference_price":
-    "This page showed a crossed-out higher price next to the current one. If you had seen only the price you are being asked to pay, would it still seem like the right amount?",
-  "pricing.charm":
-    "The price here ends just under a round number. If it were rounded up to the next dollar, would you still want it?",
-  "scarcity.stock":
-    "This page said the stock was limited. If the same item were available in any quantity next week, would you still buy it today?",
-  "urgency.countdown":
-    "This page showed a timer counting down. If the price were the same tomorrow, does the timer change what the item is worth to you?",
-  "defaults.preselected":
-    "An option was already selected for you here. If it had started unselected, would you have added it yourself?",
-};
-
+/**
+ * Rendered content, decided by the service worker. The card does no copy selection of its
+ * own — variant sampling needs session state (which prompts were already shown), and that
+ * lives in the worker, not in a page that reloads constantly.
+ */
 export interface CardItem {
-  patternId: PatternId;
-  confidence: number;
+  patternId: string;
+  label: string;
+  prompt: string;
 }
 
 export class DigestCard {
@@ -241,16 +232,15 @@ export class DigestCard {
 
     const list = document.createElement("ul");
     for (const item of items.slice(0, 4)) {
-      const entry = TAXONOMY[item.patternId];
-      const prompt = PROMPTS[item.patternId];
-      if (!prompt) continue;
       const li = document.createElement("li");
       const label = document.createElement("span");
       label.className = "label";
-      label.textContent = entry.label;
+      // textContent, never innerHTML: this content crosses a context boundary and the card
+      // renders inside someone else's page.
+      label.textContent = item.label;
       const p = document.createElement("p");
       p.className = "prompt";
-      p.textContent = prompt;
+      p.textContent = item.prompt;
       li.append(label, p);
       list.append(li);
     }

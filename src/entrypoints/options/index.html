@@ -9,14 +9,51 @@
   <body>
     <main>
       <h1>Persuasion Patterns</h1>
+
+      <section>
+        <h2>How often you see a card</h2>
+        <p class="muted">
+          Being interrupted repeatedly is the fastest way for a tool like this to become
+          annoying. Turn it down as far as you like — everything is still recorded for your
+          own summary either way.
+        </p>
+        <div class="choices" id="frequency"></div>
+      </section>
+
       <section>
         <h2>Sites you have enabled</h2>
         <ul id="sites"><li class="muted">Loading…</li></ul>
       </section>
+
+      <section>
+        <h2>What was noticed today</h2>
+        <table id="summary"><tbody><tr><td class="muted">Loading…</td></tr></tbody></table>
+        <p class="muted small">
+          “Noticed” counts everything found. “Shown” counts only what was actually on your
+          screen long enough to have been seen.
+        </p>
+      </section>
+
+      <section>
+        <h2>Anonymous statistics</h2>
+        <label class="row">
+          <input type="checkbox" id="telemetry" />
+          <span>
+            Share anonymous counts of which patterns appear where.
+            <span class="muted">
+              Off by default, and not pre-ticked — a tool that flags preselected checkboxes
+              should not use one. No server is connected yet, so nothing is sent even if this
+              is on.
+            </span>
+          </span>
+        </label>
+      </section>
+
       <section>
         <h2>Your data</h2>
         <p class="muted">
-          Everything this extension records stays on this device. Nothing is sent anywhere.
+          Everything stays on this device. There are no network requests. You can check that
+          yourself in DevTools → Network.
         </p>
         <button type="button" id="clear">Delete all my data</button>
         <p id="cleared" class="muted" hidden>Deleted.</p>

@@ -9,6 +9,8 @@
  *
  * `activeTab` is what lets this read the current tab's URL without the `tabs` permission.
  */
+import { send } from "@/shared/messages";
+import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
 import { DEFAULT_PROMPT_THRESHOLD, isDenied, scoreUrl } from "@/shared/urlScore";
 
 const statusEl = document.getElementById("status") as HTMLParagraphElement;
@@ -107,3 +109,43 @@ function renderRevoke(pattern: string, hostname: string): void {
 }
 
 void init();
+
+/**
+ * Today's summary (plan T30). Read on the user's own schedule rather than pushed at them —
+ * the interruption has structurally bad retention, so the value has to accrue somewhere the
+ * user chooses to look.
+ */
+async function renderToday(): Promise<void> {
+  const reply = await send<{ rows: { patternId: string; detected: number; surfaced: number }[] }>({
+    type: "get-summary",
+  });
+  const rows = reply?.rows ?? [];
+  if (rows.length === 0) return;
+
+  const byPattern = new Map<string, number>();
+  for (const r of rows) {
+    byPattern.set(r.patternId, (byPattern.get(r.patternId) ?? 0) + r.detected);
+  }
+
+  const list = document.getElementById("todayList") as HTMLUListElement;
+  const section = document.getElementById("today") as HTMLElement;
+  list.replaceChildren();
+
+  for (const [patternId, count] of [...byPattern.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)) {
+    const entry = TAXONOMY[patternId as PatternId];
+    const li = document.createElement("li");
+    const name = document.createElement("span");
+    name.textContent = entry?.label ?? patternId;
+    const n = document.createElement("span");
+    n.className = "count";
+    n.textContent = String(count);
+    li.append(name, n);
+    list.append(li);
+  }
+
+  section.hidden = false;
+}
+
+void renderToday();

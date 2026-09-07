@@ -1,22 +1,39 @@
 import { defineBackground } from "wxt/utils/define-background";
+import {
+  clearAllData,
+  evictOffers,
+  prevalence,
+  pruneEvents,
+  readSettings,
+  writeSettings,
+} from "@/background/db";
+import { currentSessionId, decideDigest } from "@/background/session";
+import {
+  clearLedgers,
+  loadLedger,
+  noteStage,
+  noteUserAdd,
+  saveLedger,
+} from "@/background/sessionLedger";
 import { CONTENT_SCRIPT_FILE, DETECTOR_SCRIPT_ID } from "@/shared/constants";
-import { ALLOWLIST_ORIGINS, DEFAULT_PROMPT_THRESHOLD, isDenied, scoreUrl } from "@/shared/urlScore";
+import { Message } from "@/shared/messages";
+import { ALLOWLIST_ORIGINS, DEFAULT_PROMPT_THRESHOLD, scoreUrl } from "@/shared/urlScore";
 
 /**
  * Service worker.
  *
- * Two jobs on Day 1:
  *   1. Light up the toolbar icon on plausible shopping URLs WITHOUT reading any page
- *      (declarativeContent + pageUrl only — see plan §1.1).
+ *      (declarativeContent + pageUrl only — plan §1.1).
  *   2. Register / unregister the detector content script as host permissions come and go
  *      (plan §1.2, §1.3). Registration is NOT injection: a registered script stays inert
- *      until the extension actually holds permission for that origin, so the grant and the
- *      registration have to stay in sync or the failure is silent.
+ *      until the extension holds permission for that origin, so grant and registration have
+ *      to stay in sync or the failure is completely silent.
+ *   3. Own the session ledger and the digest decision, because both outlive any one page.
  */
 export default defineBackground(() => {
   chrome.runtime.onInstalled.addListener(async () => {
-    // MV3 has no declarativeContent.HideAction. `ShowAction` can only enable, so the
-    // action must start disabled for the greyscale-by-default behaviour to work at all.
+    // MV3 has no declarativeContent.HideAction. `ShowAction` can only enable, so the action
+    // must start disabled for greyscale-by-default to work at all.
     await chrome.action.disable();
     await installPageRules();
     await reconcileRegistrations();
@@ -25,6 +42,7 @@ export default defineBackground(() => {
   // Service workers die. Anything assumed to persist has to be re-derived on wake.
   chrome.runtime.onStartup.addListener(() => {
     void reconcileRegistrations();
+    void housekeeping();
   });
   void reconcileRegistrations();
 
@@ -35,25 +53,29 @@ export default defineBackground(() => {
     void reconcileRegistrations();
   });
 
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    void handleMessage(msg, sender).then(sendResponse);
+  chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
+    void handleMessage(raw).then(sendResponse);
     return true; // async response
+  });
+
+  chrome.alarms?.create("housekeeping", { periodInMinutes: 720 });
+  chrome.alarms?.onAlarm.addListener((a) => {
+    if (a.name === "housekeeping") void housekeeping();
   });
 });
 
 /**
  * declarativeContent rules from the allowlist plus generic commerce path tokens.
  * `pageUrl` conditions need no host permission and read nothing. A `css` condition WOULD
- * require host permission, which is why Stage 1 is URL-only.
+ * require host permission, which is exactly why Stage 1 is URL-only.
  */
 async function installPageRules(): Promise<void> {
   const conditions: chrome.declarativeContent.PageStateMatcher[] = [];
 
   for (const origin of ALLOWLIST_ORIGINS) {
-    const host = new URL(origin).hostname;
     conditions.push(
       new chrome.declarativeContent.PageStateMatcher({
-        pageUrl: { hostEquals: host, schemes: ["https"] },
+        pageUrl: { hostEquals: new URL(origin).hostname, schemes: ["https"] },
       }),
     );
   }
@@ -78,8 +100,8 @@ async function installPageRules(): Promise<void> {
 
 /**
  * Make the set of registered content scripts match the set of granted origins, exactly.
- * Called on install, on wake, and on every permission change, because
- * `persistAcrossSessions` can drift from reality and a stale registration is invisible.
+ * Called on install, on wake, and on every permission change, because `persistAcrossSessions`
+ * can drift from reality and a stale registration is invisible.
  */
 async function reconcileRegistrations(): Promise<void> {
   const granted = await chrome.permissions.getAll();
@@ -112,30 +134,38 @@ async function reconcileRegistrations(): Promise<void> {
       await chrome.scripting.registerContentScripts([registration]);
     }
   } catch (err) {
-    // Most likely cause: a match pattern the scripting API rejects. Surface it rather than
-    // failing silently — a silent no-op here looks identical to "the detector found nothing".
+    // Most likely a match pattern the scripting API rejects. Surface it — a silent no-op
+    // here looks identical to "the detector found nothing".
     console.error("[patterns] content script registration failed", err, origins);
   }
 }
 
-interface EnablementQuery {
-  type: "query-enablement";
-  url: string;
+async function housekeeping(): Promise<void> {
+  try {
+    const settings = await readSettings();
+    await pruneEvents(settings.retentionDays);
+    await evictOffers();
+  } catch (err) {
+    console.error("[patterns] housekeeping failed", err);
+  }
 }
 
-type Message = EnablementQuery | { type: string; [k: string]: unknown };
+async function handleMessage(raw: unknown): Promise<unknown> {
+  // Cross-context input is a trust boundary like any other.
+  const parsed = Message.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid message" };
+  const msg = parsed.data;
 
-async function handleMessage(msg: Message, _sender: chrome.runtime.MessageSender) {
   switch (msg.type) {
+    case "ping":
+      return { ok: true };
+
     case "query-enablement": {
-      const url = (msg as EnablementQuery).url;
-      const scored = scoreUrl(url);
+      const scored = scoreUrl(msg.url);
       const granted = await chrome.permissions.getAll();
-      const origins = granted.origins ?? [];
       let enabled = false;
       try {
-        const origin = new URL(url).origin;
-        enabled = origins.some((p) => p === `${origin}/*`);
+        enabled = (granted.origins ?? []).includes(`${new URL(msg.url).origin}/*`);
       } catch {
         enabled = false;
       }
@@ -145,11 +175,49 @@ async function handleMessage(msg: Message, _sender: chrome.runtime.MessageSender
         shouldOffer: !scored.denied && scored.score >= DEFAULT_PROMPT_THRESHOLD,
       };
     }
-    case "ping":
+
+    case "stage": {
+      const sessionId = await currentSessionId();
+      const ledger = await loadLedger(sessionId, msg.origin);
+      await saveLedger(noteStage(ledger, msg.stage, msg.priceSnapshot));
       return { ok: true };
+    }
+
+    case "trigger": {
+      const sessionId = await currentSessionId();
+      let ledger = await loadLedger(sessionId, msg.origin);
+      if (msg.kind === "add_to_cart") {
+        ledger = noteUserAdd(ledger, {
+          ts: Date.now(),
+          labelHash: msg.labelHash,
+          ...(msg.labelSample ? { labelSample: msg.labelSample } : {}),
+          confirmed: false,
+        });
+        await saveLedger(ledger);
+      }
+      return { ok: true };
+    }
+
+    case "candidates": {
+      const items = await decideDigest(msg.origin, msg.pathTemplate, msg.stage, msg.items);
+      return { type: "show-digest", items };
+    }
+
+    case "get-summary":
+      return { rows: await prevalence(Date.now() - 24 * 60 * 60 * 1000) };
+
+    case "get-settings":
+      return await readSettings();
+
+    case "set-settings":
+      return await writeSettings(msg.patch);
+
+    case "clear-data":
+      await clearAllData();
+      await clearLedgers();
+      return { ok: true };
+
     default:
-      return { ok: false, error: `unknown message: ${msg.type}` };
+      return { ok: false, error: "unhandled" };
   }
 }
-
-export { isDenied };

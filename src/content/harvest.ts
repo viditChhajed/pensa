@@ -64,6 +64,23 @@ const TRIGGER_WORDS = [
   "almost gone",
   "selling fast",
   "in carts",
+  // Purchase-toast copy carries no digit or currency glyph, so without these words the
+  // prefilter rejects "Sarah in Denver just bought this" before any detector sees it.
+  "bought",
+  "purchased",
+  "ordered",
+  "booked",
+  "just",
+  "someone",
+  "claimed",
+  "signed up",
+  // Goal-gradient and BNPL copy that can appear with no currency symbol.
+  "qualify",
+  "to go",
+  "installment",
+  "instalment",
+  "interest free",
+  "per month",
 ];
 
 export function classifyText(text: string): number {
@@ -261,6 +278,12 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
     normalizeText(collapse(el.parentElement?.textContent ?? "")),
   );
 
+  // Whether a progress element sits inside this node. A wrapper's progress bar is usually
+  // NOT itself a candidate (it has no text), so detectors cannot find it via childIdxs.
+  const hasProgress: boolean[] = selected.map(
+    (el) => el.querySelector('progress, [role="progressbar"]') !== null,
+  );
+
   const styles: StyleSnapshot[] = selected.map((el) => {
     const cs = styleOf(el);
     return {
@@ -305,6 +328,7 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
       parentIdx: el.parentElement ? (indexOf.get(el.parentElement) ?? null) : null,
       containerPath: el.parentElement ? (containerPaths[i] ?? null) : null,
       containerText: containerTexts[i] ?? "",
+      hasProgressDescendant: hasProgress[i] ?? false,
       childIdxs,
       textHistory: opts.textHistories?.get(el) ?? [],
       ephemeral: eph !== undefined && eph.removedAt !== null,

@@ -1,0 +1,107 @@
+/**
+ * bnpl.installments
+ *
+ * Splitting a price into small future payments reduces how much the cost is felt now. The
+ * artifacts are reliable: provider SDK iframes, provider brand names, and a very consistent
+ * copy shape ("4 interest-free payments of $24.99").
+ *
+ * This one has unusually high precision available because the provider names are proper
+ * nouns that do not otherwise appear on a product page.
+ */
+
+import { parsePrices } from "@/shared/money";
+import type { DetectionCandidate } from "@/shared/schema";
+import type { Detector, PageContext } from "../types";
+import { candidate, matchLexemes, visibleCandidates } from "./util";
+
+const PROVIDERS = [
+  "klarna",
+  "affirm",
+  "afterpay",
+  "sezzle",
+  "zip",
+  "quadpay",
+  "clearpay",
+  "splitit",
+  "paypal pay in 4",
+  "shop pay installments",
+] as const;
+
+const PROVIDER_HOSTS =
+  /(?:klarna|affirm|afterpay|sezzle|quadpay|clearpay|splitit|zip)\.(?:com|co|io|net)/i;
+
+const INSTALLMENT_PATTERNS: readonly RegExp[] = [
+  /\b(\d)\s*(?:interest[- ]free\s+)?(?:payments?|installments?|instalments?)\s+of\b/,
+  /\bpay in (\d)\b/,
+  /\bor\s+\d\s*x\s*[$£€]/,
+  /\bas low as\s*[$£€]?\s*[\d.,]+\s*\/\s*(?:mo|month)\b/,
+  /\bfrom\s*[$£€]\s*[\d.,]+\s*\/\s*(?:mo|month)\b/,
+  /\bsplit (?:it )?into \d+ payments\b/,
+  /\b\d+ (?:bi-?weekly|fortnightly|monthly) payments\b/,
+];
+
+const LEXEMES = [
+  "interest-free",
+  "interest free",
+  "payments of",
+  "installments",
+  "instalments",
+  "pay in 4",
+  "as low as",
+  "per month",
+  "/mo",
+] as const;
+
+const WEIGHTS: Record<string, number> = {
+  installmentCopy: 0.55,
+  providerNamed: 0.3,
+  providerFrame: 0.3,
+  hasAmount: 0.15,
+};
+
+export const bnplDetector: Detector = {
+  id: "bnpl.installments@1",
+  patternId: "bnpl.installments",
+  stages: ["pdp", "cart", "checkout", "payment"],
+
+  run(ctx: PageContext): DetectionCandidate[] {
+    const out: DetectionCandidate[] = [];
+    const seen = new Set<string>();
+
+    for (const n of visibleCandidates(ctx)) {
+      const t = n.normalizedText;
+      if (t.length === 0 || t.length > 220) continue;
+      if (seen.has(n.selectorPath)) continue;
+
+      const copy = INSTALLMENT_PATTERNS.some((re) => re.test(t)) ? 1 : 0;
+      const named = PROVIDERS.some((p) => t.includes(p)) ? 1 : 0;
+      // An SDK iframe or logo pointing at a provider host.
+      const src = `${n.attrs.src ?? ""} ${n.attrs.href ?? ""} ${n.attrs.alt ?? ""}`;
+      const frame = PROVIDER_HOSTS.test(src) ? 1 : 0;
+
+      // A provider name alone is not enough — "Zip" is also a postcode field label.
+      if (copy === 0 && frame === 0) continue;
+
+      seen.add(n.selectorPath);
+      const prices = parsePrices(n.text);
+
+      out.push(
+        candidate(
+          bnplDetector.id,
+          "bnpl.installments",
+          n,
+          {
+            installmentCopy: copy,
+            providerNamed: named,
+            providerFrame: frame,
+            hasAmount: prices.length > 0 ? 1 : 0,
+          },
+          WEIGHTS,
+          matchLexemes(n, LEXEMES),
+        ),
+      );
+    }
+
+    return out;
+  },
+};

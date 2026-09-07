@@ -7,26 +7,43 @@ and, at add-to-cart or checkout, asks a question about what was actually on scre
 ("this page showed a countdown timer") and asks a question. It never asserts intent,
 deception, or illegality — an ethical constraint first, and a store-review one second.
 
-## Status — end of Day 1 (pilot)
+## Status — pilot, end of Day 2
 
-Working locally, not submitted, not published. Five detectors, hand-set thresholds, no
-telemetry, no persistence beyond the session.
+Working locally, not submitted, not published.
 
 | | |
 |---|---|
-| Detectors shipping | 5 of 9 Tier 1 |
-| Unit tests | 46 passing |
-| Bundle | 111.6 KB gzipped (budget 120 KB) |
+| Page detectors | 9 of 9 Tier 1 |
+| Cross-stage detectors | `pricing.drip`, `basket.sneak` |
+| Unit tests | 115 passing |
+| Bundle | **153.8 KB gzipped — over the 120 KB budget** |
 | `host_permissions` | empty, asserted at build and in CI |
 | Network requests | zero |
 
-Detectors live: `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
-`urgency.countdown`, `defaults.preselected`.
+Tier 1: `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`, `urgency.countdown`,
+`defaults.preselected`, `social_proof.live_activity`, `confirmshaming.decline_copy`,
+`goal_gradient.threshold`, `bnpl.installments`.
 
-**Not yet done, and not claimed:** the manual spot-check across real retailers. Precision is
-currently unmeasured — the thresholds are hand-set guesses, marked `hand_set` in the schema
-so nothing here can be mistaken for a calibrated number. Until that spot-check happens, no
-precision claim should be made about this extension.
+Also working: session ledger across funnel stages, IndexedDB persistence with 30-day
+retention, digest ranking with family dedup, 4–6 copy variants per pattern under CI lint,
+the sensitivity control, popup and options summaries.
+
+### Known gaps — not claimed as done
+
+- **Bundle is 34 KB over budget.** Cause is identified, not fixed: Zod is bundled into the
+  content script and popup because `urlScore.ts` validates the bundled rulepacks at runtime
+  and `messages.ts` exports schemas alongside `send()`. Bundled rulepacks are our own build
+  artifacts, not a runtime trust boundary — that validation belongs in a test. Splitting the
+  worker-only schemas out of `messages.ts` and moving rulepack validation to CI should
+  recover most of it.
+- **Precision is unmeasured.** The manual spot-check across real retailers (§10) has not
+  run. Thresholds are hand-set guesses, marked `hand_set` in the schema so they cannot be
+  mistaken for calibrated values. No precision claim should be made until that happens.
+- **Never loaded in a real browser.** Every check so far is jsdom and unit-level. The
+  permission grant flow, runtime script registration, and overlay rendering have not been
+  exercised in Chrome.
+- **No telemetry backend**, by design for now — consent flow and local queue only.
+- **§18 modules D–G not built.** Interfaces exist so they drop in without a rewrite.
 
 ## Permissions
 
