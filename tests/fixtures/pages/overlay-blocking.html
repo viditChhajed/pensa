@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Overlay blocking check</title>
+<style>
+  body { font: 15px system-ui; margin: 0; height: 200vh; }
+  /* Worst case on purpose: a checkout button parked exactly where the card renders. */
+  #checkout {
+    position: fixed; right: 32px; bottom: 32px;
+    padding: 14px 22px; font-size: 16px; font-weight: 600;
+    background: #0a7d32; color: #fff; border: 0; border-radius: 8px; cursor: pointer;
+  }
+  .pad { padding: 24px; }
+</style>
+</head>
+<body>
+  <div class="pad">
+    <h1>Fixture: overlay must not block checkout</h1>
+    <p>The green button sits under the card's render position by design.</p>
+  </div>
+  <button type="button" id="checkout">Place order</button>
+  <script>
+    window.__clicks = 0;
+    document.getElementById('checkout').addEventListener('click', () => { window.__clicks++; });
+  </script>
+</body>
+</html>

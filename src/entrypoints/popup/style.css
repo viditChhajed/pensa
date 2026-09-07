@@ -1,0 +1,77 @@
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #666;
+  --accent: #2b5cff;
+  --border: #e2e2e2;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1e;
+    --fg: #f2f2f2;
+    --muted: #9a9a9e;
+    --border: #38383a;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  width: 320px;
+  font:
+    14px / 1.5 system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+main {
+  padding: 16px;
+}
+h1 {
+  font-size: 15px;
+  margin: 0 0 10px;
+  letter-spacing: -0.01em;
+}
+.status {
+  margin: 0 0 12px;
+}
+.detail {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 10px 0 0;
+}
+button.primary {
+  width: 100%;
+  padding: 9px 12px;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+}
+button.primary:hover {
+  filter: brightness(1.08);
+}
+button.primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+footer {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+footer a {
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: none;
+}
+footer a:hover {
+  text-decoration: underline;
+}

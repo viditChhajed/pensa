@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Persuasion Patterns — Settings</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Persuasion Patterns</h1>
+      <section>
+        <h2>Sites you have enabled</h2>
+        <ul id="sites"><li class="muted">Loading…</li></ul>
+      </section>
+      <section>
+        <h2>Your data</h2>
+        <p class="muted">
+          Everything this extension records stays on this device. Nothing is sent anywhere.
+        </p>
+        <button type="button" id="clear">Delete all my data</button>
+        <p id="cleared" class="muted" hidden>Deleted.</p>
+      </section>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+{
+  "name": "persuasion-pattern-extension",
+  "version": "0.1.0",
+  "description": "MV3 extension that detects e-commerce persuasion patterns and asks Socratic questions about them.",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "compile": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "postinstall": "wxt prepare"
+  },
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "dexie": "4.4.5",
+    "preact": "10.29.8",
+    "wxt": "0.21.4",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.12",
+    "@preact/preset-vite": "2.10.6",
+    "@types/chrome": "0.2.9",
+    "@types/node": "26.4.1",
+    "jsdom": "30.0.1",
+    "typescript": "7.0.2",
+    "vitest": "5.0.0"
+  }
+}
