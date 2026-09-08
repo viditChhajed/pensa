@@ -36,3 +36,34 @@ export function registrableDomain(hostname: string): string {
 export function domainMatchPattern(hostname: string): string {
   return `https://*.${registrableDomain(hostname)}/*`;
 }
+
+/**
+ * Does `url` fall under a declared match pattern?
+ *
+ * `chrome.permissions.request()` can ONLY grant patterns listed in
+ * `optional_host_permissions`. Requesting anything else returns false with no explanation,
+ * which is what produced a dead "Enable on this site" button: the popup offered enablement
+ * on any non-denied site, including ones the manifest had never heard of, and the user got
+ * "Nothing changed" twice with no way to tell why.
+ *
+ * Read the patterns from `chrome.runtime.getManifest()` rather than re-deriving them, so
+ * the popup and the manifest cannot drift apart.
+ */
+export function matchesPattern(pattern: string, url: URL): boolean {
+  const m = /^(\*|https?):\/\/(\*\.)?([^/]*)(\/.*)$/.exec(pattern);
+  if (!m) return false;
+  const [, scheme, wildcardSub, host] = m;
+
+  if (scheme !== "*" && `${scheme}:` !== url.protocol) return false;
+  if (host === "*") return true;
+  if (!host) return false;
+
+  const target = url.hostname.toLowerCase();
+  const want = host.toLowerCase();
+  return wildcardSub ? target === want || target.endsWith(`.${want}`) : target === want;
+}
+
+/** Can this URL be granted at all, given what the manifest declares? */
+export function isGrantable(url: URL, patterns: readonly string[]): boolean {
+  return patterns.some((p) => matchesPattern(p, url));
+}

@@ -11,7 +11,7 @@
  */
 import { send } from "@/shared/messages";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
-import { domainMatchPattern, registrableDomain } from "@/shared/domain";
+import { domainMatchPattern, isGrantable, registrableDomain } from "@/shared/domain";
 import { DEFAULT_PROMPT_THRESHOLD, isDenied, scoreUrl } from "@/shared/urlScore";
 
 const statusEl = document.getElementById("status") as HTMLParagraphElement;
@@ -54,6 +54,18 @@ async function init(): Promise<void> {
   // Domain-wide, so checkout subdomains (secure.booking.com) are covered by one grant.
   const pattern = domainMatchPattern(parsed.hostname);
   const domain = registrableDomain(parsed.hostname);
+
+  // A permission that cannot be requested must not be offered. Chrome only grants patterns
+  // declared in optional_host_permissions; anything else fails silently and the user is left
+  // clicking a button that does nothing.
+  const declared = chrome.runtime.getManifest().optional_host_permissions ?? [];
+  if (!isGrantable(parsed, declared)) {
+    statusEl.textContent = `${domain} is not in the supported list yet.`;
+    detailEl.textContent =
+      "This extension can only be switched on for sites it was published with. " +
+      "It is not reading this page, and nothing was sent anywhere.";
+    return;
+  }
   const alreadyGranted = await chrome.permissions.contains({ origins: [pattern] });
 
   if (alreadyGranted) {

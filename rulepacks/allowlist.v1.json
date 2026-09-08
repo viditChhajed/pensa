@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "_frame": {
     "purpose": "Origins offered for contextual enablement (Tier A, plan §14.2). Declared in optional_host_permissions ONLY — never host_permissions. Presence here grants nothing; it makes the toolbar action light up and lets the popup offer a one-click grant.",
     "samplingFrame": "Top US e-commerce by traffic, deliberately over-weighted toward the categories with the highest known persuasion-pattern density: OTA/travel, budget airlines, event ticketing, fast fashion, subscription boxes, food delivery. This over-weighting is intentional and must be disclosed in any prevalence claim — the list is NOT a random sample of US retail, and a frequency computed over it is a frequency over this frame, not over the web.",
@@ -8,164 +8,611 @@
     "lastReviewed": "2026-09-06"
   },
   "entries": [
-    { "origin": "https://www.amazon.com", "category": "marketplace" },
-    { "origin": "https://www.ebay.com", "category": "marketplace" },
-    { "origin": "https://www.etsy.com", "category": "marketplace" },
-    { "origin": "https://www.walmart.com", "category": "big_box" },
-    { "origin": "https://www.target.com", "category": "big_box" },
-    { "origin": "https://www.costco.com", "category": "big_box" },
-    { "origin": "https://www.aliexpress.com", "category": "marketplace" },
-    { "origin": "https://www.temu.com", "category": "marketplace" },
-    { "origin": "https://www.wish.com", "category": "marketplace" },
-    { "origin": "https://www.mercari.com", "category": "marketplace" },
-
-    { "origin": "https://www.booking.com", "category": "ota_travel", "note": "High-density: scarcity, urgency, live activity, drip fees." },
-    { "origin": "https://www.expedia.com", "category": "ota_travel" },
-    { "origin": "https://www.hotels.com", "category": "ota_travel" },
-    { "origin": "https://www.kayak.com", "category": "ota_travel" },
-    { "origin": "https://www.priceline.com", "category": "ota_travel" },
-    { "origin": "https://www.agoda.com", "category": "ota_travel" },
-    { "origin": "https://www.tripadvisor.com", "category": "ota_travel" },
-    { "origin": "https://www.vrbo.com", "category": "ota_travel" },
-    { "origin": "https://www.airbnb.com", "category": "ota_travel" },
-    { "origin": "https://www.hotwire.com", "category": "ota_travel" },
-    { "origin": "https://www.orbitz.com", "category": "ota_travel" },
-    { "origin": "https://www.travelocity.com", "category": "ota_travel" },
-
-    { "origin": "https://www.spirit.com", "category": "airline", "note": "Reference case for drip pricing and preselected add-ons." },
-    { "origin": "https://www.frontier.com", "category": "airline" },
-    { "origin": "https://www.united.com", "category": "airline" },
-    { "origin": "https://www.delta.com", "category": "airline" },
-    { "origin": "https://www.aa.com", "category": "airline" },
-    { "origin": "https://www.southwest.com", "category": "airline" },
-    { "origin": "https://www.jetblue.com", "category": "airline" },
-    { "origin": "https://www.allegiantair.com", "category": "airline" },
-
-    { "origin": "https://www.ticketmaster.com", "category": "ticketing", "note": "Reference case for fees first disclosed at payment." },
-    { "origin": "https://www.stubhub.com", "category": "ticketing" },
-    { "origin": "https://www.vividseats.com", "category": "ticketing" },
-    { "origin": "https://www.seatgeek.com", "category": "ticketing" },
-    { "origin": "https://www.eventbrite.com", "category": "ticketing" },
-    { "origin": "https://www.axs.com", "category": "ticketing" },
-
-    { "origin": "https://www.shein.com", "category": "fast_fashion", "note": "High-density: countdown timers, live activity, stock counters." },
-    { "origin": "https://www.asos.com", "category": "fast_fashion" },
-    { "origin": "https://www.zara.com", "category": "fast_fashion" },
-    { "origin": "https://www2.hm.com", "category": "fast_fashion" },
-    { "origin": "https://www.forever21.com", "category": "fast_fashion" },
-    { "origin": "https://www.boohoo.com", "category": "fast_fashion" },
-    { "origin": "https://www.prettylittlething.us", "category": "fast_fashion" },
-    { "origin": "https://www.fashionnova.com", "category": "fast_fashion" },
-    { "origin": "https://www.romwe.com", "category": "fast_fashion" },
-    { "origin": "https://www.uniqlo.com", "category": "fast_fashion" },
-
-    { "origin": "https://www.hellofresh.com", "category": "subscription_box" },
-    { "origin": "https://www.blueapron.com", "category": "subscription_box" },
-    { "origin": "https://www.chewy.com", "category": "subscription_box" },
-    { "origin": "https://www.dollarshaveclub.com", "category": "subscription_box" },
-    { "origin": "https://www.stitchfix.com", "category": "subscription_box" },
-    { "origin": "https://www.factor75.com", "category": "subscription_box" },
-
-    { "origin": "https://www.doordash.com", "category": "food_delivery", "note": "High-density: fee stacking disclosed late." },
-    { "origin": "https://www.ubereats.com", "category": "food_delivery" },
-    { "origin": "https://www.grubhub.com", "category": "food_delivery" },
-    { "origin": "https://www.instacart.com", "category": "food_delivery" },
-    { "origin": "https://www.seamless.com", "category": "food_delivery" },
-
-    { "origin": "https://www.wayfair.com", "category": "dtc" },
-    { "origin": "https://www.overstock.com", "category": "dtc" },
-    { "origin": "https://www.nike.com", "category": "dtc" },
-    { "origin": "https://www.adidas.com", "category": "dtc" },
-    { "origin": "https://www.gap.com", "category": "dtc" },
-    { "origin": "https://www.oldnavy.com", "category": "dtc" },
-    { "origin": "https://www.sephora.com", "category": "dtc" },
-    { "origin": "https://www.ulta.com", "category": "dtc" },
-    { "origin": "https://www.glossier.com", "category": "dtc" },
-    { "origin": "https://www.warbyparker.com", "category": "dtc" },
-    { "origin": "https://www.allbirds.com", "category": "dtc" },
-    { "origin": "https://www.casper.com", "category": "dtc" },
-    { "origin": "https://www.purple.com", "category": "dtc" },
-
-    { "origin": "https://www.bestbuy.com", "category": "electronics" },
-    { "origin": "https://www.newegg.com", "category": "electronics" },
-    { "origin": "https://www.bhphotovideo.com", "category": "electronics" },
-    { "origin": "https://www.gamestop.com", "category": "electronics" },
-    { "origin": "https://www.microcenter.com", "category": "electronics" },
-
-    { "origin": "https://www.homedepot.com", "category": "big_box" },
-    { "origin": "https://www.lowes.com", "category": "big_box" },
-    { "origin": "https://www.macys.com", "category": "big_box" },
-    { "origin": "https://www.kohls.com", "category": "big_box" },
-    { "origin": "https://www.nordstrom.com", "category": "big_box" },
-    { "origin": "https://www.jcpenney.com", "category": "big_box" },
-    { "origin": "https://www.dickssportinggoods.com", "category": "big_box" },
-    { "origin": "https://www.rei.com", "category": "big_box" },
-    { "origin": "https://www.michaels.com", "category": "big_box" },
-    { "origin": "https://www.petco.com", "category": "big_box" },
-    { "origin": "https://www.petsmart.com", "category": "big_box" },
-    { "origin": "https://www.staples.com", "category": "big_box" },
-    { "origin": "https://www.officedepot.com", "category": "big_box" },
-    { "origin": "https://www.autozone.com", "category": "big_box" },
-    { "origin": "https://www.acehardware.com", "category": "big_box" },
-    { "origin": "https://www.bedbathandbeyond.com", "category": "big_box" },
-    { "origin": "https://www.tjmaxx.tjx.com", "category": "big_box" },
-    { "origin": "https://www.saksfifthavenue.com", "category": "big_box" },
-    { "origin": "https://www.bloomingdales.com", "category": "big_box" },
-    { "origin": "https://www.zappos.com", "category": "dtc" },
-    { "origin": "https://www.carters.com", "category": "dtc" },
-    { "origin": "https://www.lululemon.com", "category": "dtc" },
-    { "origin": "https://www.underarmour.com", "category": "dtc" },
-    { "origin": "https://www.crateandbarrel.com", "category": "dtc" },
-    { "origin": "https://www.westelm.com", "category": "dtc" },
-    { "origin": "https://www.potterybarn.com", "category": "dtc" },
-    { "origin": "https://www.ikea.com", "category": "big_box" },
-    { "origin": "https://www.anthropologie.com", "category": "dtc" },
-    { "origin": "https://www.urbanoutfitters.com", "category": "dtc" },
-    { "origin": "https://www.abercrombie.com", "category": "dtc" },
-    { "origin": "https://www.hollisterco.com", "category": "dtc" },
-    { "origin": "https://www.aeropostale.com", "category": "dtc" },
-    { "origin": "https://www.ae.com", "category": "dtc" },
-    { "origin": "https://www.express.com", "category": "dtc" },
-    { "origin": "https://www.jcrew.com", "category": "dtc" },
-    { "origin": "https://www.madewell.com", "category": "dtc" },
-    { "origin": "https://www.everlane.com", "category": "dtc" },
-    { "origin": "https://www.bonobos.com", "category": "dtc" },
-    { "origin": "https://www.untuckit.com", "category": "dtc" },
-    { "origin": "https://www.chubbiesshorts.com", "category": "dtc" },
-    { "origin": "https://www.vans.com", "category": "dtc" },
-    { "origin": "https://www.converse.com", "category": "dtc" },
-    { "origin": "https://www.newbalance.com", "category": "dtc" },
-    { "origin": "https://www.footlocker.com", "category": "dtc" },
-    { "origin": "https://www.finishline.com", "category": "dtc" },
-    { "origin": "https://www.6pm.com", "category": "dtc" },
-    { "origin": "https://www.shoecarnival.com", "category": "dtc" },
-    { "origin": "https://www.dsw.com", "category": "dtc" },
-    { "origin": "https://www.torrid.com", "category": "fast_fashion" },
-    { "origin": "https://www.windsorstore.com", "category": "fast_fashion" },
-    { "origin": "https://www.lulus.com", "category": "fast_fashion" },
-    { "origin": "https://www.revolve.com", "category": "fast_fashion" },
-    { "origin": "https://www.nastygal.com", "category": "fast_fashion" },
-    { "origin": "https://www.missguidedus.com", "category": "fast_fashion" },
-    { "origin": "https://www.cider.com", "category": "fast_fashion" },
-    { "origin": "https://www.zaful.com", "category": "fast_fashion" },
-    { "origin": "https://www.wayfair.ca", "category": "dtc" },
-    { "origin": "https://www.qvc.com", "category": "marketplace" },
-    { "origin": "https://www.hsn.com", "category": "marketplace" },
-    { "origin": "https://www.poshmark.com", "category": "marketplace" },
-    { "origin": "https://www.depop.com", "category": "marketplace" },
-    { "origin": "https://www.thredup.com", "category": "marketplace" },
-    { "origin": "https://www.grailed.com", "category": "marketplace" },
-    { "origin": "https://www.stockx.com", "category": "marketplace" },
-    { "origin": "https://www.goat.com", "category": "marketplace" },
-    { "origin": "https://www.backmarket.com", "category": "marketplace" },
-    { "origin": "https://www.reverb.com", "category": "marketplace" },
-    { "origin": "https://www.discounttire.com", "category": "other" },
-    { "origin": "https://www.tirerack.com", "category": "other" },
-    { "origin": "https://www.wine.com", "category": "other" },
-    { "origin": "https://www.totalwine.com", "category": "other" },
-    { "origin": "https://www.1800flowers.com", "category": "other" },
-    { "origin": "https://www.edible.com", "category": "other" },
-    { "origin": "https://www.shutterfly.com", "category": "other" },
-    { "origin": "https://www.vistaprint.com", "category": "other" }
+    {
+      "origin": "https://www.amazon.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.ebay.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.etsy.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.walmart.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.target.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.costco.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.aliexpress.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.temu.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.wish.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.mercari.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.booking.com",
+      "category": "ota_travel",
+      "note": "High-density: scarcity, urgency, live activity, drip fees."
+    },
+    {
+      "origin": "https://www.expedia.com",
+      "category": "ota_travel"
+    },
+    {
+      "origin": "https://www.hotels.com",
+      "category": "ota_travel"
+    },
+    {
+      "origin": "https://www.kayak.com",
+      "category": "ota_travel"
+    },
+    {
+      "origin": "https://www.priceline.com",
+      "category": "ota_travel"
+    },
+    {
+      "origin": "https://www.agoda.com",
+      "category": "ota_travel"
+    },
+    {
+      "origin": "https://www.tripadvisor.com",
+      "category": "ota_travel"
+    },
+    {
+      "origin": "https://www.vrbo.com",
+      "category": "ota_travel"
+    },
+    {
+      "origin": "https://www.airbnb.com",
+      "category": "ota_travel"
+    },
+    {
+      "origin": "https://www.hotwire.com",
+      "category": "ota_travel"
+    },
+    {
+      "origin": "https://www.orbitz.com",
+      "category": "ota_travel"
+    },
+    {
+      "origin": "https://www.travelocity.com",
+      "category": "ota_travel"
+    },
+    {
+      "origin": "https://www.spirit.com",
+      "category": "airline",
+      "note": "Reference case for drip pricing and preselected add-ons."
+    },
+    {
+      "origin": "https://www.flyfrontier.com",
+      "category": "airline",
+      "note": "Frontier Airlines. frontier.com is Frontier Communications, an ISP — wrong site."
+    },
+    {
+      "origin": "https://www.united.com",
+      "category": "airline"
+    },
+    {
+      "origin": "https://www.delta.com",
+      "category": "airline"
+    },
+    {
+      "origin": "https://www.aa.com",
+      "category": "airline"
+    },
+    {
+      "origin": "https://www.southwest.com",
+      "category": "airline"
+    },
+    {
+      "origin": "https://www.jetblue.com",
+      "category": "airline"
+    },
+    {
+      "origin": "https://www.allegiantair.com",
+      "category": "airline"
+    },
+    {
+      "origin": "https://www.ticketmaster.com",
+      "category": "ticketing",
+      "note": "Reference case for fees first disclosed at payment."
+    },
+    {
+      "origin": "https://www.stubhub.com",
+      "category": "ticketing"
+    },
+    {
+      "origin": "https://www.vividseats.com",
+      "category": "ticketing"
+    },
+    {
+      "origin": "https://www.seatgeek.com",
+      "category": "ticketing"
+    },
+    {
+      "origin": "https://www.eventbrite.com",
+      "category": "ticketing"
+    },
+    {
+      "origin": "https://www.axs.com",
+      "category": "ticketing"
+    },
+    {
+      "origin": "https://www.shein.com",
+      "category": "fast_fashion",
+      "note": "High-density: countdown timers, live activity, stock counters."
+    },
+    {
+      "origin": "https://www.asos.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.zara.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www2.hm.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.forever21.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.boohoo.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.prettylittlething.us",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.fashionnova.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.romwe.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.uniqlo.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.hellofresh.com",
+      "category": "subscription_box"
+    },
+    {
+      "origin": "https://www.blueapron.com",
+      "category": "subscription_box"
+    },
+    {
+      "origin": "https://www.chewy.com",
+      "category": "subscription_box"
+    },
+    {
+      "origin": "https://www.dollarshaveclub.com",
+      "category": "subscription_box"
+    },
+    {
+      "origin": "https://www.stitchfix.com",
+      "category": "subscription_box"
+    },
+    {
+      "origin": "https://www.factor75.com",
+      "category": "subscription_box"
+    },
+    {
+      "origin": "https://www.doordash.com",
+      "category": "food_delivery",
+      "note": "High-density: fee stacking disclosed late."
+    },
+    {
+      "origin": "https://www.ubereats.com",
+      "category": "food_delivery"
+    },
+    {
+      "origin": "https://www.grubhub.com",
+      "category": "food_delivery"
+    },
+    {
+      "origin": "https://www.instacart.com",
+      "category": "food_delivery"
+    },
+    {
+      "origin": "https://www.seamless.com",
+      "category": "food_delivery"
+    },
+    {
+      "origin": "https://www.wayfair.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.overstock.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.nike.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.adidas.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.gap.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.oldnavy.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.sephora.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.ulta.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.glossier.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.warbyparker.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.allbirds.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.casper.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.purple.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.bestbuy.com",
+      "category": "electronics"
+    },
+    {
+      "origin": "https://www.newegg.com",
+      "category": "electronics"
+    },
+    {
+      "origin": "https://www.bhphotovideo.com",
+      "category": "electronics"
+    },
+    {
+      "origin": "https://www.gamestop.com",
+      "category": "electronics"
+    },
+    {
+      "origin": "https://www.microcenter.com",
+      "category": "electronics"
+    },
+    {
+      "origin": "https://www.homedepot.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.lowes.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.macys.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.kohls.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.nordstrom.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.jcpenney.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.dickssportinggoods.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.rei.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.michaels.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.petco.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.petsmart.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.staples.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.officedepot.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.autozone.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.acehardware.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.bedbathandbeyond.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.tjmaxx.tjx.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.saksfifthavenue.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.bloomingdales.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.zappos.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.carters.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.lululemon.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.underarmour.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.crateandbarrel.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.westelm.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.potterybarn.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.ikea.com",
+      "category": "big_box"
+    },
+    {
+      "origin": "https://www.anthropologie.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.urbanoutfitters.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.abercrombie.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.hollisterco.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.aeropostale.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.ae.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.express.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.jcrew.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.madewell.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.everlane.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.bonobos.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.untuckit.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.chubbiesshorts.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.vans.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.converse.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.newbalance.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.footlocker.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.finishline.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.6pm.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.shoecarnival.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.dsw.com",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.torrid.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.windsorstore.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.lulus.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.revolve.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.nastygal.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.missguidedus.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.cider.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.zaful.com",
+      "category": "fast_fashion"
+    },
+    {
+      "origin": "https://www.wayfair.ca",
+      "category": "dtc"
+    },
+    {
+      "origin": "https://www.qvc.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.hsn.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.poshmark.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.depop.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.thredup.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.grailed.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.stockx.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.goat.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.backmarket.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.reverb.com",
+      "category": "marketplace"
+    },
+    {
+      "origin": "https://www.discounttire.com",
+      "category": "other"
+    },
+    {
+      "origin": "https://www.tirerack.com",
+      "category": "other"
+    },
+    {
+      "origin": "https://www.wine.com",
+      "category": "other"
+    },
+    {
+      "origin": "https://www.totalwine.com",
+      "category": "other"
+    },
+    {
+      "origin": "https://www.1800flowers.com",
+      "category": "other"
+    },
+    {
+      "origin": "https://www.edible.com",
+      "category": "other"
+    },
+    {
+      "origin": "https://www.shutterfly.com",
+      "category": "other"
+    },
+    {
+      "origin": "https://www.vistaprint.com",
+      "category": "other"
+    }
   ]
 }
