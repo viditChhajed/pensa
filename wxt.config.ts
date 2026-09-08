@@ -11,8 +11,26 @@ const allowlist = JSON.parse(
   readFileSync(new URL("./rulepacks/allowlist.v1.json", import.meta.url), "utf8"),
 ) as AllowlistFile;
 
-/** `https://www.example.com` -> `https://www.example.com/*` */
-const matchPatterns = allowlist.entries.map((e) => `${e.origin}/*`);
+/**
+ * One pattern per REGISTRABLE DOMAIN, covering subdomains.
+ *
+ * Exact origins were wrong: granting www.booking.com left secure.booking.com — the actual
+ * checkout host — unreadable, so the extension went blind at precisely the funnel stage the
+ * cross-stage detectors exist for. Deduping by domain also shrinks the list.
+ */
+const TWO_PART = new Set([
+  "co.uk", "org.uk", "ac.uk", "gov.uk", "me.uk", "com.au", "net.au", "org.au",
+  "co.nz", "co.za", "com.br", "com.mx", "com.ar", "co.jp", "co.in", "com.sg",
+  "com.hk", "com.tr", "co.kr",
+]);
+function registrable(hostname: string): string {
+  const parts = hostname.toLowerCase().split(".");
+  if (parts.length <= 2) return parts.join(".");
+  return TWO_PART.has(parts.slice(-2).join(".")) ? parts.slice(-3).join(".") : parts.slice(-2).join(".");
+}
+const matchPatterns = [
+  ...new Set(allowlist.entries.map((e) => `https://*.${registrable(new URL(e.origin).hostname)}/*`)),
+].sort();
 
 export default defineConfig({
   srcDir: "src",

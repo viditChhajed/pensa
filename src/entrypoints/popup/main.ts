@@ -11,6 +11,7 @@
  */
 import { send } from "@/shared/messages";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
+import { domainMatchPattern, registrableDomain } from "@/shared/domain";
 import { DEFAULT_PROMPT_THRESHOLD, isDenied, scoreUrl } from "@/shared/urlScore";
 
 const statusEl = document.getElementById("status") as HTMLParagraphElement;
@@ -50,13 +51,15 @@ async function init(): Promise<void> {
     return;
   }
 
-  const pattern = `${parsed.origin}/*`;
+  // Domain-wide, so checkout subdomains (secure.booking.com) are covered by one grant.
+  const pattern = domainMatchPattern(parsed.hostname);
+  const domain = registrableDomain(parsed.hostname);
   const alreadyGranted = await chrome.permissions.contains({ origins: [pattern] });
 
   if (alreadyGranted) {
-    statusEl.textContent = `Watching ${parsed.hostname}.`;
+    statusEl.textContent = `Watching ${domain}.`;
     detailEl.textContent = "Patterns found on this page will appear when you add to cart.";
-    renderRevoke(pattern, parsed.hostname);
+    renderRevoke(pattern, domain);
     return;
   }
 
@@ -70,7 +73,7 @@ async function init(): Promise<void> {
     // Still offered: the user may know better than the URL heuristic (plan §14.3, Tier B).
   }
   detailEl.textContent =
-    "Enabling lets this extension read this site’s pages, on your device only. Nothing is sent anywhere.";
+    `Enabling covers ${domain} and its checkout pages, on your device only. Nothing is sent anywhere.`;
   enableBtn.hidden = false;
 }
 
