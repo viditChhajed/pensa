@@ -18,7 +18,7 @@ import {
 } from "@/background/sessionLedger";
 import { CONTENT_SCRIPT_FILE, DETECTOR_SCRIPT_ID } from "@/shared/constants";
 import { Message } from "@/shared/messages.schema";
-import { ALLOWLIST_ORIGINS, DEFAULT_PROMPT_THRESHOLD, scoreUrl } from "@/shared/urlScore";
+import { ALLOWLIST_DOMAINS, DEFAULT_PROMPT_THRESHOLD, scoreUrl } from "@/shared/urlScore";
 import { decodePriceSnapshot } from "@/shared/wire";
 
 /**
@@ -82,10 +82,16 @@ export default defineBackground(() => {
 async function installPageRules(): Promise<void> {
   const conditions: chrome.declarativeContent.PageStateMatcher[] = [];
 
-  for (const origin of ALLOWLIST_ORIGINS) {
+  for (const domain of ALLOWLIST_DOMAINS) {
+    // Two matchers per domain, deliberately. `hostSuffix: "shein.com"` alone would also
+    // match notshein.com, since hostSuffix is a plain string suffix test. The bare domain
+    // needs hostEquals and subdomains need the dot-prefixed suffix.
     conditions.push(
       new chrome.declarativeContent.PageStateMatcher({
-        pageUrl: { hostEquals: new URL(origin).hostname, schemes: ["https"] },
+        pageUrl: { hostEquals: domain, schemes: ["https"] },
+      }),
+      new chrome.declarativeContent.PageStateMatcher({
+        pageUrl: { hostSuffix: `.${domain}`, schemes: ["https"] },
       }),
     );
   }

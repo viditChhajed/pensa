@@ -10,6 +10,7 @@
 
 import allowlistJson from "../../rulepacks/allowlist.v1.json";
 import denylistJson from "../../rulepacks/denylist.v1.json";
+import { registrableDomain } from "./domain";
 import type { OriginCategory } from "./schema";
 
 /**
@@ -31,20 +32,36 @@ const allowlist = allowlistJson as {
 
 const denyPatterns = denylist.hostPatterns.map((p) => new RegExp(p, "i"));
 
-const ORIGIN_TO_CATEGORY = new Map<string, OriginCategory>(
-  allowlist.entries.map((e) => [e.origin, e.category]),
+/**
+ * Keyed by REGISTRABLE DOMAIN, not exact origin.
+ *
+ * Exact-origin matching meant us.shein.com was unrecognised while www.shein.com was known,
+ * and the popup told the user that Shein "does not look like a shopping site". Permissions
+ * were already granted per domain; this lookup had been left behind on origins, so the two
+ * halves disagreed about what site you were on.
+ */
+const DOMAIN_TO_CATEGORY = new Map<string, OriginCategory>(
+  allowlist.entries.map((e) => [registrableDomain(new URL(e.origin).hostname), e.category]),
 );
 
 export const ALLOWLIST_ORIGINS: readonly string[] = allowlist.entries.map((e) => e.origin);
 export const ALLOWLIST_VERSION = allowlist.version;
 
 export function categoryForOrigin(origin: string): OriginCategory | undefined {
-  return ORIGIN_TO_CATEGORY.get(origin);
+  try {
+    return DOMAIN_TO_CATEGORY.get(registrableDomain(new URL(origin).hostname));
+  } catch {
+    return undefined;
+  }
 }
 
+/** True for any subdomain of an allowlisted domain: us.shein.com, secure.booking.com. */
 export function isAllowlisted(origin: string): boolean {
-  return ORIGIN_TO_CATEGORY.has(origin);
+  return categoryForOrigin(origin) !== undefined;
 }
+
+/** Registrable domains of every allowlisted entry, for declarativeContent rules. */
+export const ALLOWLIST_DOMAINS: readonly string[] = [...DOMAIN_TO_CATEGORY.keys()];
 
 /** Absolute suppression. Checked before anything else, and never overridden. */
 export function isDenied(url: URL): boolean {
