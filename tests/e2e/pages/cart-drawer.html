@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Crème de You — Test Shop</title>
+    <script type="application/ld+json">
+      { "@context": "https://schema.org", "@type": "Product", "name": "Crème de You" }
+    </script>
+    <meta property="og:type" content="product" />
+    <style>
+      body { font: 16px system-ui; margin: 0; }
+      header { padding: 12px 16px; border-bottom: 1px solid #ddd; }
+      main { padding: 24px; max-width: 620px; }
+      .drawer { display: none; padding: 16px; border-top: 2px solid #111; }
+      .drawer.open { display: block; }
+      .row { display: flex; gap: 12px; align-items: center; padding: 12px 0; }
+      .pricing { margin-left: auto; }
+      s { color: #777; }
+      footer { padding: 40px 16px; }
+      footer a { margin-right: 14px; }
+    </style>
+  </head>
+  <body>
+    <!--
+      A cart drawer shaped the way Shopify actually ships one, because that shape is what
+      broke: Product JSON-LD still in the head, the URL unchanged, the price nested in its
+      own element inside the row, and several upsell "Add to bag" buttons in the drawer.
+    -->
+    <header><a href="#">Shop</a> <a href="#">About</a> <a href="#">Stores</a></header>
+
+    <main>
+      <h1>Crème de You</h1>
+      <p class="pricing"><s>Regular price $64.00</s> <strong>$45.00</strong></p>
+      <button id="atc" type="button">Add to bag $45</button>
+    </main>
+
+    <aside class="drawer" id="drawer">
+      <p>You’re $19.00 away from free shipping.</p>
+      <div class="row">
+        <span>Crème de You</span>
+        <div class="pricing"><s>$45.00</s> <span>$31.50</span></div>
+        <input type="number" value="1" aria-label="Quantity" />
+        <button type="button">Remove</button>
+      </div>
+      <div class="row">
+        <span>Body Spritz</span>
+        <div class="pricing"><s>$35.00</s> <span>$24.50</span></div>
+        <input type="number" value="1" aria-label="Quantity" />
+        <button type="button">Remove</button>
+      </div>
+      <div class="row"><span>Subtotal</span><span class="pricing">$56.00</span></div>
+      <div class="row"><span>Estimated total</span><span class="pricing">$56.00</span></div>
+      <div class="row">
+        <span>Save on the set</span><span class="pricing">$47.00</span>
+        <button type="button">Add to bag</button>
+      </div>
+      <button type="button">Checkout</button>
+    </aside>
+
+    <footer>
+      <a href="#">Careers</a><a href="#">Press</a><a href="#">Help</a><a href="#">Terms</a>
+    </footer>
+
+    <script>
+      // Deliberately asynchronous, like a real drawer populated over the network. A fixed
+      // post-click delay was what failed against the live site.
+      document.getElementById("atc").addEventListener("click", () => {
+        setTimeout(() => document.getElementById("drawer").classList.add("open"), 900);
+      });
+    </script>
+  </body>
+</html>

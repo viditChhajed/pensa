@@ -123,8 +123,18 @@ export async function send<T = unknown>(msg: Message): Promise<T | null> {
 
   try {
     return (await chrome.runtime.sendMessage(msg)) as T;
-  } catch {
-    // The worker may genuinely be asleep or the extension reloading. That is not an error.
+  } catch (err) {
+    // A sleeping worker or a reloading extension is genuinely not an error, and those two
+    // produce known messages. ANYTHING ELSE is a real fault, and swallowing all of them
+    // alike is what made a dead pipeline look like an ordinary empty answer once already.
+    const text = err instanceof Error ? err.message : String(err);
+    const expected =
+      text.includes("Receiving end does not exist") ||
+      text.includes("Extension context invalidated");
+    // NOT in that list: "message port closed before a response was received". That is the
+    // signature of a handler that threw before replying, which is a real fault and was
+    // briefly silenced here while chasing exactly that bug.
+    if (!expected) console.error(`[patterns] send(${msg.type}) failed: ${text}`);
     return null;
   }
 }

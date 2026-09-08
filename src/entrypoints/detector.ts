@@ -360,9 +360,11 @@ export default defineUnlistedScript(() => {
       const rendered = card.show(reply.items);
       console.info(`[patterns] digest ${reply.mode} -> rendered ${rendered}`);
     } else {
+      const why = (reply as { issues?: string[]; error?: string } | null)?.issues;
       console.info(
         `[patterns] no digest: mode=${reply?.mode ?? "none"} items=${reply?.items?.length ?? 0} ` +
-          `capacity=card:${cap.maxCardItems}/pill:${cap.pillFits}`,
+          `capacity=card:${cap.maxCardItems}/pill:${cap.pillFits}` +
+          (why ? ` REJECTED -> ${why.join("; ")}` : ""),
       );
     }
   }

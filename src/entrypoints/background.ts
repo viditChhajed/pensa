@@ -17,6 +17,7 @@ import {
   saveLedger,
 } from "@/background/sessionLedger";
 import { CONTENT_SCRIPT_FILE, DETECTOR_SCRIPT_ID } from "@/shared/constants";
+import type { ShowDigest } from "@/shared/messages";
 import { Message } from "@/shared/messages.schema";
 import { ALLOWLIST_DOMAINS, DEFAULT_PROMPT_THRESHOLD, scoreUrl } from "@/shared/urlScore";
 import { decodePriceSnapshot } from "@/shared/wire";
@@ -64,7 +65,20 @@ export default defineBackground(() => {
   });
 
   chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
-    void handleMessage(raw).then(sendResponse);
+    // The .catch is load-bearing. Without it a throw anywhere inside handleMessage skips
+    // sendResponse entirely, the message port closes with no reply, and the caller sees an
+    // ordinary empty answer — the same silent-failure shape as the BigInt bug and the quiet
+    // {ok:false}. A digest that could not be built must say so, not vanish.
+    void handleMessage(raw)
+      .then(sendResponse)
+      .catch((err: unknown) => {
+        const detail = err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : String(err);
+        console.error(
+          `[patterns] handler threw for ${(raw as { type?: string })?.type ?? "unknown"}:`,
+          detail,
+        );
+        sendResponse({ ok: false, error: "handler threw", issues: [detail.slice(0, 400)] });
+      });
     return true; // async response
   });
 
@@ -169,7 +183,24 @@ async function housekeeping(): Promise<void> {
 async function handleMessage(raw: unknown): Promise<unknown> {
   // Cross-context input is a trust boundary like any other.
   const parsed = Message.safeParse(raw);
-  if (!parsed.success) return { ok: false, error: "invalid message" };
+  if (!parsed.success) {
+    // LOUD. A rejected message is a programming error, not a normal outcome, and returning
+    // a quiet {ok:false} made it indistinguishable from "the worker had nothing to say" at
+    // the caller. That is the same failure shape as the BigInt bug: a real error dressed up
+    // as an ordinary empty answer. It cost two manual test rounds to localise.
+    console.error(
+      `[patterns] REJECTED ${(raw as { type?: string })?.type ?? "unknown"} message:`,
+      JSON.stringify(parsed.error.issues.slice(0, 6), null, 1),
+    );
+    // Returned, not just logged. The service worker console is not reachable from every
+    // debugging setup, and a caller that is told "invalid" without being told WHY has to
+    // bisect the payload by hand.
+    return {
+      ok: false,
+      error: "invalid message",
+      issues: parsed.error.issues.slice(0, 6).map((i) => `${i.path.join(".")}: ${i.message}`),
+    };
+  }
   const msg = parsed.data;
 
   switch (msg.type) {
@@ -216,14 +247,27 @@ async function handleMessage(raw: unknown): Promise<unknown> {
     }
 
     case "candidates": {
-      const items = await decideDigest(
+      // `decideDigest` returns { items, mode }. This used to assign that whole object to the
+      // reply's `items` field, so the content script read `reply.items.length` on an object
+      // (undefined) and `reply.mode` one level too high — and the card never rendered, on
+      // every site, for the entire build. Nothing caught it because handleMessage returns
+      // `unknown`; `satisfies ShowDigest` below is what makes it a compile error now.
+      //
+      // The same three lines also dropped `msg.placement`, so the capacity the page measures
+      // was sent, validated, and then ignored in favour of the optimistic default.
+      const decision = await decideDigest(
         msg.origin,
         msg.pathTemplate,
         msg.stage,
         msg.items,
         msg.offerKey,
+        msg.placement,
       );
-      return { type: "show-digest", items };
+      return {
+        type: "show-digest",
+        items: decision.items,
+        mode: decision.mode,
+      } satisfies ShowDigest;
     }
 
     case "observation": {
