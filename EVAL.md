@@ -274,8 +274,42 @@ Record the real rate here as you go.
 | ticketmaster | pdp | no | suppressed |
 | flyfrontier | browse | no | suppressed |
 
-Three of three so far suppressed. Consistent with the 60% pre-measurement, and
-possibly worse — no card has been seen by the tester yet across four sites.
+Three of three suppressed. No card was ever seen by the tester across four sites.
+
+### After tiering controls by purchase intent
+
+The conclusion recorded above — "the fix is a smaller affordance, not permission to cover a
+control" — was **wrong**, and the error was in the category rather than the size. The rule
+was "cover nothing clickable", which on a real storefront is unsatisfiable: header, footer
+and nav fill every corner with links. But a footer link reading "Careers" is not something a
+shopper needs mid-purchase; the Place Order button is.
+
+Controls are now tiered. Critical (never covered): form fields, submits, the focused
+element, and any control whose name is on the purchase path. Ordinary: everything else,
+which the card prefers to avoid and is allowed to overlap.
+
+Re-measured live, 4 reachable retailers x 3 scroll depths, running the **shipped** chooser
+(the e2e now imports it rather than re-implementing it) and hit-testing the rendered card in
+the browser at each sample:
+
+| Retailer | @0% | @35% | @70% |
+|---|---|---|---|
+| target | card (1 ordinary) | card (0) | card (2) |
+| ikea | card (3) | card (1) | card (0) |
+| newegg | card (1) | card (1) | card (2) |
+| rei | card (0) | card (0) | card (0) |
+
+**12/12 samples place a full card. Zero suppressed. Worst ordinary coverage: 3 links.
+Purchase-path controls covered: 0, verified by `elementFromPoint` on every visible control
+at every sample.** Before: 0/4.
+
+Scroll depth no longer flips the outcome, which was the specific risk in the baseline above
+(target went suppressed -> full card between 0% and 70%). It now places at every depth on
+every site, so the earlier figure was measuring the rule, not the pages.
+
+Still to confirm by hand: a card rendering at **cart or checkout** on a real site. Everything
+above is storefront and category pages, because a checkout page needs a populated cart and
+usually an account.
 
 ## Performance, observed during the spot-check
 
