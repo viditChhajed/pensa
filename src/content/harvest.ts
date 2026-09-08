@@ -508,27 +508,41 @@ function readStructuralSignals(doc: Document) {
     if (TOTAL_LABEL.test(t)) hasTotalRow = true;
   }
 
-  // Cart line items: a row containing a price and either a qty control or a remove control.
-  for (const el of doc.querySelectorAll("li, tr, div, article")) {
+  // Cart line items: the INNERMOST row carrying a price together with a quantity control or
+  // a remove affordance.
+  //
+  // The previous version skipped any element containing a priced descendant, which sounds
+  // like the same thing and is not: Glossier nests the price in its own div inside the row,
+  // so the real row was discarded as a "wrapper" and the surviving leaf held a price and no
+  // controls. Live result was cartLineItems: 0 on a visibly open cart, which left the stage
+  // at `pdp` and kept the cross-stage detectors switched off.
+  const isLineItem = (el: Element): boolean => {
     const t = collapse(joinedText(el));
-    if (t.length === 0 || t.length > 400) continue;
-    if (!PRICE_SHAPED.test(t)) continue;
-    // Count the innermost row only. Without this a cart of two items counts the two rows,
-    // their shared wrapper and its wrapper, and the score runs away from the evidence.
-    if (containsPricedRow(el)) continue;
+    if (t.length === 0 || t.length > 400) return false;
+    if (!PRICE_SHAPED.test(t)) return false;
     const hasQty =
       el.querySelector(
         'input[type="number"], select[name*="qty" i], [aria-label*="quantity" i]',
       ) !== null || QTY_HINT.test(t);
-    let hasRemove = false;
+    if (hasQty) return true;
     for (const c of el.querySelectorAll('button, a, [role="button"]')) {
       const n = collapse(c.getAttribute("aria-label") ?? c.textContent ?? "").toLowerCase();
-      if (/\bremove\b|\bdelete\b/.test(n) || REMOVE_CTL.test(n.trim())) {
-        hasRemove = true;
+      if (/\bremove\b|\bdelete\b/.test(n) || REMOVE_CTL.test(n.trim())) return true;
+    }
+    return false;
+  };
+
+  for (const el of doc.querySelectorAll("li, tr, div, article")) {
+    if (!isLineItem(el)) continue;
+    // Innermost only: count the row, not the wrappers above it.
+    let nested = false;
+    for (const child of el.querySelectorAll("li, tr, div, article")) {
+      if (isLineItem(child)) {
+        nested = true;
         break;
       }
     }
-    if (hasQty || hasRemove) cartLineItems++;
+    if (!nested) cartLineItems++;
   }
 
   // Step chrome: "Cart > Place Order > Pay > Order Complete".
@@ -553,14 +567,6 @@ function readStructuralSignals(doc: Document) {
     placeOrderCtaCount: Math.min(placeOrderCtaCount, 20),
     hasProductJsonLd: hasProductSchema(doc),
   };
-}
-
-/** True when some descendant row already carries a price, i.e. `el` is a wrapper. */
-function containsPricedRow(el: Element): boolean {
-  for (const child of el.querySelectorAll("li, tr, div, article")) {
-    if (PRICE_SHAPED.test(collapse(joinedText(child)))) return true;
-  }
-  return false;
 }
 
 function hasProductSchema(doc: Document): boolean {

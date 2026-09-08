@@ -14,7 +14,7 @@
 import { defineUnlistedScript } from "wxt/utils/define-unlisted-script";
 import { runDetectors } from "@/content/detectors";
 import { createHash } from "@/content/detectors/hash";
-import { classifyStage } from "@/content/funnel";
+import { explainStage } from "@/content/funnel";
 import { harvest, readDocumentMeta } from "@/content/harvest";
 import { extractObservations, isEmpty } from "@/content/observations";
 import { PageObserver } from "@/content/observer";
@@ -93,9 +93,12 @@ export default defineUnlistedScript(() => {
       textHistories: observer.state.textHistories,
       ephemeral: observer.state.ephemeral,
     });
-    const next = classifyStage(url, meta);
-    if (next !== stage) {
-      stage = next;
+    // explainStage rather than classifyStage: a wrong stage disables the cross-stage
+    // detectors entirely, and "it said pdp" is not a diagnosis. The reasons make it one.
+    const explained = explainStage(url, meta);
+    if (explained.stage !== stage) {
+      stage = explained.stage;
+      console.info(`[patterns] stage -> ${stage} :: ${explained.reasons.join(" | ")}`);
       triggers.noteStageChange(stage);
     }
     return {
@@ -218,6 +221,43 @@ export default defineUnlistedScript(() => {
    */
   const IMMEDIATE_SETTLE_MS = 150;
 
+  /**
+   * How long to let the page settle after an add-to-cart click before harvesting.
+   *
+   * Measured, not guessed: at 150ms Glossier's bag drawer has not rendered, so the pass saw
+   * the pre-click page and the digest was built from two off-screen carousel prices.
+   */
+  const TRIGGER_SETTLE_MS = 400;
+
+  /**
+   * ...and then how long to wait before BUILDING the digest.
+   *
+   * The salience gate requires a node to have been on screen ~800ms, which is right: it is
+   * what stops the tool asking about something that flashed past. But a node discovered by
+   * the post-click pass has zero accumulated dwell by construction, so every candidate in a
+   * freshly-opened drawer failed the gate and the digest came back empty. Every event in the
+   * first real run was logged `below_salience_gate`.
+   *
+   * Waiting here lets genuinely-visible content earn its dwell honestly, rather than
+   * weakening the gate. Cost is roughly a second between the click and the card, during
+   * which the drawer is animating open anyway.
+   */
+  const SALIENCE_ACCRUAL_MS = 450;
+
+  /**
+   * Total budget for waiting on a post-click page to become worth asking about.
+   *
+   * A fixed delay cannot work here. Glossier's bag drawer is populated by a network round
+   * trip, so at 750ms after the click the page still held the pre-click content and the
+   * digest was built from two off-screen carousel prices with 0ms dwell. Retailers differ by
+   * an order of magnitude in how fast that drawer appears, so the wait polls instead of
+   * guessing: re-harvest, let salience accrue, and stop as soon as something has genuinely
+   * been on screen long enough — or give up at the deadline and report what there is.
+   */
+  const TRIGGER_WINDOW_MS = 5000;
+
+  const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
   function schedulePass(immediate = false): Promise<void> {
     if (immediate) {
       if (passTimer !== null) clearTimeout(passTimer);
@@ -244,7 +284,9 @@ export default defineUnlistedScript(() => {
   async function onTrigger(kind: string, label: string): Promise<void> {
     // Re-scan first. A click on add-to-cart usually changes the page (a drawer opens, a
     // count updates), and `latest` is otherwise whatever the last backed-off pass saw.
-    await schedulePass(true);
+    // Then wait again, so what the drawer just revealed can accrue real on-screen time
+    // before the salience gate judges it. See SALIENCE_ACCRUAL_MS.
+    await wait(TRIGGER_SETTLE_MS);
 
     const path = pathTemplate(location.href);
 
@@ -260,19 +302,44 @@ export default defineUnlistedScript(() => {
       });
     }
 
-    const items = latest.map(({ candidate, salienceKey }) => {
-      const rec = salience.get(salienceKey);
-      return {
-        candidate,
-        salience: {
-          visibleMs: rec.visibleMs,
-          viewportFraction: rec.viewportFraction,
-          scrollDepthAtFirstView: rec.scrollDepthAtFirstView,
-          ephemeral: rec.ephemeral,
-        },
-        passedGate: salience.passesGate(salienceKey),
-      };
-    });
+    const snapshot = () =>
+      latest.map(({ candidate, salienceKey }) => {
+        const rec = salience.get(salienceKey);
+        return {
+          candidate,
+          salience: {
+            visibleMs: rec.visibleMs,
+            viewportFraction: rec.viewportFraction,
+            scrollDepthAtFirstView: rec.scrollDepthAtFirstView,
+            ephemeral: rec.ephemeral,
+          },
+          passedGate: salience.passesGate(salienceKey),
+        };
+      });
+
+    const capacity = measureCapacity();
+
+    const deadline = Date.now() + TRIGGER_WINDOW_MS;
+    let items = snapshot();
+    while (Date.now() < deadline && !items.some((i) => i.passedGate)) {
+      await schedulePass(true);
+      await wait(SALIENCE_ACCRUAL_MS);
+      items = snapshot();
+    }
+
+    // Why a digest did or did not appear, in one line. Without this the only observable
+    // symptom is "nothing happened", which is indistinguishable from every other failure in
+    // the chain — and that cost a full manual test round.
+    console.info(
+      `[patterns] trigger ${kind} @${stage}: ${items.length} candidate(s) — ` +
+        items
+          .map(
+            (i) =>
+              `${i.candidate.patternId} score=${i.candidate.rawScore.toFixed(2)} ` +
+              `dwell=${Math.round(i.salience.visibleMs)}ms gate=${i.passedGate ? "pass" : "FAIL"}`,
+          )
+          .join(" | "),
+    );
 
     // The worker decides. It holds the ledger, the settings, and the frequency state, none
     // of which a single page can see.
@@ -285,11 +352,18 @@ export default defineUnlistedScript(() => {
       ...(offerKey ? { offerKey } : {}),
       // Measured BEFORE the worker ranks, so the event log can record what was actually
       // displayed rather than what was intended.
-      placement: measureCapacity(),
+      placement: capacity,
     });
 
+    const cap = capacity;
     if (reply?.items && reply.items.length > 0 && reply.mode !== "suppressed") {
-      card.show(reply.items);
+      const rendered = card.show(reply.items);
+      console.info(`[patterns] digest ${reply.mode} -> rendered ${rendered}`);
+    } else {
+      console.info(
+        `[patterns] no digest: mode=${reply?.mode ?? "none"} items=${reply?.items?.length ?? 0} ` +
+          `capacity=card:${cap.maxCardItems}/pill:${cap.pillFits}`,
+      );
     }
   }
 

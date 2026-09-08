@@ -281,3 +281,45 @@ describe("funnel classifier", () => {
     expect(reasons.join(" ")).toContain("card-number field");
   });
 });
+
+/**
+ * Regression net for the live Glossier failure: the bag drawer was open, visibly a cart, and
+ * `cartLineItems` read 0, so the stage stayed `pdp` and the cross-stage detectors never ran.
+ *
+ * The cause was the innermost-row filter discarding the real row. Shopify nests the price in
+ * its own div inside the row, so "skip anything containing a priced descendant" threw away
+ * the row that held the controls and kept a leaf that held only a price.
+ */
+describe("cart line items — nested price markup", () => {
+  it("counts a row whose price sits in a nested element", () => {
+    document.body.innerHTML = `
+      <div class="row">
+        <div class="title">Crème de You</div>
+        <div class="pricing"><span>$45</span><span>$31.50</span></div>
+        <input type="number" value="1" aria-label="Quantity">
+        <button>Remove</button>
+      </div>`;
+    const meta = readDocumentMeta(document, "https://shop.example.com/products/x");
+    expect(meta.cartLineItems).toBe(1);
+  });
+
+  it("classifies that drawer as a cart despite Product markup and a /products/ URL", () => {
+    document.body.innerHTML = `
+      <script type="application/ld+json">{"@type":"Product","name":"Crème de You"}</script>
+      <div class="row">
+        <div class="pricing"><span>$45</span><span>$31.50</span></div>
+        <input type="number" value="1" aria-label="Quantity">
+        <button>Remove</button>
+      </div>
+      <button>Checkout</button>`;
+    const url = "https://www.glossier.com/products/creme-de-you";
+    expect(classifyStage(url, readDocumentMeta(document, url))).toBe("cart");
+  });
+
+  it("still counts each row once when several are wrapped together", () => {
+    const row = `<div class="row"><div><span>$10.00</span></div><button>Remove</button></div>`;
+    document.body.innerHTML = `<div id="wrap">${row.repeat(3)}</div>`;
+    const meta = readDocumentMeta(document, "https://shop.example.com/cart");
+    expect(meta.cartLineItems).toBe(3);
+  });
+});
