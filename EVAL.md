@@ -80,7 +80,7 @@ string can carry session and account identifiers, and this file is committed.
 | 8 | pricing.charm | upsell modal | flyfrontier | airline | browse | Y | no-room | **Y** | N | "*Annual membership costs $59.99 per year" — genuinely charm priced, so correct. But low value: it is marketing small print, not the fare. Detector picks largest-rendered price and landed on a footnote. |
 | 9 | defaults.preselected | upsell modal | flyfrontier | airline | browse | **N** | not-fired | — | — | **MISS, clearest one so far.** Pre-ticked: "Basic Fare works for me. I understand purchasing options separately may result in a higher overall price." Preselected with direct cost consequence. Lexicon wants warranty/insurance/membership/protection — none present. |
 | 10 | (stage classifier) | upsell modal | flyfrontier | airline | browse | — | — | **N** | — | Deep inside a booking flow with an upsell interstitial, classified "browse". Second stage misclassification. |
-| 11 | | | | | | | | | | |
+| 11 | **obstruction.decline_attestation** | upsell modal | flyfrontier | airline | browse | **N** | not-fired | — | — | **NEW PATTERN, no detector exists.** Upgrade = 1 click. Decline = tick "I understand purchasing options separately may result in a higher overall price" + click. Asymmetric friction plus forced attestation. Added to taxonomy as Tier 3. |
 | 12 | | | | | | | | | | |
 | 4 | | | | | | | | | | |
 | 5 | | | | | | | | | | |
@@ -89,7 +89,7 @@ string can carry session and account identifiers, and this file is committed.
 | 8 | | | | | | | | | | |
 | 9 | | | | | | | | | | |
 | 10 | | | | | | | | | | |
-| 11 | | | | | | | | | | |
+| 11 | **obstruction.decline_attestation** | upsell modal | flyfrontier | airline | browse | **N** | not-fired | — | — | **NEW PATTERN, no detector exists.** Upgrade = 1 click. Decline = tick "I understand purchasing options separately may result in a higher overall price" + click. Asymmetric friction plus forced attestation. Added to taxonomy as Tier 3. |
 | 12 | | | | | | | | | | |
 | 13 | | | | | | | | | | |
 | 14 | | | | | | | | | | |

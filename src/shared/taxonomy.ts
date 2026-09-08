@@ -313,6 +313,41 @@ export const TAXONOMY = {
     temporal: true,
   },
 
+  /**
+   * Found in the field during the manual spot-check, on Frontier's fare-upsell modal.
+   * Not in the original taxonomy — the plan's list came from the literature, and this is a
+   * shape the literature does not name cleanly.
+   *
+   * The upgrade path is one click. The decline path requires ticking "I understand
+   * purchasing options separately may result in a higher overall price" and THEN clicking.
+   * So the cheaper choice costs an extra action plus a formal admission of disadvantage.
+   *
+   * Distinct from confirmshaming (which mocks: "No thanks, I hate saving money") and from
+   * the default effect (which is about what is pre-selected). The mechanism here is
+   * asymmetric friction plus forced attestation.
+   *
+   * NOTE FOR WHOEVER BUILDS THIS: the strong signal is STRUCTURAL, not lexical — a gate on
+   * the decline control that the accept control does not have. Lead with that. Two of the
+   * three misses in the spot-check came from lexicons written against imagined copy.
+   *
+   * Caveat to preserve in the copy: airlines have genuine regulatory reasons to require
+   * acknowledgement that a basic fare excludes bags. This may be compliance rather than
+   * persuasion, which is exactly why the prompt asks a question and asserts nothing.
+   */
+  "obstruction.decline_attestation": {
+    id: "obstruction.decline_attestation",
+    family: "confirmshaming",
+    label: "Extra step to decline",
+    mechanism:
+      "Choosing the cheaper option takes an extra step, and requires agreeing that it may cost you more.",
+    citation:
+      "Gray, C. M., Kou, Y., Battles, B., Hoggatt, J. & Toombs, A. L. (2018). The Dark (Patterns) Side of UX Design. Proc. CHI 2018, Paper 534 — obstruction and interface-interference categories. See also FTC Negative Option Rule, 16 C.F.R. Part 425, on asymmetry between opting in and opting out.",
+    severityWeight: 0.7,
+    tier: 3,
+    crossStage: false,
+    temporal: false,
+  },
+
   // --------------------- Tier 3: declared, not implemented ---------------------
   "reciprocity.free_gift": {
     id: "reciprocity.free_gift",
