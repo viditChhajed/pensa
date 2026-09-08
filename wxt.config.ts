@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { cpSync, readFileSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
 import preact from "@preact/preset-vite";
 import { defineConfig } from "wxt";
 
@@ -176,6 +177,28 @@ export default defineConfig({
           );
         }
       }
+    },
+
+    /**
+     * Keep `dist/` current on EVERY build.
+     *
+     * `dist` exists because `.output` is deleted and recreated by each build, which can
+     * leave Chrome's unpacked load pointing at a directory that no longer exists — the
+     * reload button then quietly does nothing and the browser keeps running old code. A
+     * stable path avoids that.
+     *
+     * It was created by a separate `build:dist` npm script, which meant a plain `wxt build`
+     * silently left it stale. That is exactly what happened: a full manual test cycle ran
+     * against an eleven-hour-old copy while four fixes sat unloaded in `.output`. A second
+     * output path is only safe if it cannot fall behind, so it is refreshed here rather
+     * than by remembering to use the right script.
+     */
+    "build:done": (wxt) => {
+      const out = wxt.config.outDir;
+      const stable = resolve(wxt.config.root, "dist");
+      rmSync(stable, { recursive: true, force: true });
+      cpSync(out, stable, { recursive: true });
+      wxt.logger.info(`Synced ${stable} (load this path in Chrome, not .output)`);
     },
   },
 });
