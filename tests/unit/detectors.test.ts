@@ -323,3 +323,39 @@ describe("cart line items — nested price markup", () => {
     expect(meta.cartLineItems).toBe(3);
   });
 });
+
+/**
+ * Bombas prices a pack as `$55  <s>$60</s>  8% Pack Savings` — live price FIRST, and a
+ * savings badge whose wording matches neither the reference-price lexemes nor the
+ * `% off` badge pattern. Reported from the field as a miss, so pinning it: the struck
+ * price, the pair, and the struck-is-higher signal are enough on their own.
+ */
+describe("anchoring on a savings-badge layout", () => {
+  const shapes: [string, string][] = [
+    ["inline", `<div><span>$55</span> <s>$60</s> <span>8% Pack Savings</span></div>`],
+    [
+      "nested",
+      `<div><div><span>$55</span></div><div><s>$60</s></div><div>8% Pack Savings</div></div>`,
+    ],
+    [
+      "grid card",
+      `<div><h3>Solids Half Calf Sock 4-Pack</h3><div><span>$55</span> <s>$60</s></div></div>`,
+    ],
+  ];
+
+  for (const [name, html] of shapes) {
+    it(`fires above the surface threshold: ${name}`, () => {
+      const found = anchoringDetector.run(contextFrom(html));
+      expect(found).toHaveLength(1);
+      // 0.75 is the shipped surfaceThreshold; below it the card would never show.
+      expect(found[0]?.rawScore ?? 0).toBeGreaterThanOrEqual(0.75);
+    });
+  }
+
+  it("does not fire when the struck price is lower than the live one", () => {
+    // A struck price below the live price is a rendering artifact, not an anchor.
+    expect(
+      anchoringDetector.run(contextFrom(`<div><span>$60</span> <s>$55</s></div>`)),
+    ).toHaveLength(0);
+  });
+});

@@ -34,7 +34,6 @@ function randomHostId(): string {
       .slice(0, 10)
   );
 }
-const AUTO_DISMISS_MS = 20_000;
 
 export interface Rect {
   left: number;
@@ -293,19 +292,21 @@ export interface PlacementCapacity {
 }
 
 export function measureCapacity(): PlacementCapacity {
+  // The card is now anchored under the toolbar icon and is allowed to overlap page content,
+  // so there is always room. This used to hunt for a collision-free corner and return zero
+  // when it found none, which is what made the worker answer `suppressed` on dense pages.
+  //
+  // It still reports a number rather than a boolean because the worker uses it to cap how
+  // many prompts to select, and because a very short viewport genuinely cannot show four.
   const viewport: Viewport = { w: window.innerWidth, h: window.innerHeight };
-  const controls = readControls(viewport);
-
-  let maxCardItems = 0;
+  let maxCardItems = 1;
   for (let n = 4; n >= 1; n--) {
-    if (bestAnchor(controls, viewport, cardSize(n, viewport))) {
+    if (cardSize(n, viewport).h <= viewport.h - MARGIN * 2) {
       maxCardItems = n;
       break;
     }
   }
-  const pillFits = bestAnchor(controls, viewport, pillSize(viewport)) !== null;
-
-  return { maxCardItems, pillFits };
+  return { maxCardItems, pillFits: true };
 }
 
 export function readControls(viewport: Viewport): Control[] {
@@ -327,10 +328,35 @@ export function readControls(viewport: Viewport): Control[] {
   return controls;
 }
 
-/** DOM reads, then delegate to the pure chooser. */
-function findPlacement(itemCount: number): Placement {
+/**
+ * Where the digest card goes: directly under the extension's own toolbar icon, always.
+ *
+ * This replaces the search for a corner that covers nothing clickable. That search was
+ * correct about safety and wrong about legibility — a card that appears in whichever corner
+ * happened to be free reads as a stray page element, with nothing connecting it to the
+ * extension that produced it. Reported directly: "I don't like how the card was in another
+ * part of the page."
+ *
+ * The icon lives in browser chrome, which a content script cannot see, so the anchor is the
+ * viewport's top-right — the point directly below where Chrome puts extension actions.
+ *
+ * The trade is deliberate and was made explicitly: the card may now cover page content.
+ * `choosePlacement` is retained and still tested, because the collision geometry is what
+ * `measureCapacity` uses and what an opt-in "avoid page controls" mode would need — but the
+ * shipped card no longer consults it. A dismiss control is therefore mandatory, not
+ * optional, and the card no longer disappears on a timer.
+ */
+function iconAnchoredPlacement(itemCount: number): Placement {
   const viewport: Viewport = { w: window.innerWidth, h: window.innerHeight };
-  return choosePlacement(readControls(viewport), viewport, itemCount);
+  const size = cardSize(itemCount, viewport);
+  const anchor: Anchor = { h: "right", v: "top" };
+  return {
+    mode: "card",
+    anchor,
+    position: positionOf(anchor, viewport, size),
+    size,
+    ordinaryCovered: 0,
+  };
 }
 
 /**
@@ -368,13 +394,7 @@ export class DigestCard {
     // re-enables pointer events, so wherever the card actually renders it still wins the
     // hit test. Verified in a real browser — a checkout button at bottom-right was covered.
     // So the position is chosen by hit-testing the page first (see findSafeCorner).
-    const placement = findPlacement(items.length);
-    if (placement.mode === "suppressed") {
-      // Nowhere on this page can hold the card without covering something clickable. The
-      // detections are already logged and appear in the popup summary.
-      console.debug("[patterns] digest suppressed: no placement free of interactive controls");
-      return "suppressed";
-    }
+    const placement = iconAnchoredPlacement(items.length);
     this.applyPosition(host, placement);
 
     const root = host.attachShadow({ mode: "closed" });
@@ -386,7 +406,8 @@ export class DigestCard {
     this.mode = placement.mode;
     this.watchLayout();
 
-    this.timer = window.setTimeout(() => this.dismiss(), AUTO_DISMISS_MS);
+    // No auto-dismiss. It vanished while being read, and there is an explicit close
+    // control now. Navigation still ends it, because a new page means a new content script.
 
     const close = root.querySelector("[data-close]");
     close?.addEventListener("click", () => this.dismiss());
@@ -421,11 +442,18 @@ export class DigestCard {
         font-size:11px; text-transform:uppercase; letter-spacing:.07em;
         color:#6b7280; margin-bottom:8px;
       }
+      /* The close control is the ONLY way to dismiss now that the card has no timer, so it
+         is full-contrast and has a real hit area rather than being a faint glyph. */
       button {
-        all: unset; cursor: pointer; font-size: 16px; line-height: 1;
-        padding: 2px 6px; border-radius: 6px; color: inherit; opacity: .6;
+        all: unset; cursor: pointer; font-size: 18px; line-height: 1; font-weight: 500;
+        padding: 4px 9px; border-radius: 6px; color: inherit; opacity: 1;
+        border: 1px solid transparent;
       }
-      button:hover, button:focus-visible { opacity: 1; outline: 2px solid #2b5cff; }
+      button:hover { background: rgba(0,0,0,.06); border-color: #dfe1e6; }
+      button:focus-visible { outline: 2px solid #2b5cff; outline-offset: 1px; }
+      @media (prefers-color-scheme: dark) {
+        button:hover { background: rgba(255,255,255,.10); border-color: #4a4d55; }
+      }
       .pill { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; }
       ul { list-style: none; padding: 0; }
       li { padding: 8px 0; }
@@ -548,16 +576,12 @@ export class DigestCard {
     addEventListener("resize", onChange, { passive: true });
   }
 
+  /** Re-pin to the anchor on resize. Scroll cannot move a fixed element, but a resize can
+   *  leave it off-screen or overlapping the edge. */
   private reposition(): void {
     const host = this.host;
     if (!host) return;
-    const placement = findPlacement(this.mode === "pill" ? 1 : this.items.length);
-    if (placement.mode === "suppressed") {
-      // The page scrolled something critical under the card. Leave rather than sit on it.
-      this.dismiss();
-      return;
-    }
-    this.applyPosition(host, placement);
+    this.applyPosition(host, iconAnchoredPlacement(this.items.length));
   }
 
   dismiss(): void {

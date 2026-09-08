@@ -132,22 +132,49 @@ test("the stage is classified as cart once the drawer opens", async () => {
   await page.close();
 });
 
-test("the card does not cover the checkout button", async () => {
+test("the card is anchored under the toolbar icon, top-right", async () => {
+  // This replaces a test asserting the card never covers the checkout button. That
+  // guarantee was deliberately traded away: a card that appeared in whichever corner
+  // happened to be free read as a stray page element rather than as this extension
+  // speaking. It is now always top-right — directly below where Chrome puts extension
+  // actions — and may overlap page content, which is why the dismiss control below is no
+  // longer optional.
   const { page, logs } = await openFixture("cart-drawer.html");
   await page.waitForTimeout(2500);
   await page.click("#atc");
   await waitForCard(page, logs);
 
-  const covered = await page.evaluate(() => {
+  const box = await page.evaluate(() => {
     const host = [...document.documentElement.children].find((e) => e.id?.startsWith("pp-"));
-    const btn = [...document.querySelectorAll("button")].find(
-      (b) => b.textContent?.trim() === "Checkout",
-    );
-    if (!btn) return "no checkout button in fixture";
-    const r = btn.getBoundingClientRect();
-    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    return hit === host ? "COVERED" : "clear";
+    const r = (host as HTMLElement).getBoundingClientRect();
+    return { left: r.left, top: r.top, right: r.right, vw: innerWidth };
   });
-  expect(covered).toBe("clear");
+  expect(box.top, "not pinned to the top").toBeLessThan(40);
+  expect(box.vw - box.right, "not pinned to the right edge").toBeLessThan(40);
+  await page.close();
+});
+
+test("the card can always be dismissed, and does not vanish on its own", async () => {
+  // With no auto-dismiss timer, the close control is the only way out. If it ever fails to
+  // render or fails to bind, the card is stuck on the page until navigation — which would
+  // be far worse than the old behaviour it replaced.
+  const { page, logs } = await openFixture("cart-drawer.html");
+  await page.waitForTimeout(2500);
+  await page.click("#atc");
+  await waitForCard(page, logs);
+
+  // Still there well after the old 20s timer would have removed it.
+  await page.waitForTimeout(2000);
+  expect(await cardHosts(page), "card disappeared on its own").toBe(1);
+
+  const closed = await page.evaluate(() => {
+    const host = [...document.documentElement.children].find((e) => e.id?.startsWith("pp-"));
+    // Closed shadow root, so reach the control the way a user would: by coordinates.
+    const r = (host as HTMLElement).getBoundingClientRect();
+    return { x: r.right - 26, y: r.top + 26 };
+  });
+  await page.mouse.click(closed.x, closed.y);
+  await page.waitForTimeout(400);
+  expect(await cardHosts(page), "close control did not dismiss the card").toBe(0);
   await page.close();
 });

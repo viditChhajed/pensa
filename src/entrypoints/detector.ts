@@ -222,14 +222,6 @@ export default defineUnlistedScript(() => {
   const IMMEDIATE_SETTLE_MS = 150;
 
   /**
-   * How long to let the page settle after an add-to-cart click before harvesting.
-   *
-   * Measured, not guessed: at 150ms Glossier's bag drawer has not rendered, so the pass saw
-   * the pre-click page and the digest was built from two off-screen carousel prices.
-   */
-  const TRIGGER_SETTLE_MS = 400;
-
-  /**
    * ...and then how long to wait before BUILDING the digest.
    *
    * The salience gate requires a node to have been on screen ~800ms, which is right: it is
@@ -286,7 +278,6 @@ export default defineUnlistedScript(() => {
     // count updates), and `latest` is otherwise whatever the last backed-off pass saw.
     // Then wait again, so what the drawer just revealed can accrue real on-screen time
     // before the salience gate judges it. See SALIENCE_ACCRUAL_MS.
-    await wait(TRIGGER_SETTLE_MS);
 
     const path = pathTemplate(location.href);
 
@@ -319,6 +310,16 @@ export default defineUnlistedScript(() => {
 
     const capacity = measureCapacity();
 
+    // Check what is ALREADY qualified before waiting for anything.
+    //
+    // On a cart page the interesting content has usually been on screen for seconds before
+    // the click, so it has earned its dwell and the card can appear at once. The previous
+    // version waited out a settle delay and a poll step unconditionally, which cost several
+    // seconds on exactly the pages where nothing needed waiting for — long enough that a
+    // shopper clicked Checkout and navigated away before the card arrived.
+    //
+    // The polling below is still there for the other case: a drawer that has not rendered
+    // yet, whose content cannot have dwell because it does not exist yet.
     const deadline = Date.now() + TRIGGER_WINDOW_MS;
     let items = snapshot();
     while (Date.now() < deadline && !items.some((i) => i.passedGate)) {
