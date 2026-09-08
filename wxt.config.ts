@@ -19,23 +19,57 @@ const allowlist = JSON.parse(
  * cross-stage detectors exist for. Deduping by domain also shrinks the list.
  */
 const TWO_PART = new Set([
-  "co.uk", "org.uk", "ac.uk", "gov.uk", "me.uk", "com.au", "net.au", "org.au",
-  "co.nz", "co.za", "com.br", "com.mx", "com.ar", "co.jp", "co.in", "com.sg",
-  "com.hk", "com.tr", "co.kr",
+  "co.uk",
+  "org.uk",
+  "ac.uk",
+  "gov.uk",
+  "me.uk",
+  "com.au",
+  "net.au",
+  "org.au",
+  "co.nz",
+  "co.za",
+  "com.br",
+  "com.mx",
+  "com.ar",
+  "co.jp",
+  "co.in",
+  "com.sg",
+  "com.hk",
+  "com.tr",
+  "co.kr",
 ]);
 function registrable(hostname: string): string {
   const parts = hostname.toLowerCase().split(".");
   if (parts.length <= 2) return parts.join(".");
-  return TWO_PART.has(parts.slice(-2).join(".")) ? parts.slice(-3).join(".") : parts.slice(-2).join(".");
+  return TWO_PART.has(parts.slice(-2).join("."))
+    ? parts.slice(-3).join(".")
+    : parts.slice(-2).join(".");
 }
 const matchPatterns = [
-  ...new Set(allowlist.entries.map((e) => `https://*.${registrable(new URL(e.origin).hostname)}/*`)),
+  ...new Set(
+    allowlist.entries.map((e) => `https://*.${registrable(new URL(e.origin).hostname)}/*`),
+  ),
 ].sort();
 
 export default defineConfig({
   srcDir: "src",
   modules: [],
-  vite: () => ({ plugins: [preact()] }),
+  /**
+   * A stamp so a loaded extension can say which build it is.
+   *
+   * `wxt build` recreates .output from scratch, which can leave Chrome's unpacked load
+   * pointing at a directory that no longer exists — the reload button then quietly does
+   * nothing and the browser keeps running an old snapshot. That cost a full manual test
+   * cycle: the fix was already built and on disk while the browser ran code from before it.
+   * There is no way to tell by looking, so the build now says so out loud.
+   */
+  vite: () => ({
+    plugins: [preact()],
+    define: {
+      __BUILD_STAMP__: JSON.stringify(new Date().toISOString().replace("T", " ").slice(0, 16)),
+    },
+  }),
 
   manifest: {
     manifest_version: 3,

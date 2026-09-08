@@ -10,6 +10,7 @@
  * `activeTab` is what lets this read the current tab's URL without the `tabs` permission.
  */
 
+import { BUILD_STAMP } from "@/shared/constants";
 import { domainMatchPattern, isGrantable, registrableDomain } from "@/shared/domain";
 import { send } from "@/shared/messages";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
@@ -19,6 +20,14 @@ const statusEl = document.getElementById("status") as HTMLParagraphElement;
 const detailEl = document.getElementById("detail") as HTMLParagraphElement;
 const enableBtn = document.getElementById("enable") as HTMLButtonElement;
 const optionsLink = document.getElementById("options") as HTMLButtonElement;
+
+// Same reason as the detector's startup log: a stale unpacked load is otherwise invisible.
+document
+  .getElementById("app")
+  ?.insertAdjacentHTML(
+    "beforeend",
+    `<p class="detail score" style="opacity:.55">build ${BUILD_STAMP}</p>`,
+  );
 
 optionsLink.addEventListener("click", () => {
   void chrome.runtime.openOptionsPage();

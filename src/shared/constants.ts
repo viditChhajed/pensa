@@ -19,3 +19,8 @@ export const SALIENCE_MIN_RATIO = 0.5;
 
 /** Scheduler budget (plan §18C). */
 export const IDLE_SLICE_MS = 8;
+
+/** Injected at build time by wxt.config.ts. Lets a loaded extension identify itself. */
+declare const __BUILD_STAMP__: string;
+export const BUILD_STAMP: string =
+  typeof __BUILD_STAMP__ === "string" ? __BUILD_STAMP__ : "unknown";

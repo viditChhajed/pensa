@@ -25,7 +25,7 @@ import { drainAcrossIdle } from "@/content/scheduler";
 import { TriggerWatcher } from "@/content/triggers";
 import type { PageContext } from "@/content/types";
 import { DigestCard, measureCapacity } from "@/content/ui/card";
-import { INJECTION_FLAG } from "@/shared/constants";
+import { BUILD_STAMP, INJECTION_FLAG } from "@/shared/constants";
 import { type ShowDigest, send } from "@/shared/messages";
 import type { DetectionCandidate, FunnelStage } from "@/shared/schema";
 import { originOf, pathTemplate } from "@/shared/urlScore";
@@ -394,7 +394,7 @@ export default defineUnlistedScript(() => {
   // inferring it from chrome.storage.session, which is cleared on every extension reload —
   // so "no ledger key" was ambiguous between "not injected" and "you reloaded the extension
   // and have not revisited the page yet". One line removes the ambiguity.
-  console.info(`[patterns] active on ${pageOrigin}`);
+  console.info(`[patterns] active on ${pageOrigin} — build ${BUILD_STAMP}`);
 
   observer.start();
   triggers.attach();
