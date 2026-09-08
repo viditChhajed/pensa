@@ -130,10 +130,28 @@ export default defineUnlistedScript(() => {
 
     latest = collected;
     if (collected.length > 0) {
-      console.info(
-        `[patterns] ${stage}: ${collected.length} detection(s) —`,
-        collected.map((c) => c.candidate.patternId).join(", "),
-      );
+      // Log the MATCHED TEXT, not just the pattern id.
+      //
+      // A line reading "9 detections — anchoring.reference_price x9" is undiagnosable: it
+      // cannot distinguish nine genuine was/now price pairs from one runaway selector, and
+      // it gives no way to tell why scarcity.stock stayed silent on a page covered in
+      // "only 3 left at this price". The evidence already carries a text sample; showing it
+      // turns every spot-check page into usable data.
+      const byPattern = new Map<string, string[]>();
+      for (const { candidate: c } of collected) {
+        const sample = (c.evidence.textSample ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+        const arr = byPattern.get(c.patternId);
+        if (arr) arr.push(sample);
+        else byPattern.set(c.patternId, [sample]);
+      }
+      const summary = [...byPattern.entries()]
+        .map(([id, samples]) => {
+          const shown = samples.slice(0, 3).map((t) => `"${t}"`).join(", ");
+          const extra = samples.length > 3 ? ` +${samples.length - 3} more` : "";
+          return `${id} x${samples.length}: ${shown}${extra}`;
+        })
+        .join(" | ");
+      console.info(`[patterns] ${stage}: ${collected.length} detection(s) — ${summary}`);
     }
 
     // §18A: resolve this page's offer identity and contribute one observation per visit.
