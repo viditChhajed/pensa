@@ -1,6 +1,6 @@
 # EVAL — manual spot-check
 
-**Status: NOT YET RUN. No data below.**
+**Status: IN PROGRESS — 4 of 6 sites. Summary table not yet computed.**
 
 Precision is currently **unmeasured**. Every threshold in the shipped build is a hand-set
 guess, marked `confidenceBasis: "hand_set"` in the schema so it cannot be mistaken for a
@@ -70,9 +70,18 @@ string can carry session and account identifiers, and this file is committed.
 
 | # | detector | page | retailer | category | stage | fired? | outcome | correct? | false positive? | notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | | | | | | | | | | |
-| 2 | | | | | | | | | | |
-| 3 | | | | | | | | | | |
+| 1 | anchoring.reference_price | search results | booking.com | ota_travel | browse | Y | no-room | **unverified** | ? | Fired x9 every pass. User: more than 9 exist when scrolled, fewer than 9 visible unscrolled — count matches neither. Matched text not captured (logging added after). RE-CHECK. |
+| 2 | scarcity.stock | search results | booking.com | ota_travel | browse | **N** | not-fired | — | — | **MISS.** "only 3 left at this price" visibly on page. Lexicon wants "only N left"/"N left in stock"; "at this price" is rate availability, not covered. |
+| 3 | bnpl.installments | event/ticket select | ticketmaster | ticketing | pdp | Y | no-room | **Y** | N | Correct x2. PayPal "Pay Now or Pay In 4" + Klarna both visibly present. |
+| 4 | pricing.drip | event/ticket select | ticketmaster | ticketing | pdp | N | not-fired | — | — | Not reachable: checkout requires an account. Also page showed "$76.50 (incl. fees)" — fees appear bundled, so there may be no drip here to find. |
+| 5 | (stage classifier) | event/ticket select | ticketmaster | ticketing | pdp | — | — | **N** | — | Page has quantity stepper, SUBTOTAL $153.00 and "Reserve Tickets" — functionally a cart, classified pdp. hasOrderSummaryTriple needs subtotal AND total AND tax/shipping; only SUBTOTAL present. |
+| 6 | (all) | fare select | flyfrontier | airline | browse | N | not-fired | **Y** | N | Zero detections and correct: no struck prices, no charm fractions ($274/$336/$396/$554), no stock counts, no timer, no preselected boxes on that page. |
+| 7 | anchoring.reference_price | fare select | flyfrontier | airline | browse | N | not-fired | — | — | **MISS pattern.** "$274 Discount Den" vs "$277 Standard" is a genuine dual-price anchor with NO strikethrough. Detector requires line-through. Widening is risky — see note below. |
+| 8 | pricing.charm | upsell modal | flyfrontier | airline | browse | Y | no-room | **Y** | N | "*Annual membership costs $59.99 per year" — genuinely charm priced, so correct. But low value: it is marketing small print, not the fare. Detector picks largest-rendered price and landed on a footnote. |
+| 9 | defaults.preselected | upsell modal | flyfrontier | airline | browse | **N** | not-fired | — | — | **MISS, clearest one so far.** Pre-ticked: "Basic Fare works for me. I understand purchasing options separately may result in a higher overall price." Preselected with direct cost consequence. Lexicon wants warranty/insurance/membership/protection — none present. |
+| 10 | (stage classifier) | upsell modal | flyfrontier | airline | browse | — | — | **N** | — | Deep inside a booking flow with an upsell interstitial, classified "browse". Second stage misclassification. |
+| 11 | | | | | | | | | | |
+| 12 | | | | | | | | | | |
 | 4 | | | | | | | | | | |
 | 5 | | | | | | | | | | |
 | 6 | | | | | | | | | | |
@@ -191,9 +200,26 @@ Record the real rate here as you go.
 
 | Retailer | Stage | Card shown? | Mode (card / pill / suppressed) |
 |---|---|---|---|
-| | | | |
-| | | | |
-| | | | |
+| booking.com | browse | no | suppressed (dense nav) |
+| ticketmaster | pdp | no | suppressed |
+| flyfrontier | browse | no | suppressed |
+
+Three of three so far suppressed. Consistent with the 60% pre-measurement, and
+possibly worse — no card has been seen by the tester yet across four sites.
+
+## Performance, observed during the spot-check
+
+| Site | Worst pass | Sustained | Backoff reached |
+|---|---|---|---|
+| etsy | 104ms | — | 1s |
+| booking.com | 1598ms | 60-200ms | 15s (ceiling) |
+| ticketmaster | 1689ms | 50-970ms | 15s (ceiling) |
+| flyfrontier | 949ms | 64-192ms | 9.5s |
+
+Every site exceeded the 50ms budget, three of four hit or neared the 15s backoff
+ceiling. At a 15s gap the extension will miss funnel transitions entirely, which
+turns a performance problem into a correctness one. This is the §18C
+dirty-subtree work and it is now the highest-priority engineering item.
 
 If suppression turns out to be common at cart/checkout, that is a product problem, not a
 safety one — the fix is a smaller affordance, not permission to cover a control.
