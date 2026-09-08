@@ -60,10 +60,11 @@ async function init(): Promise<void> {
   // clicking a button that does nothing.
   const declared = chrome.runtime.getManifest().optional_host_permissions ?? [];
   if (!isGrantable(parsed, declared)) {
-    statusEl.textContent = `${domain} is not in the supported list yet.`;
-    detailEl.textContent =
-      "This extension can only be switched on for sites it was published with. " +
-      "It is not reading this page, and nothing was sent anywhere.";
+    // Should be unreachable now that https://*/* is declared, but a permission that cannot
+    // be requested must never be offered as a button — that produced a dead control twice
+    // during manual testing.
+    statusEl.textContent = `${domain} cannot be enabled.`;
+    detailEl.textContent = "This extension is not reading this page, and sent nothing anywhere.";
     return;
   }
   const alreadyGranted = await chrome.permissions.contains({ origins: [pattern] });

@@ -52,9 +52,20 @@ export default defineConfig({
     //   declarativeContent - light up the toolbar icon on shopping URLs WITHOUT reading pages
     permissions: ["storage", "scripting", "activeTab", "declarativeContent"],
 
-    // The whole point of §14.2: near-empty install prompt. These are requested one at a
-    // time, from a popup button, only when the user asks.
-    optional_host_permissions: matchPatterns,
+    /**
+     * Two tiers, per plan §14.2 (curated) and §14.3 Tier B (everything else).
+     *
+     * The curated domains drive the declarativeContent icon and the commerce score. The
+     * broad pattern is what makes Tier B possible at all: chrome.permissions.request can
+     * only grant what is declared here, so without it the popup could only ever offer a
+     * dead button on any site not in the list — which is exactly what happened in manual
+     * testing, twice.
+     *
+     * This is OPTIONAL. It is not granted at install, produces no install-time warning, and
+     * is requested one origin at a time behind a user gesture. The denylist still refuses
+     * banking, health, government and mail outright, before any of this is reached.
+     */
+    optional_host_permissions: [...matchPatterns, "https://*/*"],
 
     icons: {
       16: "icon/16.png",
@@ -114,14 +125,21 @@ export default defineConfig({
         );
       }
 
+      // A broad pattern is acceptable ONLY as an optional permission, never as a required
+      // one. Required means granted at install with a warning listing every site; optional
+      // means the user grants one origin at a time from the popup.
       const broad = ["<all_urls>", "http://*/*", "https://*/*", "*://*/*"];
-      const all = [
-        ...((m.optional_host_permissions ?? []) as string[]),
-        ...((m.permissions ?? []) as string[]),
-      ];
-      for (const p of all) {
+      for (const p of (m.permissions ?? []) as string[]) {
         if (broad.includes(p)) {
-          throw new Error(`Broad host permission "${p}" is never acceptable (plan §2).`);
+          throw new Error(`Broad host permission "${p}" must never be a REQUIRED permission.`);
+        }
+      }
+      const optional = (m.optional_host_permissions ?? []) as string[];
+      for (const p of optional) {
+        if (p === "<all_urls>" || p === "*://*/*" || p === "http://*/*") {
+          throw new Error(
+            `"${p}" is broader than needed. Only https://*/* is acceptable, and only as optional.`,
+          );
         }
       }
     },
