@@ -13,10 +13,25 @@
 
 /** Public suffixes that take three labels rather than two. Not exhaustive; covers the allowlist. */
 const TWO_PART_SUFFIXES = new Set([
-  "co.uk", "org.uk", "ac.uk", "gov.uk", "me.uk",
-  "com.au", "net.au", "org.au", "co.nz", "co.za",
-  "com.br", "com.mx", "com.ar", "co.jp", "co.in",
-  "com.sg", "com.hk", "com.tr", "co.kr",
+  "co.uk",
+  "org.uk",
+  "ac.uk",
+  "gov.uk",
+  "me.uk",
+  "com.au",
+  "net.au",
+  "org.au",
+  "co.nz",
+  "co.za",
+  "com.br",
+  "com.mx",
+  "com.ar",
+  "co.jp",
+  "co.in",
+  "com.sg",
+  "com.hk",
+  "com.tr",
+  "co.kr",
 ]);
 
 /** `www.booking.com` -> `booking.com`; `tjmaxx.tjx.com` -> `tjx.com`; `a.co.uk` -> `a.co.uk`. */

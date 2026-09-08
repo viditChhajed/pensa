@@ -173,6 +173,26 @@ export function scoreUrl(rawUrl: string): UrlScore {
   return { score: Math.min(1, score), denied: false, allowlisted, signals };
 }
 
+/**
+ * The score's signals, in words a person can read.
+ *
+ * Lives here rather than in the popup so it can be tested without a DOM, and so the wording
+ * cannot drift from the signal names that produce it.
+ */
+export function describeSignals(signals: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const s of signals) {
+    let phrase: string;
+    if (s === "allowlist") phrase = "known retailer";
+    else if (s.startsWith("path:")) phrase = "commerce URL path";
+    else if (s.startsWith("query:")) phrase = `cart parameter (${s.slice("query:".length)})`;
+    else if (s.startsWith("host:")) phrase = "commerce hostname";
+    else continue;
+    if (!out.includes(phrase)) out.push(phrase);
+  }
+  return out;
+}
+
 /** Default prompt threshold. Adjusted per-user after ~30 local decisions (§14.3). */
 export const DEFAULT_PROMPT_THRESHOLD = 0.45;
 

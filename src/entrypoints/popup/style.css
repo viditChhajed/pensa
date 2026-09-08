@@ -44,6 +44,12 @@ h1 {
   font-size: 12px;
   margin: 10px 0 0;
 }
+/* The heuristic's own reading. Deliberately quieter than the offer above it. */
+.detail.score {
+  margin-top: 6px;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
 button.primary {
   width: 100%;
   padding: 9px 12px;

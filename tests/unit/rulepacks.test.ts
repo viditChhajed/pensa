@@ -172,7 +172,11 @@ describe("allowlist recognises subdomains", () => {
 
   it("does NOT recognise a look-alike domain", async () => {
     const { isAllowlisted } = await import("@/shared/urlScore");
-    for (const origin of ["https://notshein.com", "https://shein.com.evil.net", "https://fakeetsy.com"]) {
+    for (const origin of [
+      "https://notshein.com",
+      "https://shein.com.evil.net",
+      "https://fakeetsy.com",
+    ]) {
       expect(isAllowlisted(origin), origin).toBe(false);
     }
   });

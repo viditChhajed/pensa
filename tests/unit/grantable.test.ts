@@ -14,15 +14,23 @@ const DECLARED = ["https://*.booking.com/*", "https://*.etsy.com/*", "https://*.
 describe("matchesPattern", () => {
   it("matches the bare domain and any subdomain", () => {
     expect(matchesPattern("https://*.booking.com/*", new URL("https://booking.com/x"))).toBe(true);
-    expect(matchesPattern("https://*.booking.com/*", new URL("https://www.booking.com/x"))).toBe(true);
+    expect(matchesPattern("https://*.booking.com/*", new URL("https://www.booking.com/x"))).toBe(
+      true,
+    );
     // The whole reason for domain-wide grants: checkout lives on a different subdomain.
-    expect(matchesPattern("https://*.booking.com/*", new URL("https://secure.booking.com/book"))).toBe(true);
+    expect(
+      matchesPattern("https://*.booking.com/*", new URL("https://secure.booking.com/book")),
+    ).toBe(true);
   });
 
   it("does NOT match a look-alike domain", () => {
     // notbooking.com must not be caught by *.booking.com.
-    expect(matchesPattern("https://*.booking.com/*", new URL("https://notbooking.com/"))).toBe(false);
-    expect(matchesPattern("https://*.booking.com/*", new URL("https://booking.com.evil.net/"))).toBe(false);
+    expect(matchesPattern("https://*.booking.com/*", new URL("https://notbooking.com/"))).toBe(
+      false,
+    );
+    expect(
+      matchesPattern("https://*.booking.com/*", new URL("https://booking.com.evil.net/")),
+    ).toBe(false);
   });
 
   it("respects the scheme", () => {

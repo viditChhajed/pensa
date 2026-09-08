@@ -9,10 +9,11 @@
  *
  * `activeTab` is what lets this read the current tab's URL without the `tabs` permission.
  */
+
+import { domainMatchPattern, isGrantable, registrableDomain } from "@/shared/domain";
 import { send } from "@/shared/messages";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
-import { domainMatchPattern, isGrantable, registrableDomain } from "@/shared/domain";
-import { DEFAULT_PROMPT_THRESHOLD, isDenied, scoreUrl } from "@/shared/urlScore";
+import { DEFAULT_PROMPT_THRESHOLD, describeSignals, isDenied, scoreUrl } from "@/shared/urlScore";
 
 const statusEl = document.getElementById("status") as HTMLParagraphElement;
 const detailEl = document.getElementById("detail") as HTMLParagraphElement;
@@ -79,14 +80,28 @@ async function init(): Promise<void> {
   const scored = scoreUrl(url);
   originPattern = pattern; // set BEFORE the button becomes clickable
 
+  /**
+   * Both branches are an OFFER. The low-score copy used to read "<host> does not look like a
+   * shopping site" above a working Enable button — a sentence that talks the user out of
+   * pressing the control directly beneath it, and which overstates what was measured. The
+   * heuristic reads the URL and nothing else, by necessity: you cannot inspect a page to
+   * decide whether to ask permission to inspect the page. So a low score is a statement
+   * about a string, not a verdict on the site.
+   */
   if (scored.score >= DEFAULT_PROMPT_THRESHOLD) {
     statusEl.textContent = `${parsed.hostname} looks like a shopping site.`;
   } else {
-    statusEl.textContent = `${parsed.hostname} does not look like a shopping site.`;
-    // Still offered: the user may know better than the URL heuristic (plan §14.3, Tier B).
+    statusEl.textContent = `Turn on Persuasion Patterns for ${domain}?`;
   }
+
   detailEl.textContent =
-    `Enabling covers ${domain} and its checkout pages, on your device only. Nothing is sent anywhere.`;
+    `Enabling covers ${domain} and its checkout pages, on your device only. ` +
+    "Nothing is sent anywhere.";
+
+  // The heuristic's own reading, shown so a silent extension can be diagnosed: a score with
+  // signals means the check ran and this URL simply had nothing commerce-shaped in it;
+  // no score line at all means the popup never got this far.
+  renderScore(scored, parsed);
   enableBtn.hidden = false;
 }
 
@@ -106,6 +121,29 @@ enableBtn.addEventListener("click", () => {
     }
   });
 });
+
+/**
+ * Why the extension thinks what it thinks, in one line.
+ *
+ * This exists to separate two failures that look identical from the outside: the heuristic
+ * ran and scored the URL low, versus the heuristic never ran at all. Without it the only
+ * available diagnosis was "nothing happened".
+ */
+function renderScore(scored: ReturnType<typeof scoreUrl>, parsed: URL): void {
+  const line = document.createElement("p");
+  line.className = "detail score";
+
+  const pct = Math.round(scored.score * 100);
+  const readable = describeSignals(scored.signals);
+
+  line.textContent =
+    readable.length > 0
+      ? `URL check: ${pct}% — ${readable.join(", ")}.`
+      : `URL check: ${pct}% — nothing commerce-shaped in ${parsed.pathname === "/" ? "this address" : parsed.pathname}. ` +
+        "The check only reads the address, never the page.";
+
+  detailEl.after(line);
+}
 
 function renderRevoke(pattern: string, hostname: string): void {
   enableBtn.hidden = false;
