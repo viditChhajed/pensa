@@ -207,8 +207,7 @@ const WALK_ANCESTORS_FOR_BACKGROUND = false;
 
 function effectiveBackground(el: Element, styleOf: (e: Element) => CSSStyleDeclaration): string {
   const own = styleOf(el).backgroundColor;
-  const isTransparent =
-    !own || own === "transparent" || /rgba\(\s*0,\s*0,\s*0,\s*0\s*\)/.test(own);
+  const isTransparent = !own || own === "transparent" || /rgba\(\s*0,\s*0,\s*0,\s*0\s*\)/.test(own);
   if (!isTransparent) return own;
 
   if (!WALK_ANCESTORS_FOR_BACKGROUND) return "rgb(255, 255, 255)";
@@ -350,7 +349,12 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
   });
 
   return selected.map((el, i) => {
-    const text = collapse(el.textContent ?? "");
+    // joinedText, NOT textContent. The Day-1 fix covered containerText and left this
+    // field carrying the identical flaw: textContent concatenates descendants with no
+    // separator, so a container reads as "Customers Also Viewed10#KnitEssentials-15%..."
+    // and any word-boundary regex over it is meaningless. That produced charm's
+    // unreadable evidence during the spot-check.
+    const text = joinedText(el);
     const eph = opts.ephemeral?.get(el);
     const childIdxs: number[] = [];
     for (const child of el.children) {
@@ -420,11 +424,7 @@ export function readDocumentMeta(doc: Document, url: string): DocumentMeta {
     'input[autocomplete~="address-line1"], input[autocomplete~="address-level2"], input[autocomplete~="country"]',
   ).length;
 
-  const bodyText = collapse(doc.body?.textContent ?? "").toLowerCase();
-  const hasSummary =
-    bodyText.includes("subtotal") &&
-    bodyText.includes("total") &&
-    (bodyText.includes("tax") || bodyText.includes("shipping"));
+  const structural = readStructuralSignals(doc);
 
   return {
     origin: safeOrigin(url),
@@ -435,8 +435,153 @@ export function readDocumentMeta(doc: Document, url: string): DocumentMeta {
     hasCcNumberField: hasCc,
     hasPostalCodeField: hasPostal,
     hasAddressCluster: addressFields >= 2,
-    hasOrderSummaryTriple: hasSummary,
+    ...structural,
   };
+}
+
+const PRICE_SHAPED = /[$£€¥₹]\s?\d/;
+// Broadened after the Frontier fare page produced zero summary rows: "Taxes and fees" is
+// not matched by /\btax\b/, and "Trip total" is not in any airline-free label list.
+const MONEY_LABEL =
+  /\b(sub-?totals?|totals?|amount due|you pay|taxe?s?|vat|gst|fees?|shipping|delivery|savings?|discounts?|promotions?|retail price|estimated price|handling|charges?)\b/i;
+const TOTAL_LABEL = /\b(totals?|amount due|you pay)\b/i;
+const REMOVE_CTL = /^(remove|delete|trash|bin|×|✕|x)$/i;
+const QTY_HINT = /\b(qty|quantity)\b/i;
+
+/**
+ * What the page IS, structurally.
+ *
+ * Every signal here is deliberately independent of the URL. A page with repeated priced
+ * rows carrying quantity steppers and remove buttons is a cart whether it lives at /cart,
+ * /products/body-spritz or /event/0500648A9C927EA6 — and all three of those were seen in
+ * the field.
+ */
+function readStructuralSignals(doc: Document) {
+  let cartLineItems = 0;
+  let moneySummaryRows = 0;
+  let hasTotalRow = false;
+  let hasQuantityControl = false;
+  let hasRemoveControl = false;
+  let addToCartCtaCount = 0;
+  let checkoutCtaCount = 0;
+  let placeOrderCtaCount = 0;
+
+  // Quantity controls: a number input, a qty-named select, or a stepper pair.
+  if (
+    doc.querySelector(
+      'input[type="number"], select[name*="qty" i], select[name*="quant" i], ' +
+        '[data-testid*="qty" i], [aria-label*="quantity" i], [class*="quantity" i] button',
+    )
+  ) {
+    hasQuantityControl = true;
+  }
+
+  for (const el of doc.querySelectorAll('button, a, [role="button"]')) {
+    const name = collapse(el.getAttribute("aria-label") ?? el.textContent ?? "").toLowerCase();
+    if (name.length === 0 || name.length > 60) continue;
+    if (REMOVE_CTL.test(name.trim())) hasRemoveControl = true;
+    if (/\bremove\b|\bdelete\b/.test(name)) hasRemoveControl = true;
+    if (/\badd to (cart|bag|basket|order)\b|\bbuy now\b|\badd to my bag\b/.test(name)) {
+      addToCartCtaCount++;
+    }
+    if (
+      /\bcheckout\b|\bcheck out\b|\bproceed to\b|\bcontinue to (payment|checkout)\b|\breserve\b/.test(
+        name,
+      )
+    ) {
+      checkoutCtaCount++;
+    }
+    if (/\bplace order\b|\bpay now\b|\bcomplete (order|purchase)\b|\bsubmit order\b/.test(name)) {
+      placeOrderCtaCount++;
+    }
+  }
+
+  // Money-summary rows: a short element carrying a money label AND a price.
+  for (const el of doc.querySelectorAll("div, li, tr, p, section, dl, dt, dd, span")) {
+    const t = collapse(joinedText(el));
+    if (t.length === 0 || t.length > 90) continue;
+    if (!PRICE_SHAPED.test(t)) continue;
+    if (!MONEY_LABEL.test(t)) continue;
+    // Only count leaf-ish rows so a wrapper is not counted alongside its children.
+    if (el.querySelector("div, li, tr, section")) continue;
+    moneySummaryRows++;
+    if (TOTAL_LABEL.test(t)) hasTotalRow = true;
+  }
+
+  // Cart line items: a row containing a price and either a qty control or a remove control.
+  for (const el of doc.querySelectorAll("li, tr, div, article")) {
+    const t = collapse(joinedText(el));
+    if (t.length === 0 || t.length > 400) continue;
+    if (!PRICE_SHAPED.test(t)) continue;
+    // Count the innermost row only. Without this a cart of two items counts the two rows,
+    // their shared wrapper and its wrapper, and the score runs away from the evidence.
+    if (containsPricedRow(el)) continue;
+    const hasQty =
+      el.querySelector(
+        'input[type="number"], select[name*="qty" i], [aria-label*="quantity" i]',
+      ) !== null || QTY_HINT.test(t);
+    let hasRemove = false;
+    for (const c of el.querySelectorAll('button, a, [role="button"]')) {
+      const n = collapse(c.getAttribute("aria-label") ?? c.textContent ?? "").toLowerCase();
+      if (/\bremove\b|\bdelete\b/.test(n) || REMOVE_CTL.test(n.trim())) {
+        hasRemove = true;
+        break;
+      }
+    }
+    if (hasQty || hasRemove) cartLineItems++;
+  }
+
+  // Step chrome: "Cart > Place Order > Pay > Order Complete".
+  const bodyText = collapse(doc.body?.textContent ?? "").toLowerCase();
+  // Any breadcrumb-ish sequence of two funnel words. The previous version enumerated exact
+  // pairs and matched none of the four flows in the spot-check.
+  const STEP_WORD =
+    "(cart|bag|basket|flights?|bundle|seats?|extras|shipping|delivery|details|review|payment|checkout|place order|confirm)";
+  const hasStepIndicator = new RegExp(
+    `${STEP_WORD}\\s*[>\u203a\u00bb\u2192|\u2022]\\s*${STEP_WORD}`,
+  ).test(bodyText);
+
+  return {
+    cartLineItems: Math.min(cartLineItems, 50),
+    moneySummaryRows: Math.min(moneySummaryRows, 20),
+    hasTotalRow,
+    hasQuantityControl,
+    hasRemoveControl,
+    hasStepIndicator,
+    addToCartCtaCount: Math.min(addToCartCtaCount, 50),
+    checkoutCtaCount: Math.min(checkoutCtaCount, 20),
+    placeOrderCtaCount: Math.min(placeOrderCtaCount, 20),
+    hasProductJsonLd: hasProductSchema(doc),
+  };
+}
+
+/** True when some descendant row already carries a price, i.e. `el` is a wrapper. */
+function containsPricedRow(el: Element): boolean {
+  for (const child of el.querySelectorAll("li, tr, div, article")) {
+    if (PRICE_SHAPED.test(collapse(joinedText(child)))) return true;
+  }
+  return false;
+}
+
+function hasProductSchema(doc: Document): boolean {
+  for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
+    try {
+      if (containsProductType(JSON.parse(script.textContent ?? ""), 0)) return true;
+    } catch {
+      /* malformed JSON-LD is extremely common; never throw on someone else's page */
+    }
+  }
+  return false;
+}
+
+function containsProductType(node: unknown, depth: number): boolean {
+  if (depth > 5 || node === null || typeof node !== "object") return false;
+  if (Array.isArray(node)) return node.some((n) => containsProductType(n, depth + 1));
+  const rec = node as Record<string, unknown>;
+  const t = rec["@type"];
+  if (t === "Product" || t === "Offer") return true;
+  if (Array.isArray(t) && t.some((x) => x === "Product" || x === "Offer")) return true;
+  return Object.values(rec).some((v) => containsProductType(v, depth + 1));
 }
 
 function safeOrigin(url: string): string {

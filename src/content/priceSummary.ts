@@ -164,7 +164,10 @@ export function extractPriceSnapshot(ctx: PageContext, capturedAt = Date.now()):
 
 /** An unlabeled charge only counts if it sits in a block that also has a subtotal/total. */
 function looksLikeSummaryRow(n: CandidateNode, ctx: PageContext): boolean {
-  if (!ctx.meta.hasOrderSummaryTriple) return false;
+  // Was hasOrderSummaryTriple, which demanded subtotal AND total AND tax/shipping and so
+  // failed on Ticketmaster (SUBTOTAL only) and Glossier ("Tax calculated in checkout", no
+  // amount). Two labelled money rows is the shape an order summary actually has.
+  if (ctx.meta.moneySummaryRows < 2) return false;
   const container = n.containerText;
   return SUBTOTAL_RE.test(container) || TOTAL_RE.test(container);
 }

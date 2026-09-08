@@ -60,6 +60,7 @@ export default defineUnlistedScript(() => {
   let stage: FunnelStage = "browse";
   let latest: Scored[] = [];
   let passScheduled = false;
+  let passTimer: ReturnType<typeof setTimeout> | null = null;
   /**
    * Adaptive, because a full re-harvest on every mutation batch is the wrong algorithm and
    * the right one is not a quick fix.
@@ -146,7 +147,10 @@ export default defineUnlistedScript(() => {
       }
       const summary = [...byPattern.entries()]
         .map(([id, samples]) => {
-          const shown = samples.slice(0, 3).map((t) => `"${t}"`).join(", ");
+          const shown = samples
+            .slice(0, 3)
+            .map((t) => `"${t}"`)
+            .join(", ");
           const extra = samples.length > 3 ? ` +${samples.length - 3} more` : "";
           return `${id} x${samples.length}: ${shown}${extra}`;
         })
@@ -202,16 +206,46 @@ export default defineUnlistedScript(() => {
     }
   }
 
-  function schedulePass(): void {
-    if (passScheduled) return;
+  /**
+   * The duty-cycle backoff is a main-thread protection, and on heavy storefronts it settles
+   * at the 15s ceiling. That is fine for idle re-scans and wrong for the two moments where
+   * being current is the whole point: the shopper has just navigated, or has just clicked
+   * add-to-cart and a digest is about to be built from `latest`. Waiting up to 15 seconds
+   * there means classifying the previous page and reporting stale candidates.
+   *
+   * So an immediate pass jumps the queue. It still costs a pass, but at most one per
+   * navigation or per add-to-cart, which is not a duty cycle a page can drive.
+   */
+  const IMMEDIATE_SETTLE_MS = 150;
+
+  function schedulePass(immediate = false): Promise<void> {
+    if (immediate) {
+      if (passTimer !== null) clearTimeout(passTimer);
+      passScheduled = true;
+      return new Promise((resolve) => {
+        passTimer = setTimeout(() => {
+          passTimer = null;
+          passScheduled = false;
+          void pass().finally(resolve);
+        }, IMMEDIATE_SETTLE_MS);
+      });
+    }
+    if (passScheduled) return Promise.resolve();
     passScheduled = true;
-    setTimeout(() => {
-      passScheduled = false;
-      void pass();
-    }, debounceMs);
+    return new Promise((resolve) => {
+      passTimer = setTimeout(() => {
+        passTimer = null;
+        passScheduled = false;
+        void pass().finally(resolve);
+      }, debounceMs);
+    });
   }
 
   async function onTrigger(kind: string, label: string): Promise<void> {
+    // Re-scan first. A click on add-to-cart usually changes the page (a drawer opens, a
+    // count updates), and `latest` is otherwise whatever the last backed-off pass saw.
+    await schedulePass(true);
+
     const path = pathTemplate(location.href);
 
     if (kind === "add_to_cart") {
@@ -294,13 +328,13 @@ export default defineUnlistedScript(() => {
   // `history.pushState` patching — it breaks host pages and reads as hostile (plan §14.6).
   const nav = (globalThis as { navigation?: EventTarget }).navigation;
   if (nav) {
-    nav.addEventListener("navigate", () => schedulePass());
+    nav.addEventListener("navigate", () => void schedulePass(true));
   } else {
     let lastUrl = location.href;
     setInterval(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
-        schedulePass();
+        void schedulePass(true);
       }
     }, 800);
   }

@@ -1,71 +1,143 @@
 /**
- * Funnel stage classifier (plan §6, T15).
+ * Funnel stage classifier — content-first.
  *
- * Weighted feature vector, not URL alone — SPA retailers route client-side, so a URL that
- * still says /products/ can be showing a cart. Day 1 uses URL plus form signals; JSON-LD
- * weighting is wired but deliberately light until Day 2.
+ * The previous version scored URL path tokens at 0.5-0.6, which meant the URL decided the
+ * answer and everything else was decoration. In the field it was right once in four:
+ *
+ *   - Shopify keeps /products/<slug> on its bag drawer, so a cart with a subtotal, a
+ *     quantity stepper, a Remove link and a Checkout button classified as `pdp`.
+ *   - Ticketmaster keeps /event/<id> on a page with a quantity stepper, a SUBTOTAL and a
+ *     Reserve Tickets button. Also `pdp`.
+ *   - Frontier's fare-selection and upsell pages classified as `browse`.
+ *
+ * That is not a gap in the URL list — it is the wrong input. Retailers route by product for
+ * good reasons and nothing obliges them to change the path when the page becomes a cart.
+ *
+ * So: STRUCTURE decides, URL breaks ties. A page with repeated priced rows carrying
+ * quantity controls is a cart whatever its path says, and negative evidence counts — a page
+ * with a quantity stepper and a Remove control is not a product page no matter how much
+ * Product JSON-LD it carries.
+ *
+ * This matters beyond tidiness: `pricing.drip` compares price snapshots ACROSS stages, so a
+ * flow that never appears to leave one stage disables the highest-value detector in the
+ * product entirely.
  */
 import type { FunnelStage } from "@/shared/schema";
 import type { DocumentMeta } from "./types";
 
 type Scores = Record<FunnelStage, number>;
 
-const PATH_SIGNALS: readonly (readonly [RegExp, FunnelStage, number])[] = [
-  [/\/payment|\/billing/i, "payment", 0.6],
-  [/\/checkout/i, "checkout", 0.6],
-  [/\/(cart|basket|bag)(\/|$|\?)/i, "cart", 0.6],
-  [/\/(products?|item|itm|dp|pd)\//i, "pdp", 0.5],
-  [/\/p\/[^/]+/i, "pdp", 0.5],
-  [/\/(collections?|category|c)\//i, "browse", 0.4],
-  [/\/(search|s)(\/|\?)/i, "browse", 0.4],
+/**
+ * URL contributes at most ~0.2 — enough to separate two structurally identical pages,
+ * never enough to overrule what is actually on the page.
+ */
+const URL_WEIGHT = 0.2;
+
+const PATH_SIGNALS: readonly (readonly [RegExp, FunnelStage])[] = [
+  [/\/payment|\/billing/i, "payment"],
+  [/\/checkout|\/place-?order/i, "checkout"],
+  [/\/(cart|basket|bag)(\/|$|\?)/i, "cart"],
+  [/\/(products?|item|itm|dp|pd)\//i, "pdp"],
+  [/\/p\/[^/]+/i, "pdp"],
+  [/\/(collections?|category|c|search|s)(\/|\?|$)/i, "browse"],
 ];
 
-export function classifyStage(url: string, meta: DocumentMeta): FunnelStage {
-  const scores: Scores = { browse: 0.1, pdp: 0, cart: 0, checkout: 0, payment: 0 };
+export interface StageExplanation {
+  stage: FunnelStage;
+  scores: Scores;
+  reasons: string[];
+}
 
+/** Classify, and say why. The reasons exist so a wrong call can be diagnosed from a log. */
+export function explainStage(url: string, meta: DocumentMeta): StageExplanation {
+  const scores: Scores = { browse: 0.15, pdp: 0, cart: 0, checkout: 0, payment: 0 };
+  const reasons: string[] = [];
+
+  const add = (stage: FunnelStage, amount: number, why: string): void => {
+    scores[stage] += amount;
+    reasons.push(`${stage} +${amount.toFixed(2)} ${why}`);
+  };
+
+  // ---- payment: the least ambiguous signal on the web ----
+  if (meta.hasCcNumberField) add("payment", 0.9, "card-number field");
+  if (meta.placeOrderCtaCount > 0) add("payment", 0.35, "place-order CTA");
+
+  // ---- checkout ----
+  if (meta.hasAddressCluster) add("checkout", 0.5, "address field cluster");
+  if (meta.hasPostalCodeField) add("checkout", 0.2, "postal-code field");
+  if (meta.hasStepIndicator) add("checkout", 0.4, "checkout step indicator");
+  if (meta.placeOrderCtaCount > 0) add("checkout", 0.25, "place-order CTA");
+
+  // ---- cart ----
+  // The defining shape: repeated priced rows you can change the quantity of or delete.
+  if (meta.cartLineItems >= 1) {
+    add(
+      "cart",
+      Math.min(0.6, 0.35 + 0.12 * meta.cartLineItems),
+      `${meta.cartLineItems} line item(s)`,
+    );
+  }
+  if (meta.hasQuantityControl && meta.hasRemoveControl) {
+    add("cart", 0.35, "quantity + remove controls");
+  }
+  if (meta.moneySummaryRows >= 2) {
+    add("cart", 0.3, `${meta.moneySummaryRows} money-summary rows`);
+    add("checkout", 0.2, "money summary");
+  }
+  if (meta.hasTotalRow) add("cart", 0.2, "order-total row");
+  if (meta.checkoutCtaCount > 0 && meta.addToCartCtaCount === 0) {
+    add("cart", 0.25, "checkout CTA and no add-to-cart");
+  }
+
+  // ---- pdp ----
+  if (meta.hasProductJsonLd) add("pdp", 0.4, "Product/Offer JSON-LD");
+  if (meta.ogType === "product") add("pdp", 0.35, "og:type=product");
+  // A single add-to-cart is a product page; a grid of them is a listing.
+  if (meta.addToCartCtaCount === 1) add("pdp", 0.4, "exactly one add-to-cart");
+  else if (meta.addToCartCtaCount >= 4)
+    add("browse", 0.35, `${meta.addToCartCtaCount} add-to-cart CTAs`);
+
+  // ---- negative evidence ----
+  // Shopify bag drawers and Ticketmaster's selector both carry Product markup while being
+  // carts. Editable line items beat schema.
+  if (meta.cartLineItems >= 1 && meta.hasRemoveControl) {
+    scores.pdp -= 0.5;
+    reasons.push("pdp -0.50 editable line items present");
+    scores.browse -= 0.3;
+    reasons.push("browse -0.30 editable line items present");
+  }
+  if (meta.hasCcNumberField) {
+    scores.pdp -= 0.4;
+    scores.browse -= 0.4;
+    reasons.push("pdp/browse -0.40 card field present");
+  }
+
+  // ---- URL: tiebreaker only ----
   let pathname = "/";
   try {
     pathname = new URL(url).pathname;
   } catch {
     /* keep default */
   }
-
-  for (const [re, stage, w] of PATH_SIGNALS) {
-    if (re.test(pathname)) scores[stage] += w;
+  for (const [re, stage] of PATH_SIGNALS) {
+    if (re.test(pathname)) {
+      add(stage, URL_WEIGHT, `url ${re.source}`);
+      break; // one URL vote, not a stack of them
+    }
   }
-
-  // A credit-card field is the single most reliable signal on the page.
-  if (meta.hasCcNumberField) scores.payment += 0.7;
-  if (meta.hasAddressCluster) scores.checkout += 0.4;
-  if (meta.hasPostalCodeField) scores.checkout += 0.2;
-  if (meta.hasOrderSummaryTriple) {
-    scores.cart += 0.3;
-    scores.checkout += 0.3;
-  }
-
-  if (meta.ogType === "product") scores.pdp += 0.4;
-  if (hasProductJsonLd(meta)) scores.pdp += 0.35;
 
   let best: FunnelStage = "browse";
-  let bestScore = -1;
-  for (const [stage, s] of Object.entries(scores) as [FunnelStage, number][]) {
-    if (s > bestScore) {
-      bestScore = s;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const [stage, value] of Object.entries(scores) as [FunnelStage, number][]) {
+    if (value > bestScore) {
+      bestScore = value;
       best = stage;
     }
   }
-  return best;
+
+  return { stage: best, scores, reasons };
 }
 
-function hasProductJsonLd(meta: DocumentMeta): boolean {
-  const visit = (node: unknown, depth: number): boolean => {
-    if (depth > 4 || node === null || typeof node !== "object") return false;
-    if (Array.isArray(node)) return node.some((n) => visit(n, depth + 1));
-    const rec = node as Record<string, unknown>;
-    const t = rec["@type"];
-    if (t === "Product" || t === "Offer") return true;
-    if (Array.isArray(t) && t.some((x) => x === "Product" || x === "Offer")) return true;
-    return Object.values(rec).some((v) => visit(v, depth + 1));
-  };
-  return meta.jsonLd.some((b) => visit(b, 0));
+export function classifyStage(url: string, meta: DocumentMeta): FunnelStage {
+  return explainStage(url, meta).stage;
 }

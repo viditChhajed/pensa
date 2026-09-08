@@ -85,6 +85,15 @@ export interface CandidateNode {
   readonly removedAt: number | null;
 }
 
+/**
+ * Structural facts about the page, read once in the read phase.
+ *
+ * These exist because URL-based stage classification failed 3 of 4 times in the field.
+ * Shopify keeps /products/ on its bag drawer; Ticketmaster keeps /event/ on a page with a
+ * subtotal and a Reserve button. What a page IS shows up in its structure — repeated line
+ * items with quantity controls, a money summary ending in a total, a card field — long
+ * before it shows up in its URL.
+ */
 export interface DocumentMeta {
   readonly origin: string;
   readonly pathTemplate: string;
@@ -95,7 +104,21 @@ export interface DocumentMeta {
   readonly hasCcNumberField: boolean;
   readonly hasPostalCodeField: boolean;
   readonly hasAddressCluster: boolean;
-  readonly hasOrderSummaryTriple: boolean;
+
+  /** Rows carrying a price alongside a quantity control or a remove affordance. */
+  readonly cartLineItems: number;
+  /** Label+amount rows: subtotal, tax, shipping, savings, estimated total. */
+  readonly moneySummaryRows: number;
+  /** A row naming an order total specifically, not merely a subtotal. */
+  readonly hasTotalRow: boolean;
+  readonly hasQuantityControl: boolean;
+  readonly hasRemoveControl: boolean;
+  /** "Cart > Place Order > Pay > Complete" style progress chrome. */
+  readonly hasStepIndicator: boolean;
+  readonly addToCartCtaCount: number;
+  readonly checkoutCtaCount: number;
+  readonly placeOrderCtaCount: number;
+  readonly hasProductJsonLd: boolean;
 }
 
 /**
