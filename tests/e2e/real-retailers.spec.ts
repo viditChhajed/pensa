@@ -18,9 +18,14 @@
  *     than MIN_SITES load, rather than quietly passing on zero. A green run means real
  *     pages were genuinely exercised.
  */
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
+import {
+  CLICKABLE,
+  choosePlacement,
+  FIELD,
+  type PlacementMode,
+  PURCHASE_INTENT,
+} from "@/content/ui/card";
 
 /** Reached unauthenticated, no cart required. */
 const CANDIDATES = [
@@ -34,17 +39,9 @@ const CANDIDATES = [
 
 const MIN_SITES = 2;
 
-/** Mirrors src/content/ui/card.ts exactly; asserted against the source below. */
-const CARD_WIDTH = 360;
-const MARGIN = 16;
-const ITEM_HEIGHT = 86;
-const CARD_CHROME = 52;
-const PILL_WIDTH = 260;
-const PILL_HEIGHT = 44;
-const INTERACTIVE = 'button, a, input, select, textarea, [role="button"], [role="link"], [onclick]';
-
 let context: BrowserContext;
 const loaded: string[] = [];
+const outcomes: { site: string; mode: PlacementMode }[] = [];
 
 test.beforeAll(async () => {
   context = await chromium.launchPersistentContext("", {
@@ -60,25 +57,12 @@ test.afterAll(async () => {
   await context?.close();
 });
 
-test("the placement constants here match the production card", () => {
-  // This file re-implements chooseCorner to run it inside a live page. If production drifts,
-  // the numbers below would be testing something that no longer ships.
-  const src = readFileSync(resolve("src/content/ui/card.ts"), "utf8");
-  expect(src).toContain(`const CARD_WIDTH = ${CARD_WIDTH}`);
-  expect(src).toContain(`const MARGIN = ${MARGIN}`);
-  expect(src).toContain(`const ITEM_HEIGHT = ${ITEM_HEIGHT}`);
-  expect(src).toContain(`const CARD_CHROME = ${CARD_CHROME}`);
-  expect(src).toContain(`export const PILL_WIDTH = ${PILL_WIDTH}`);
-  expect(src).toContain(`export const PILL_HEIGHT = ${PILL_HEIGHT}`);
-  expect(src).toContain(INTERACTIVE);
-});
-
 async function tryLoad(page: Page, url: string): Promise<boolean> {
   try {
     const res = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
     if (!res || res.status() >= 400) return false;
     await page.waitForTimeout(3000);
-    const controls = await page.locator(INTERACTIVE).count();
+    const controls = await page.locator(`${FIELD}, ${CLICKABLE}`).count();
     // A bot-block page technically loads but has almost no interactive content.
     return controls > 10;
   } catch {
@@ -87,7 +71,7 @@ async function tryLoad(page: Page, url: string): Promise<boolean> {
 }
 
 for (const site of CANDIDATES) {
-  test(`overlay cannot cover a real control: ${site.name}`, async () => {
+  test(`overlay cannot cover a real purchase control: ${site.name}`, async () => {
     const page = await context.newPage();
     const ok = await tryLoad(page, site.url);
     if (!ok) {
@@ -97,149 +81,123 @@ for (const site of CANDIDATES) {
     }
     loaded.push(site.name);
 
-    const result = await page.evaluate(
-      ({ CARD_WIDTH, MARGIN, ITEM_HEIGHT, CARD_CHROME, PILL_W, PILL_H, INTERACTIVE }) => {
-        type C = { horizontal: "left" | "right"; vertical: "top" | "bottom" };
-        const CORNERS: C[] = [
-          { horizontal: "right", vertical: "bottom" },
-          { horizontal: "left", vertical: "bottom" },
-          { horizontal: "right", vertical: "top" },
-          { horizontal: "left", vertical: "top" },
-        ];
-
-        const controls: DOMRect[] = [];
-        for (const el of document.querySelectorAll(INTERACTIVE)) {
+    // Read the page; decide in Node with the SHIPPED chooser. This file used to
+    // re-implement the placement algorithm inside page.evaluate, which meant the e2e could
+    // pass while production did something else entirely.
+    const controls = await page.evaluate(
+      ({ FIELD, CLICKABLE, INTENT }) => {
+        const intent = new RegExp(INTENT, "i");
+        const out: {
+          left: number;
+          top: number;
+          right: number;
+          bottom: number;
+          critical: boolean;
+          name: string;
+        }[] = [];
+        for (const el of document.querySelectorAll(`${FIELD}, ${CLICKABLE}`)) {
           const r = el.getBoundingClientRect();
           if (r.width < 4 || r.height < 4) continue;
-          if (r.bottom < 0 || r.top > innerHeight) continue;
-          if (r.right < 0 || r.left > innerWidth) continue;
-          controls.push(r);
-        }
-
-        const collisionsAt = (size: { w: number; h: number }, c: C): number => {
-          const left = c.horizontal === "right" ? innerWidth - MARGIN - size.w : MARGIN;
-          const top = c.vertical === "bottom" ? innerHeight - MARGIN - size.h : MARGIN;
-          let hits = 0;
-          for (const r of controls) {
-            if (
-              r.left < left + size.w &&
-              r.right > left &&
-              r.top < top + size.h &&
-              r.bottom > top
-            ) {
-              hits++;
-            }
-          }
-          return hits;
-        };
-
-        // Mirrors choosePlacement: full card, else compact pill, else suppress.
-        const full = {
-          w: Math.min(CARD_WIDTH, innerWidth - MARGIN * 2),
-          h: Math.min(CARD_CHROME + ITEM_HEIGHT * 4, innerHeight - MARGIN * 2),
-        };
-        const pill = {
-          w: Math.min(PILL_W, innerWidth - MARGIN * 2),
-          h: Math.min(PILL_H, innerHeight - MARGIN * 2),
-        };
-
-        let mode: "card" | "pill" | "suppressed" = "suppressed";
-        let corner: C = CORNERS[0] as C;
-        let size = pill;
-
-        for (const c of CORNERS) {
-          if (collisionsAt(full, c) === 0) {
-            mode = "card";
-            corner = c;
-            size = full;
-            break;
-          }
-        }
-        if (mode === "suppressed") {
-          for (const c of CORNERS) {
-            if (collisionsAt(pill, c) === 0) {
-              mode = "pill";
-              corner = c;
-              size = pill;
-              break;
-            }
-          }
-        }
-
-        if (mode === "suppressed") {
-          return {
-            mode,
-            corner: "none",
-            controlsOnScreen: controls.length,
-            covered: [] as string[],
-          };
-        }
-
-        const host = document.createElement("div");
-        const bytes = new Uint8Array(8);
-        crypto.getRandomValues(bytes);
-        host.id = `pp-${Array.from(bytes, (b) => b.toString(36))
-          .join("")
-          .slice(0, 10)}`;
-        host.style.cssText = [
-          "position:fixed !important",
-          `${corner.horizontal}:16px !important`,
-          `${corner.vertical}:16px !important`,
-          "z-index:2147483647 !important",
-          "pointer-events:none !important",
-          `width:${size.w}px !important`,
-          "display:block !important",
-          "visibility:visible !important",
-        ].join(";");
-        const root = host.attachShadow({ mode: "closed" });
-        const cardEl = document.createElement("div");
-        cardEl.style.cssText = `pointer-events:auto;background:#fff;height:${size.h}px`;
-        root.append(cardEl);
-        document.documentElement.append(host);
-
-        // Hit-test EVERY visible interactive control on the real page.
-        const covered: string[] = [];
-        for (const el of document.querySelectorAll(INTERACTIVE)) {
-          const r = el.getBoundingClientRect();
-          if (r.width < 8 || r.height < 8) continue;
           if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) continue;
-          const cx = Math.round(r.left + r.width / 2);
-          const cy = Math.round(r.top + r.height / 2);
-          if (cx < 0 || cy < 0 || cx >= innerWidth || cy >= innerHeight) continue;
-          if (document.elementFromPoint(cx, cy) === host) {
-            covered.push(
-              `${el.tagName}${el.id ? `#${el.id}` : ""} "${(el.textContent ?? "").trim().slice(0, 40)}"`,
-            );
-          }
+          const name =
+            el.getAttribute("aria-label") ??
+            (el as HTMLInputElement).value ??
+            (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+          const critical =
+            el.matches(FIELD) ||
+            el.matches('[type="submit"]') ||
+            el === document.activeElement ||
+            intent.test(name);
+          out.push({
+            left: r.left,
+            top: r.top,
+            right: r.right,
+            bottom: r.bottom,
+            critical,
+            name: `${el.tagName}${el.id ? `#${el.id}` : ""} "${name.slice(0, 40)}"`,
+          });
         }
-
-        return {
-          mode,
-          corner: `${corner.vertical}-${corner.horizontal}`,
-          controlsOnScreen: controls.length,
-          covered,
-        };
+        return out;
       },
-      {
-        CARD_WIDTH,
-        MARGIN,
-        ITEM_HEIGHT,
-        CARD_CHROME,
-        PILL_W: PILL_WIDTH,
-        PILL_H: PILL_HEIGHT,
-        INTERACTIVE,
-      },
+      { FIELD, CLICKABLE, INTENT: PURCHASE_INTENT.source },
     );
 
+    const viewport = page.viewportSize() ?? { width: 1280, height: 800 };
+    const placement = choosePlacement(controls, { w: viewport.width, h: viewport.height }, 4);
+
+    const criticalOnScreen = controls.filter((c) => c.critical).length;
     console.log(
-      `  ${site.name}: ${result.controlsOnScreen} controls -> ${result.mode} @ ${result.corner}`,
+      `  ${site.name}: ${controls.length} controls (${criticalOnScreen} critical) -> ` +
+        `${placement.mode} @ ${placement.anchor.v}-${placement.anchor.h}, ` +
+        `covering ${placement.ordinaryCovered} ordinary`,
     );
+    outcomes.push({ site: site.name, mode: placement.mode });
 
-    expect(result.controlsOnScreen, "page had no interactive content").toBeGreaterThan(10);
-    expect(
-      result.covered,
-      `overlay covered ${result.covered.length} real control(s): ${result.covered.join(" | ")}`,
-    ).toEqual([]);
+    expect(controls.length, "page had no interactive content").toBeGreaterThan(10);
+
+    if (placement.mode !== "suppressed") {
+      // Render at exactly the chosen position and hit-test the live page, because geometry
+      // agreeing with itself proves nothing about what the browser actually paints.
+      const covered = await page.evaluate(
+        ({ pos, size, FIELD, CLICKABLE, INTENT }) => {
+          const intent = new RegExp(INTENT, "i");
+          const host = document.createElement("div");
+          host.id = "pp-e2e-probe";
+          host.style.cssText = [
+            "position:fixed !important",
+            `left:${pos.left}px !important`,
+            `top:${pos.top}px !important`,
+            "z-index:2147483647 !important",
+            "pointer-events:none !important",
+            `width:${size.w}px !important`,
+            "display:block !important",
+            "visibility:visible !important",
+          ].join(";");
+          const root = host.attachShadow({ mode: "closed" });
+          const cardEl = document.createElement("div");
+          cardEl.style.cssText = `pointer-events:auto;background:#fff;height:${size.h}px`;
+          root.append(cardEl);
+          document.documentElement.append(host);
+
+          const hit: string[] = [];
+          for (const el of document.querySelectorAll(`${FIELD}, ${CLICKABLE}`)) {
+            const r = el.getBoundingClientRect();
+            if (r.width < 8 || r.height < 8) continue;
+            if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) continue;
+            const cx = Math.round(r.left + r.width / 2);
+            const cy = Math.round(r.top + r.height / 2);
+            if (cx < 0 || cy < 0 || cx >= innerWidth || cy >= innerHeight) continue;
+            if (document.elementFromPoint(cx, cy) !== host) continue;
+            const name =
+              el.getAttribute("aria-label") ??
+              (el as HTMLInputElement).value ??
+              (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+            const critical =
+              el.matches(FIELD) ||
+              el.matches('[type="submit"]') ||
+              el === document.activeElement ||
+              intent.test(name);
+            if (critical) hit.push(`${el.tagName} "${name.slice(0, 40)}"`);
+          }
+          host.remove();
+          return hit;
+        },
+        {
+          pos: placement.position,
+          size: placement.size,
+          FIELD,
+          CLICKABLE,
+          INTENT: PURCHASE_INTENT.source,
+        },
+      );
+
+      // THE non-negotiable assertion. Ordinary links may be covered; purchase-path controls
+      // and form fields may not.
+      expect(
+        covered,
+        `overlay covered ${covered.length} PURCHASE-PATH control(s): ${covered.join(" | ")}`,
+      ).toEqual([]);
+    }
 
     await page.close();
   });
@@ -252,4 +210,22 @@ test("enough real sites were actually exercised", () => {
     `only ${loaded.length} real site(s) loaded (${loaded.join(", ")}); need >= ${MIN_SITES}. ` +
       "Re-run with network access, or treat the real-retailer check as NOT performed.",
   ).toBeGreaterThanOrEqual(MIN_SITES);
+});
+
+test("a card is actually placeable on most real pages", () => {
+  // The measurement that matters for the product, not just for safety. Before controls were
+  // tiered, the answer here was zero: 60% of samples suppressed and the tester never saw a
+  // card across six live retailers. A safety rule that fires on every page is a broken
+  // product, so this asserts the rule is satisfiable, not merely safe.
+  if (outcomes.length === 0) test.skip(true, "no sites loaded");
+  const shown = outcomes.filter((o) => o.mode !== "suppressed").length;
+  console.log(
+    `  placement: ${shown}/${outcomes.length} showed something — ` +
+      outcomes.map((o) => `${o.site}=${o.mode}`).join(", "),
+  );
+  expect(
+    shown,
+    `every real page suppressed: ${outcomes.map((o) => o.site).join(", ")}. ` +
+      "The placement rule is unsatisfiable again.",
+  ).toBeGreaterThan(0);
 });

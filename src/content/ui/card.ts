@@ -35,34 +35,7 @@ function randomHostId(): string {
   );
 }
 const AUTO_DISMISS_MS = 20_000;
-const CARD_WIDTH = 360;
-const MARGIN = 16;
-/** Rough per-item height, for estimating the card's footprint before it exists. */
-const ITEM_HEIGHT = 86;
-const CARD_CHROME = 52;
 
-type Corner = { horizontal: "left" | "right"; vertical: "top" | "bottom" };
-
-/** Preference order. Bottom-right first because that is the least intrusive when it is free. */
-const CORNERS: Corner[] = [
-  { horizontal: "right", vertical: "bottom" },
-  { horizontal: "left", vertical: "bottom" },
-  { horizontal: "right", vertical: "top" },
-  { horizontal: "left", vertical: "top" },
-];
-
-const INTERACTIVE = 'button, a, input, select, textarea, [role="button"], [role="link"], [onclick]';
-
-/**
- * Pick a corner whose footprint covers nothing the shopper might need to click.
- *
- * This exists because of a concrete failure: with the card fixed at bottom-right, a
- * checkout button at bottom-right was underneath it, and `document.elementFromPoint` at the
- * button's centre returned the overlay. An extension that can cover the "Place order"
- * button is worse than no extension, so position is computed, not assumed.
- *
- * All reads happen BEFORE the host is inserted, so nothing of ours pollutes the hit test.
- */
 export interface Rect {
   left: number;
   top: number;
@@ -70,103 +43,230 @@ export interface Rect {
   bottom: number;
 }
 
+/**
+ * A control the card must not sit on top of — or, if `critical` is false, one it would
+ * merely be impolite to sit on top of.
+ *
+ * The distinction is the whole fix. See `choosePlacement`.
+ */
+export interface Control extends Rect {
+  /** Absent means critical. Callers that do not tier must get the conservative answer. */
+  critical?: boolean;
+}
+
 export interface Viewport {
   w: number;
   h: number;
 }
 
-/**
- * Placement modes, in descending order of usefulness.
- *
- * Real retailer pages have NO free corner. Measured on live storefronts: target 1 collision,
- * ikea 3, newegg 9, rei 0. The original "least-obstructed corner" fallback therefore covered
- * between 3 and 9 real controls on three of four sites — violating the one rule the plan
- * calls non-negotiable.
- *
- * So the card degrades rather than intrudes: full card if it fits, a compact pill if not,
- * and nothing at all if even the pill would cover a control. A suppressed digest is not
- * lost — every detection is still recorded and shown in the popup summary, which the user
- * reads on their own schedule.
- */
-export type PlacementMode = "card" | "pill" | "suppressed";
+const CARD_WIDTH = 360;
+const MARGIN = 16;
+/** Rough per-item height, for estimating the card's footprint before it exists. */
+const ITEM_HEIGHT = 86;
+const CARD_CHROME = 52;
 
-export interface Placement {
-  mode: PlacementMode;
-  corner: Corner;
-  size: Viewport;
+/** Compact fallback: one line, no prompt body. */
+export const PILL_WIDTH = 240;
+export const PILL_HEIGHT = 40;
+
+export interface Anchor {
+  h: "left" | "center" | "right";
+  v: "top" | "middle" | "bottom";
 }
 
-/** Compact fallback: one line, no prompt body, expands on click. */
-export const PILL_WIDTH = 260;
-export const PILL_HEIGHT = 44;
+/**
+ * Candidate positions, in preference order. Bottom-right first because it is the least
+ * intrusive when free; the centred and mid-height anchors are last because they sit in the
+ * reading path even when they cover nothing.
+ *
+ * Four corners was not enough. On a dense storefront the header fills both top anchors and
+ * the footer or a chat widget fills both bottom ones, and the card had nowhere left to go.
+ */
+const ANCHORS: readonly Anchor[] = [
+  { h: "right", v: "bottom" },
+  { h: "left", v: "bottom" },
+  { h: "right", v: "top" },
+  { h: "left", v: "top" },
+  { h: "right", v: "middle" },
+  { h: "left", v: "middle" },
+  { h: "center", v: "bottom" },
+  { h: "center", v: "top" },
+];
 
-function collisionsAt(
-  controls: readonly Rect[],
-  viewport: Viewport,
+export interface Position {
+  left: number;
+  top: number;
+}
+
+export function positionOf(anchor: Anchor, viewport: Viewport, size: Viewport): Position {
+  const left =
+    anchor.h === "right"
+      ? viewport.w - MARGIN - size.w
+      : anchor.h === "left"
+        ? MARGIN
+        : Math.round((viewport.w - size.w) / 2);
+  const top =
+    anchor.v === "bottom"
+      ? viewport.h - MARGIN - size.h
+      : anchor.v === "top"
+        ? MARGIN
+        : Math.round((viewport.h - size.h) / 2);
+  return { left: Math.max(0, left), top: Math.max(0, top) };
+}
+
+/**
+ * Selector for things a card must never cover, no matter what.
+ *
+ * Every form field qualifies: on a checkout page they are the task. Buttons and links
+ * qualify only when their name puts them on the purchase path — see PURCHASE_INTENT.
+ */
+export const FIELD =
+  'input:not([type="hidden"]), select, textarea, [contenteditable=""], [contenteditable="true"]';
+export const CLICKABLE = 'button, a, [role="button"], [role="link"], [type="submit"], [onclick]';
+
+/**
+ * Names that put a control on the purchase path. Deliberately generous — a false "critical"
+ * costs one candidate position, a false "ordinary" covers a button someone needed.
+ */
+export const PURCHASE_INTENT =
+  /\b(check\s?out|place\s+order|pay|buy|purchase|order|submit|continue|next|proceed|confirm|apply|add to (cart|bag|basket)|book|reserve|select|choose|sign in|log in|edit|remove|delete|save)\b/i;
+
+function nameOf(el: Element): string {
+  const aria = el.getAttribute("aria-label");
+  if (aria) return aria;
+  if (el instanceof HTMLInputElement && el.value) return el.value;
+  return (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+}
+
+function isCritical(el: Element): boolean {
+  if (el.matches(FIELD)) return true;
+  if (el.matches('[type="submit"]')) return true;
+  if (el === el.ownerDocument.activeElement) return true;
+  return PURCHASE_INTENT.test(nameOf(el));
+}
+
+function collisions(
+  controls: readonly Control[],
+  pos: Position,
   size: Viewport,
-  corner: Corner,
-): number {
-  const left = corner.horizontal === "right" ? viewport.w - MARGIN - size.w : MARGIN;
-  const top = corner.vertical === "bottom" ? viewport.h - MARGIN - size.h : MARGIN;
-  let hits = 0;
+): { critical: number; ordinary: number } {
+  let critical = 0;
+  let ordinary = 0;
   for (const r of controls) {
     // Exact rectangle intersection, NOT point sampling. A 4x4 sample grid was tried first
     // and silently failed in a real browser: with 74px vertical steps it stepped straight
     // over a 48px-tall checkout button and reported the corner as clear.
-    if (r.left < left + size.w && r.right > left && r.top < top + size.h && r.bottom > top) {
-      hits++;
-    }
+    const hit =
+      r.left < pos.left + size.w &&
+      r.right > pos.left &&
+      r.top < pos.top + size.h &&
+      r.bottom > pos.top;
+    if (!hit) continue;
+    if (r.critical !== false) critical++;
+    else ordinary++;
   }
-  return hits;
+  return { critical, ordinary };
+}
+
+/** Best position for a given size, or null if every one covers something critical. */
+function bestAnchor(
+  controls: readonly Control[],
+  viewport: Viewport,
+  size: Viewport,
+): { anchor: Anchor; position: Position } | null {
+  let best: { anchor: Anchor; position: Position; ordinary: number } | null = null;
+  for (const anchor of ANCHORS) {
+    const position = positionOf(anchor, viewport, size);
+    const { critical, ordinary } = collisions(controls, position, size);
+    if (critical > 0) continue;
+    if (ordinary === 0) return { anchor, position }; // perfect, stop looking
+    if (best === null || ordinary < best.ordinary) best = { anchor, position, ordinary };
+  }
+  return best ? { anchor: best.anchor, position: best.position } : null;
+}
+
+export type PlacementMode = "card" | "pill" | "suppressed";
+
+export interface Placement {
+  mode: PlacementMode;
+  anchor: Anchor;
+  position: Position;
+  size: Viewport;
+  /** How many non-critical controls the chosen spot overlaps. Zero is preferred, not required. */
+  ordinaryCovered: number;
 }
 
 /**
- * Pure geometry. Given the boxes of everything clickable, find a placement that covers
- * NOTHING. Returns `suppressed` rather than settling for a least-bad option.
+ * Pure geometry. Find somewhere the card can sit.
+ *
+ * THE RULE THAT CHANGED. The original rule was "cover nothing clickable", and on real pages
+ * it is unsatisfiable: a measured 60% of samples suppressed, and across four live retailers
+ * the tester never once saw a card. Header and nav clusters fill the corners, so the card
+ * had nowhere to go and the product silently did nothing.
+ *
+ * "Clickable" was the wrong category. A footer link reading "Careers" is not something a
+ * shopper needs during a purchase; the Place Order button is. So controls are tiered, and
+ * the rule is now:
+ *
+ *   - NEVER overlap a critical control: any form field, any submit, anything focused, and
+ *     any button or link whose name puts it on the purchase path.
+ *   - Among the positions that satisfy that, prefer the one covering the fewest ordinary
+ *     controls — but do not refuse to render because that number is above zero. The card is
+ *     small, dismissible, keyboard reachable and disappears on its own after 20 seconds.
+ *
+ * The e2e test asserting a checkout button can never be covered still holds, because a
+ * checkout button is critical by name.
  */
 export function choosePlacement(
-  controls: readonly Rect[],
+  controls: readonly Control[],
   viewport: Viewport,
   itemCount: number,
 ): Placement {
-  const full = cardSize(itemCount, viewport);
-  for (const corner of CORNERS) {
-    if (collisionsAt(controls, viewport, full, corner) === 0) {
-      return { mode: "card", corner, size: full };
-    }
+  // Among card sizes, prefer the one covering the fewest ordinary controls; ties go to the
+  // larger card. Measured on newegg, where simply taking the first merely-safe size sat on
+  // nine nav links when a different anchor sat on one.
+  //
+  // A card always beats a pill, though. The pill shows a count and no prompts, so trading
+  // four real questions for two uncovered footer links is a bad deal — an earlier version
+  // made exactly that trade on ikea.
+  let best: Placement | null = null;
+  for (let n = Math.min(itemCount, 4); n >= 1; n--) {
+    const size = cardSize(n, viewport);
+    const spot = bestAnchor(controls, viewport, size);
+    if (!spot) continue;
+    const ordinaryCovered = collisions(controls, spot.position, size).ordinary;
+    const placement: Placement = { mode: "card", ...spot, size, ordinaryCovered };
+    if (ordinaryCovered === 0) return placement; // cannot do better
+    if (best === null || ordinaryCovered < best.ordinaryCovered) best = placement;
+  }
+  if (best) return best;
+
+  const pill = pillSize(viewport);
+  const pillSpot = bestAnchor(controls, viewport, pill);
+  if (pillSpot) {
+    return {
+      mode: "pill",
+      ...pillSpot,
+      size: pill,
+      ordinaryCovered: collisions(controls, pillSpot.position, pill).ordinary,
+    };
   }
 
-  const pill: Viewport = {
+  // Every position covers something on the purchase path. Saying nothing is correct here.
+  return {
+    mode: "suppressed",
+    anchor: ANCHORS[0] as Anchor,
+    position: positionOf(ANCHORS[0] as Anchor, viewport, pill),
+    size: pill,
+    ordinaryCovered: 0,
+  };
+}
+
+export function pillSize(viewport: Viewport): Viewport {
+  return {
     w: Math.min(PILL_WIDTH, viewport.w - MARGIN * 2),
     h: Math.min(PILL_HEIGHT, viewport.h - MARGIN * 2),
   };
-  for (const corner of CORNERS) {
-    if (collisionsAt(controls, viewport, pill, corner) === 0) {
-      return { mode: "pill", corner, size: pill };
-    }
-  }
-
-  // Nowhere is clear. Covering a control is worse than saying nothing right now.
-  return { mode: "suppressed", corner: CORNERS[0] as Corner, size: pill };
-}
-
-/** Retained for the existing unit tests: which corner is least obstructed. */
-export function chooseCorner(
-  controls: readonly Rect[],
-  viewport: Viewport,
-  card: Viewport,
-): Corner {
-  let best: Corner = CORNERS[0] as Corner;
-  let bestHits = Number.POSITIVE_INFINITY;
-  for (const corner of CORNERS) {
-    const hits = collisionsAt(controls, viewport, card, corner);
-    if (hits === 0) return corner;
-    if (hits < bestHits) {
-      bestHits = hits;
-      best = corner;
-    }
-  }
-  return best;
 }
 
 /** Estimated card footprint, before the card exists to measure. */
@@ -186,7 +286,7 @@ export function cardSize(itemCount: number, viewport: Viewport): Viewport {
  * split was wrong. Measuring first makes the record accurate in a single round trip.
  */
 export interface PlacementCapacity {
-  /** Largest digest, 0-4, that fits somewhere covering nothing clickable. */
+  /** Largest digest, 0-4, that fits somewhere covering nothing critical. */
   maxCardItems: number;
   /** Whether the compact pill fits, when a full card does not. */
   pillFits: boolean;
@@ -198,31 +298,31 @@ export function measureCapacity(): PlacementCapacity {
 
   let maxCardItems = 0;
   for (let n = 4; n >= 1; n--) {
-    const size = cardSize(n, viewport);
-    if (CORNERS.some((c) => collisionsAt(controls, viewport, size, c) === 0)) {
+    if (bestAnchor(controls, viewport, cardSize(n, viewport))) {
       maxCardItems = n;
       break;
     }
   }
-
-  const pill: Viewport = {
-    w: Math.min(PILL_WIDTH, viewport.w - MARGIN * 2),
-    h: Math.min(PILL_HEIGHT, viewport.h - MARGIN * 2),
-  };
-  const pillFits = CORNERS.some((c) => collisionsAt(controls, viewport, pill, c) === 0);
+  const pillFits = bestAnchor(controls, viewport, pillSize(viewport)) !== null;
 
   return { maxCardItems, pillFits };
 }
 
-function readControls(viewport: Viewport): Rect[] {
-  const controls: Rect[] = [];
-  for (const el of document.querySelectorAll(INTERACTIVE)) {
+export function readControls(viewport: Viewport): Control[] {
+  const controls: Control[] = [];
+  for (const el of document.querySelectorAll(`${FIELD}, ${CLICKABLE}`)) {
     const r = el.getBoundingClientRect();
     if (r.width < 4 || r.height < 4) continue;
     // Off-screen controls cannot be covered by a fixed-position card.
     if (r.bottom < 0 || r.top > viewport.h) continue;
     if (r.right < 0 || r.left > viewport.w) continue;
-    controls.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
+    controls.push({
+      left: r.left,
+      top: r.top,
+      right: r.right,
+      bottom: r.bottom,
+      critical: isCritical(el),
+    });
   }
   return controls;
 }
@@ -247,6 +347,10 @@ export interface CardItem {
 export class DigestCard {
   private host: HTMLElement | null = null;
   private timer: number | null = null;
+  private items: CardItem[] = [];
+  private mode: PlacementMode = "suppressed";
+  private recheck: (() => void) | null = null;
+  private recheckQueued = false;
 
   /**
    * Renders and returns what was ACTUALLY displayed. Layout can shift between the capacity
@@ -271,34 +375,16 @@ export class DigestCard {
       console.debug("[patterns] digest suppressed: no placement free of interactive controls");
       return "suppressed";
     }
-    const corner = placement.corner;
-    // Every layout-critical property carries !important: an inline important declaration
-    // beats an author stylesheet's important declaration, so a page cannot hide the card by
-    // selector. Verified against a fixture that tries exactly that.
-    host.style.cssText = [
-      "position:fixed !important",
-      `${corner.horizontal}:16px !important`,
-      `${corner.vertical}:16px !important`,
-      "z-index:2147483647 !important",
-      "pointer-events:none !important",
-      `width:${placement.size.w}px !important`,
-      "contain:layout style",
-      "display:block !important",
-      "visibility:visible !important",
-      "opacity:1 !important",
-      "transform:none !important",
-      "clip-path:none !important",
-      "max-width:none !important",
-      "max-height:none !important",
-      "margin:0 !important",
-      "filter:none !important",
-    ].join(";");
+    this.applyPosition(host, placement);
 
     const root = host.attachShadow({ mode: "closed" });
     root.append(this.styles(), placement.mode === "pill" ? this.pill(items) : this.card(items));
 
     document.documentElement.append(host);
     this.host = host;
+    this.items = items;
+    this.mode = placement.mode;
+    this.watchLayout();
 
     this.timer = window.setTimeout(() => this.dismiss(), AUTO_DISMISS_MS);
 
@@ -411,7 +497,75 @@ export class DigestCard {
     return card;
   }
 
+  /**
+   * Position is set inline, in pixels, with !important on every layout-critical property:
+   * an inline important declaration beats an author stylesheet's important declaration, so
+   * a page cannot hide the card by selector. Verified against a fixture that tries exactly
+   * that. Pixels rather than `right:16px` because the anchors now include centred ones.
+   */
+  private applyPosition(host: HTMLElement, placement: Placement): void {
+    host.style.cssText = [
+      "position:fixed !important",
+      `left:${placement.position.left}px !important`,
+      `top:${placement.position.top}px !important`,
+      "right:auto !important",
+      "bottom:auto !important",
+      "z-index:2147483647 !important",
+      "pointer-events:none !important",
+      `width:${placement.size.w}px !important`,
+      "contain:layout style",
+      "display:block !important",
+      "visibility:visible !important",
+      "opacity:1 !important",
+      "transform:none !important",
+      "clip-path:none !important",
+      "max-width:none !important",
+      "max-height:none !important",
+      "margin:0 !important",
+      "filter:none !important",
+    ].join(";");
+  }
+
+  /**
+   * A fixed card is measured once but lives on while the page scrolls underneath it. A spot
+   * that was clear of the Place Order button at the moment of rendering is not clear of it
+   * two seconds later, so the check has to repeat.
+   *
+   * Cheap: only on scroll and resize, coalesced to one animation frame, and the card is gone
+   * within 20 seconds anyway.
+   */
+  private watchLayout(): void {
+    const onChange = (): void => {
+      if (this.recheckQueued) return;
+      this.recheckQueued = true;
+      requestAnimationFrame(() => {
+        this.recheckQueued = false;
+        this.reposition();
+      });
+    };
+    this.recheck = onChange;
+    addEventListener("scroll", onChange, { passive: true });
+    addEventListener("resize", onChange, { passive: true });
+  }
+
+  private reposition(): void {
+    const host = this.host;
+    if (!host) return;
+    const placement = findPlacement(this.mode === "pill" ? 1 : this.items.length);
+    if (placement.mode === "suppressed") {
+      // The page scrolled something critical under the card. Leave rather than sit on it.
+      this.dismiss();
+      return;
+    }
+    this.applyPosition(host, placement);
+  }
+
   dismiss(): void {
+    if (this.recheck) {
+      removeEventListener("scroll", this.recheck);
+      removeEventListener("resize", this.recheck);
+      this.recheck = null;
+    }
     if (this.timer !== null) {
       clearTimeout(this.timer);
       this.timer = null;
