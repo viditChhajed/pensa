@@ -1,6 +1,6 @@
 # EVAL — manual spot-check
 
-**Status: IN PROGRESS — 4 of 6 sites. Summary table not yet computed.**
+**Status: IN PROGRESS — 5 of 6 sites (glossier outstanding). Summary not yet computed.**
 
 Precision is currently **unmeasured**. Every threshold in the shipped build is a hand-set
 guess, marked `confidenceBasis: "hand_set"` in the schema so it cannot be mistaken for a
@@ -80,7 +80,14 @@ string can carry session and account identifiers, and this file is committed.
 | 8 | pricing.charm | upsell modal | flyfrontier | airline | browse | Y | no-room | **Y** | N | "*Annual membership costs $59.99 per year" — genuinely charm priced, so correct. But low value: it is marketing small print, not the fare. Detector picks largest-rendered price and landed on a footnote. |
 | 9 | defaults.preselected | upsell modal | flyfrontier | airline | browse | **N** | not-fired | — | — | **MISS, clearest one so far.** Pre-ticked: "Basic Fare works for me. I understand purchasing options separately may result in a higher overall price." Preselected with direct cost consequence. Lexicon wants warranty/insurance/membership/protection — none present. |
 | 10 | (stage classifier) | upsell modal | flyfrontier | airline | browse | — | — | **N** | — | Deep inside a booking flow with an upsell interstitial, classified "browse". Second stage misclassification. |
-| 11 | **obstruction.decline_attestation** | upsell modal | flyfrontier | airline | browse | **N** | not-fired | — | — | **NEW PATTERN, no detector exists.** Upgrade = 1 click. Decline = tick "I understand purchasing options separately may result in a higher overall price" + click. Asymmetric friction plus forced attestation. Added to taxonomy as Tier 3. |
+| 11a | scarcity.stock | cart | shein | fast_fashion | **cart** | Y | no-room | **Y** | N | **CORRECT.** x4: "Almost Sold Out", "Checkout Now (1)Almost sold out!". Genuine scarcity copy, visibly on the page. Four hits are duplicates of the same badge rendered in several places. |
+| 11b | bnpl.installments | pdp | shein | fast_fashion | pdp | Y | no-room | **Y** | N | **CORRECT.** x2: "Pay now, or in 4 payments of $3.05" with a Klarna badge. Second confirmed correct site for this detector. |
+| 11c | (stage classifier) | cart | shein | fast_fashion | **cart** | — | — | **Y** | — | **First correct stage classification of the run.** us.shein.com/cart hit the path token and the order-summary triple. |
+| 11d | pricing.charm | pdp | shein | fast_fashion | pdp | Y | no-room | **N** | **suspect** | Matched "Customers Also Viewed10#KnitEssentials-15%SHEIN PETITE Balle" — concatenated blob text with no visible price. Also "4Local-50%Women's Casual Denim Spliced Jacket". Evidence is meaningless. CAUSE: charm picks the LARGEST-AREA priced node, which on a grid page is a big container whose text is every child run together. It should prefer leaf price nodes. |
+| 11e | anchoring.reference_price | pdp | shein | fast_fashion | pdp | **N** | not-fired | — | — | **MISS, and the clearest possible case.** PDP shows "$12.23 $16.19 -24%" with $16.19 struck through — a textbook was/now pair. Needs diagnosis against the live DOM. |
+| 11f | goal_gradient.threshold | cart | shein | fast_fashion | cart | **N** | not-fired | — | — | **MISS.** Cart shows "Add $2.77 more to cart for FREE STANDARD SHIPPING on SHEIN products!". Patterns want "add $X more to get/unlock/qualify"; "more to cart for" is not covered. Same lexical brittleness as the other misses. |
+| 11g | nagging.repeat_interstitial | home | shein | fast_fashion | browse | — | — | — | — | Two separate interstitials on load ("Welcome To The SHEIN US Site 30% OFF", then "Claim your 1 coupons 70% OFF"). Would have fired if shipped. Deferred to v1.1 — noting that the field data supports it. |
+| 12 | **obstruction.decline_attestation** | upsell modal | flyfrontier | airline | browse | **N** | not-fired | — | — | **NEW PATTERN, no detector exists.** Upgrade = 1 click. Decline = tick "I understand purchasing options separately may result in a higher overall price" + click. Asymmetric friction plus forced attestation. Added to taxonomy as Tier 3. |
 | 12 | | | | | | | | | | |
 | 4 | | | | | | | | | | |
 | 5 | | | | | | | | | | |
@@ -89,7 +96,14 @@ string can carry session and account identifiers, and this file is committed.
 | 8 | | | | | | | | | | |
 | 9 | | | | | | | | | | |
 | 10 | | | | | | | | | | |
-| 11 | **obstruction.decline_attestation** | upsell modal | flyfrontier | airline | browse | **N** | not-fired | — | — | **NEW PATTERN, no detector exists.** Upgrade = 1 click. Decline = tick "I understand purchasing options separately may result in a higher overall price" + click. Asymmetric friction plus forced attestation. Added to taxonomy as Tier 3. |
+| 11a | scarcity.stock | cart | shein | fast_fashion | **cart** | Y | no-room | **Y** | N | **CORRECT.** x4: "Almost Sold Out", "Checkout Now (1)Almost sold out!". Genuine scarcity copy, visibly on the page. Four hits are duplicates of the same badge rendered in several places. |
+| 11b | bnpl.installments | pdp | shein | fast_fashion | pdp | Y | no-room | **Y** | N | **CORRECT.** x2: "Pay now, or in 4 payments of $3.05" with a Klarna badge. Second confirmed correct site for this detector. |
+| 11c | (stage classifier) | cart | shein | fast_fashion | **cart** | — | — | **Y** | — | **First correct stage classification of the run.** us.shein.com/cart hit the path token and the order-summary triple. |
+| 11d | pricing.charm | pdp | shein | fast_fashion | pdp | Y | no-room | **N** | **suspect** | Matched "Customers Also Viewed10#KnitEssentials-15%SHEIN PETITE Balle" — concatenated blob text with no visible price. Also "4Local-50%Women's Casual Denim Spliced Jacket". Evidence is meaningless. CAUSE: charm picks the LARGEST-AREA priced node, which on a grid page is a big container whose text is every child run together. It should prefer leaf price nodes. |
+| 11e | anchoring.reference_price | pdp | shein | fast_fashion | pdp | **N** | not-fired | — | — | **MISS, and the clearest possible case.** PDP shows "$12.23 $16.19 -24%" with $16.19 struck through — a textbook was/now pair. Needs diagnosis against the live DOM. |
+| 11f | goal_gradient.threshold | cart | shein | fast_fashion | cart | **N** | not-fired | — | — | **MISS.** Cart shows "Add $2.77 more to cart for FREE STANDARD SHIPPING on SHEIN products!". Patterns want "add $X more to get/unlock/qualify"; "more to cart for" is not covered. Same lexical brittleness as the other misses. |
+| 11g | nagging.repeat_interstitial | home | shein | fast_fashion | browse | — | — | — | — | Two separate interstitials on load ("Welcome To The SHEIN US Site 30% OFF", then "Claim your 1 coupons 70% OFF"). Would have fired if shipped. Deferred to v1.1 — noting that the field data supports it. |
+| 12 | **obstruction.decline_attestation** | upsell modal | flyfrontier | airline | browse | **N** | not-fired | — | — | **NEW PATTERN, no detector exists.** Upgrade = 1 click. Decline = tick "I understand purchasing options separately may result in a higher overall price" + click. Asymmetric friction plus forced attestation. Added to taxonomy as Tier 3. |
 | 12 | | | | | | | | | | |
 | 13 | | | | | | | | | | |
 | 14 | | | | | | | | | | |
