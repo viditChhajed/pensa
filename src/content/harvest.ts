@@ -496,9 +496,58 @@ function readStructuralSignals(doc: Document) {
     }
   }
 
+  // ---- one bottom-up text pass, shared by both scans below ----
+  //
+  // These two scans used to call joinedText (and, for line items, querySelectorAll) once per
+  // element over essentially the whole document. Both are O(subtree) per element, so the
+  // scans were quadratic and readDocumentMeta became the single most expensive phase of a
+  // pass — measured at 96ms on ikea against a 50ms budget for the entire pass.
+  //
+  // Computing every element's joined text once, children before parents, makes it linear.
+  // Text is capped because nothing here cares about a string longer than a cart row.
+  const MAX_ROW_TEXT = 420;
+  const textOf = new Map<Element, string>();
+  const post: Element[] = [];
+  const walker = doc.createTreeWalker(doc.body ?? doc, NodeFilter.SHOW_ELEMENT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) post.push(n as Element);
+
+  for (let i = post.length - 1; i >= 0; i--) {
+    const el = post[i] as Element;
+    // Same shape as joinedText: element boundaries become spaces, so "$12.00" and "25% off"
+    // in sibling nodes never glue into "$12.0025% off".
+    const parts: string[] = [];
+    for (const child of el.childNodes) {
+      if (child.nodeType === 3) parts.push(child.nodeValue ?? "");
+      else if (child.nodeType === 1) parts.push(textOf.get(child as Element) ?? "");
+      if (parts.length > 60) break;
+    }
+    textOf.set(el, collapse(parts.join(" ")).slice(0, MAX_ROW_TEXT));
+  }
+
+  /** Mark an element and its bounded ancestry, for "does this row contain one" questions. */
+  const markUp = (el: Element, into: Set<Element>, levels = 6): void => {
+    let node: Element | null = el;
+    for (let i = 0; node && i < levels; i++) {
+      into.add(node);
+      node = node.parentElement;
+    }
+  };
+
+  const hasQtyWithin = new Set<Element>();
+  for (const el of doc.querySelectorAll(
+    'input[type="number"], select[name*="qty" i], select[name*="quant" i], [aria-label*="quantity" i]',
+  )) {
+    markUp(el, hasQtyWithin);
+  }
+  const hasRemoveWithin = new Set<Element>();
+  for (const el of doc.querySelectorAll('button, a, [role="button"]')) {
+    const n = collapse(el.getAttribute("aria-label") ?? el.textContent ?? "").toLowerCase();
+    if (/\bremove\b|\bdelete\b/.test(n) || REMOVE_CTL.test(n.trim())) markUp(el, hasRemoveWithin);
+  }
+
   // Money-summary rows: a short element carrying a money label AND a price.
-  for (const el of doc.querySelectorAll("div, li, tr, p, section, dl, dt, dd, span")) {
-    const t = collapse(joinedText(el));
+  for (const el of post) {
+    const t = textOf.get(el) ?? "";
     if (t.length === 0 || t.length > 90) continue;
     if (!PRICE_SHAPED.test(t)) continue;
     if (!MONEY_LABEL.test(t)) continue;
@@ -511,38 +560,30 @@ function readStructuralSignals(doc: Document) {
   // Cart line items: the INNERMOST row carrying a price together with a quantity control or
   // a remove affordance.
   //
-  // The previous version skipped any element containing a priced descendant, which sounds
-  // like the same thing and is not: Glossier nests the price in its own div inside the row,
-  // so the real row was discarded as a "wrapper" and the surviving leaf held a price and no
-  // controls. Live result was cartLineItems: 0 on a visibly open cart, which left the stage
-  // at `pdp` and kept the cross-stage detectors switched off.
+  // "Innermost" must be judged on the FULL predicate, not on "contains a price": Shopify
+  // nests the price in its own div inside the row, so a price-only test discarded the real
+  // row as a wrapper and kept a leaf that had no controls. Live result was cartLineItems: 0
+  // on a visibly open cart, which left the stage at `pdp`.
+  const ROW_TAGS = new Set(["LI", "TR", "DIV", "ARTICLE"]);
   const isLineItem = (el: Element): boolean => {
-    const t = collapse(joinedText(el));
+    if (!ROW_TAGS.has(el.tagName)) return false;
+    const t = textOf.get(el) ?? "";
     if (t.length === 0 || t.length > 400) return false;
     if (!PRICE_SHAPED.test(t)) return false;
-    const hasQty =
-      el.querySelector(
-        'input[type="number"], select[name*="qty" i], [aria-label*="quantity" i]',
-      ) !== null || QTY_HINT.test(t);
-    if (hasQty) return true;
-    for (const c of el.querySelectorAll('button, a, [role="button"]')) {
-      const n = collapse(c.getAttribute("aria-label") ?? c.textContent ?? "").toLowerCase();
-      if (/\bremove\b|\bdelete\b/.test(n) || REMOVE_CTL.test(n.trim())) return true;
-    }
-    return false;
+    return hasQtyWithin.has(el) || QTY_HINT.test(t) || hasRemoveWithin.has(el);
   };
 
-  for (const el of doc.querySelectorAll("li, tr, div, article")) {
-    if (!isLineItem(el)) continue;
-    // Innermost only: count the row, not the wrappers above it.
-    let nested = false;
-    for (const child of el.querySelectorAll("li, tr, div, article")) {
-      if (isLineItem(child)) {
-        nested = true;
-        break;
-      }
+  const rows = post.filter(isLineItem);
+  const hasRowInside = new Set<Element>();
+  for (const row of rows) {
+    let node = row.parentElement;
+    while (node) {
+      hasRowInside.add(node);
+      node = node.parentElement;
     }
-    if (!nested) cartLineItems++;
+  }
+  for (const row of rows) {
+    if (!hasRowInside.has(row)) cartLineItems++;
   }
 
   // Step chrome: "Cart > Place Order > Pay > Order Complete".

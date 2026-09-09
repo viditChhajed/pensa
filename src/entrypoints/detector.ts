@@ -86,13 +86,20 @@ export default defineUnlistedScript(() => {
     () => stage,
   );
 
+  /** Per-phase cost of the last pass, so a budget overrun names its own cause. */
+  const phase = { meta: 0, harvest: 0, detectors: 0 };
+
   function buildContext(): PageContext {
     const url = location.href;
+    const t0 = performance.now();
     const meta = readDocumentMeta(document, url);
+    const t1 = performance.now();
     const candidates = harvest(document, {
       textHistories: observer.state.textHistories,
       ephemeral: observer.state.ephemeral,
     });
+    phase.meta = t1 - t0;
+    phase.harvest = performance.now() - t1;
     // explainStage rather than classifyStage: a wrong stage disables the cross-stage
     // detectors entirely, and "it said pdp" is not a diagnosis. The reasons make it one.
     const explained = explainStage(url, meta);
@@ -121,7 +128,7 @@ export default defineUnlistedScript(() => {
     const ctx = buildContext();
     const collected: Scored[] = [];
 
-    await drainAcrossIdle(runDetectors(ctx), (run) => {
+    const detectorCpuMs = await drainAcrossIdle(runDetectors(ctx), (run) => {
       for (const c of run.candidates) {
         if (c.rawScore < LOG_THRESHOLD) continue;
         collected.push({ candidate: c, salienceKey: c.nodeRef });
@@ -132,6 +139,8 @@ export default defineUnlistedScript(() => {
       }
     });
 
+    phase.detectors = detectorCpuMs;
+    const wallMs = performance.now() - started;
     latest = collected;
     if (collected.length > 0) {
       // Log the MATCHED TEXT, not just the pattern id.
@@ -196,14 +205,21 @@ export default defineUnlistedScript(() => {
       });
     }
 
-    const elapsed = performance.now() - started;
+    // CPU, not wall-clock. See drainAcrossIdle: wall-clock is mostly time spent waiting for
+    // an idle window, which costs the page nothing and must not drive the backoff.
+    const elapsed = phase.meta + phase.harvest + phase.detectors;
     debounceMs = Math.min(
       MAX_DEBOUNCE_MS,
       Math.max(PASS_DEBOUNCE_MS, Math.round(elapsed / MAX_DUTY_CYCLE)),
     );
     if (elapsed > PERF_BUDGET_MS) {
+      // Naming the phase matters: "the pass is slow" has three possible causes with three
+      // different fixes, and the previous message did not distinguish them.
       console.warn(
-        `[patterns] pass took ${elapsed.toFixed(0)}ms (budget ${PERF_BUDGET_MS}ms) — ` +
+        `[patterns] pass used ${elapsed.toFixed(0)}ms CPU of ${wallMs.toFixed(0)}ms wall ` +
+          `(budget ${PERF_BUDGET_MS}ms) — ` +
+          `meta ${phase.meta.toFixed(0)}ms, harvest ${phase.harvest.toFixed(0)}ms, ` +
+          `detectors ${phase.detectors.toFixed(0)}ms, ${ctx.candidates.length} candidates — ` +
           `backing off to ${debounceMs}ms between passes`,
       );
     }

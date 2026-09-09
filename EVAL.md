@@ -322,8 +322,31 @@ usually an account.
 
 Every site exceeded the 50ms budget, three of four hit or neared the 15s backoff
 ceiling. At a 15s gap the extension will miss funnel transitions entirely, which
-turns a performance problem into a correctness one. This is the §18C
-dirty-subtree work and it is now the highest-priority engineering item.
+turns a performance problem into a correctness one.
 
-If suppression turns out to be common at cart/checkout, that is a product problem, not a
-safety one — the fix is a smaller affordance, not permission to cover a control.
+### Diagnosed: the budget was measuring the wrong thing
+
+This was recorded as the §18C dirty-subtree case — i.e. that harvesting is too expensive.
+Measuring per phase showed otherwise. Detectors drain across idle windows, and the pass
+measured WALL-CLOCK, which on a busy page is dominated by waiting for the browser to hand
+out an idle window (up to 250ms per slice). On target.com: 1255ms wall for 344ms of work.
+That wall-clock figure was then divided by the 10% duty cycle to size the backoff — so the
+extension penalised itself for yielding politely, and the harder it tried not to block the
+page, the blinder it became.
+
+With the duty cycle computed from CPU actually consumed, detector cost turns out to be
+1-4ms, not hundreds. The real cost was `readDocumentMeta`, whose two structural scans called
+joinedText (and querySelectorAll) per element over the whole document — both O(subtree) per
+element, so quadratic. One bottom-up text pass makes it linear.
+
+| Site | CPU before | CPU after | meta | harvest | detectors | Backoff |
+|---|---|---|---|---|---|---|
+| target | — | under budget | — | — | — | 300ms (floor) |
+| ikea | 128ms | under budget | — | — | — | 300ms (floor) |
+| newegg | 119ms | **92ms** | 50 | 41 | 0 | ~0.9s |
+| rei | 75ms | **75ms** | 29 | 44 | 2 | ~0.75s |
+
+**No site reaches the 15s ceiling any more; the worst case is under a second.** Two of five
+now stay inside the 50ms budget entirely. newegg and rei both cap out at MAX_CANDIDATES
+(1200), so what remains is the harvest cap, which is the genuine §18C case — but it is now a
+~90ms problem, not a 1.8s one, and no longer a correctness risk.
