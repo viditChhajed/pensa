@@ -31,6 +31,24 @@ const KIND_LEXICON: readonly (readonly [LineItemKind, readonly RegExp[]])[] = [
       /\bprocessing fee\b/,
       /\bconvenience fee\b/,
       /\bresort fee\b/,
+      // Lodging and short-let fees, added before testing choicehotels. These are the
+      // best-known drip charges in the industry — a destination fee is the one the FTC and
+      // several state AGs have actually litigated over — and every one of them classified
+      // as `unknown`, reaching fees[] only via the summary-row fallback rather than being
+      // recognised for what it is.
+      /\bdestination fee\b/,
+      /\bamenity fee\b/,
+      /\bcleaning fee\b/,
+      /\bservice charge\b/,
+      /\bparking fee\b/,
+      /\boccupancy fee\b/,
+      /\burban fee\b/,
+      /\bhotel fee\b/,
+      /\bhost fee\b/,
+      // A blended "taxes and fees" line is a fee line: the fees are hidden inside it, and
+      // when the whole line only appears at the last step that is drip pricing regardless of
+      // how much of it is tax. Bare "tax" stays classified as tax, below.
+      /\btaxes?\s*(?:and|&|\+)\s*fees?\b/,
       /\bfacility (?:fee|charge)\b/,
       /\bbooking fee\b/,
       /\border fee\b/,

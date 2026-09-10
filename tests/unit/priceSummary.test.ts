@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractPriceSnapshot } from "@/content/priceSummary";
+import { classifyLineItem, extractPriceSnapshot } from "@/content/priceSummary";
 import { contextFrom } from "./helpers";
 
 /**
@@ -74,4 +74,41 @@ describe("summary rows split across sibling elements", () => {
     );
     expect(extractPriceSnapshot(ctx).fees).toHaveLength(0);
   });
+});
+
+/**
+ * Lodging fee labels, added before spot-checking a hotel booking.
+ *
+ * These are the best-known drip charges in the industry — the destination fee is the one
+ * the FTC and several state attorneys general have actually litigated over — and every one
+ * of them classified as `unknown`, reaching fees[] only through the summary-row fallback
+ * rather than being recognised. pricing.drip compares fees across stages, so a hotel is the
+ * most likely place for it to fire and the labels have to land.
+ */
+describe("lodging fees", () => {
+  const mandatory = [
+    "Resort fee",
+    "Destination fee",
+    "Amenity fee",
+    "Cleaning fee",
+    "Service charge",
+    "Parking fee",
+    "Taxes and fees",
+    "Taxes & fees",
+    "Estimated taxes and fees",
+  ];
+
+  for (const label of mandatory) {
+    it(`classifies "${label}" as a mandatory fee`, () => {
+      expect(classifyLineItem(label).kind).toBe("mandatory_fee");
+    });
+  }
+
+  // A blended "taxes and fees" line is a fee line — the fees hide inside it. A bare tax is
+  // not: it is universal and legally set, and calling it drip would be wrong.
+  for (const label of ["Sales tax", "VAT", "Occupancy tax", "GST"]) {
+    it(`still classifies "${label}" as tax, not a fee`, () => {
+      expect(classifyLineItem(label).kind).toBe("tax");
+    });
+  }
 });
