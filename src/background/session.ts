@@ -18,10 +18,11 @@ import type {
 } from "@/shared/schema";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
 import { ALLOWLIST_VERSION } from "@/shared/urlScore";
-import { putEvents, readSettings } from "./db";
+import { putEvents, readOffer, readSettings } from "./db";
 import { buildDigest, type RankInput, shouldShowDigest } from "./digest";
 import { detectDrip, detectSneak, dripCandidate } from "./dripPricing";
 import { loadLedger, noteDigest, noteEvents, saveLedger } from "./sessionLedger";
+import { temporalCandidates } from "./temporal";
 
 const SESSION_KEY = "session";
 
@@ -144,11 +145,34 @@ export async function decideDigest(
   const sneak = detectSneak(ledger);
   if (sneak) pool.push({ candidate: sneak, visibleMs: 2000, passedGate: true });
 
-  // §18A temporal claims are NOT shipped in v1 (plan §13 scopes them to v1.1). The engine
-  // and its store are built and tested; `background/temporal.ts` is deliberately not
-  // imported here, so it cannot reach the bundle. Observations still accumulate, so the
-  // history is already there when the claims are switched on.
-  void offerKey;
+  // §18A temporal claims. These are the highest-severity entries in the taxonomy and the
+  // only ones no single-page tool can make: a countdown whose deadline moves forward on
+  // every visit, a stock counter that rises, a "was" price never actually charged.
+  //
+  // They were held back as "v1.1 during store review" alongside Tier 2. The engine, its
+  // store and its tests all shipped from day one and the observation history has been
+  // accumulating since the first visit — so the claims were sitting one import away from
+  // working, on data the extension had already collected. Nothing about them needed more
+  // time; they needed connecting.
+  //
+  // By construction they produce nothing on a first sighting (MIN_SIGHTINGS), so the cost of
+  // being wrong is bounded: a shopper who visits an offer once will never see one.
+  if (offerKey) {
+    try {
+      const observation = await readOffer(origin, offerKey);
+      if (observation) {
+        for (const c of temporalCandidates(observation)) {
+          // A temporal claim has no on-screen node — it is a statement about history, not
+          // about this render — so it cannot have dwell. Credited like the cross-stage
+          // findings above, which are in the same position.
+          pool.push({ candidate: c, visibleMs: 2000, passedGate: true });
+        }
+      }
+    } catch (err) {
+      // A broken history must never take down the whole digest.
+      console.error("[patterns] temporal claims failed", err);
+    }
+  }
 
   const result = buildDigest(pool, {
     surfaceThreshold: 0.75,

@@ -13,7 +13,7 @@ Working locally, verified in real Chromium, **not submitted**.
 
 | | |
 |---|---|
-| Detectors shipped in v1 | **11** — 9 page + 2 cross-stage |
+| Detectors shipped | **16** — 14 page + 2 cross-stage, plus 4 patterns derived from observation history |
 | Built but deferred to v1.1 | 9 — 5 Tier-2 page + 4 §18A temporal |
 | Unit tests | 233 |
 | Real-browser e2e | 26 (1 skipped: native permission dialog) |

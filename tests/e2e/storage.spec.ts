@@ -219,3 +219,82 @@ async function countOffers(page: import("@playwright/test").Page): Promise<numbe
     });
   });
 }
+
+test("an accumulated history produces a temporal claim in the digest", async () => {
+  /**
+   * The link the previous test does not cover.
+   *
+   * That one proves observations accumulate in IndexedDB. This proves an accumulated history
+   * actually reaches a digest — a different claim, and precisely the gap that hid
+   * pricing.drip for the whole build: its store worked, its engine passed its unit tests, and
+   * nothing connected the two.
+   *
+   * Uses the stock detector rather than the countdown one for a practical reason:
+   * `detectEvergreenCountdown` deliberately ignores sightings less than 60 SECONDS apart,
+   * since those are the same page view and teach it nothing. That rule is right in production
+   * and would make this test wait a minute of real time to prove nothing extra about the link
+   * under test. A stock count that rises has no such requirement, and travels exactly the
+   * same path: observation message -> store -> readOffer -> temporalCandidates -> digest.
+   *
+   * Absent a restock, "only N left" should be non-increasing. Rising twice is the claim.
+   */
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/options.html`);
+
+  const result = await page.evaluate(async () => {
+    const send = (msg: unknown) => new Promise((res) => chrome.runtime.sendMessage(msg, res));
+    const origin = "http://localhost";
+    const offerKey = "sku:RESTOCKER";
+
+    for (const n of [2, 5, 9]) {
+      await send({
+        type: "observation",
+        origin,
+        offerKey,
+        offerKeySource: "sku",
+        observation: {
+          timers: [],
+          stockCounts: [n],
+          viewerCounts: [],
+          prices: [],
+          referencePrices: [],
+        },
+      });
+    }
+
+    // Ask for a digest with NO page candidates at all. Anything that comes back can only
+    // have come from the history.
+    return await send({
+      type: "candidates",
+      origin,
+      pathTemplate: "/x",
+      stage: "pdp",
+      items: [],
+      offerKey,
+      placement: { maxCardItems: 4, pillFits: true },
+    });
+  });
+
+  await page.waitForTimeout(600);
+
+  const events = await page.evaluate(async () => {
+    const db: IDBDatabase = await new Promise((res, rej) => {
+      const r = indexedDB.open("persuasion-patterns");
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    const rows: { patternId: string }[] = await new Promise((res) => {
+      const q = db.transaction("events", "readonly").objectStore("events").getAll();
+      q.onsuccess = () => res(q.result);
+      q.onerror = () => res([]);
+    });
+    return rows.map((r) => r.patternId);
+  });
+
+  await page.close();
+
+  expect(
+    events,
+    `no temporal claim reached the digest. reply: ${JSON.stringify(result)}; events: ${JSON.stringify(events)}`,
+  ).toContain("temporal.stock_nonmonotonic");
+});

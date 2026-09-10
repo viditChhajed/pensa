@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { DETECTORS } from "@/content/detectors";
 import { DEFERRED_DETECTORS } from "@/content/detectors/deferred";
 import {
-  DEFERRED_TO_V1_1,
+  DERIVED_FROM_HISTORY,
   SHIPPED_CROSS_STAGE_DETECTORS,
   SHIPPED_DETECTOR_COUNT,
   SHIPPED_PAGE_DETECTORS,
@@ -21,6 +21,20 @@ import {
 
 const OUT = ".output/chrome-mv3";
 const built = existsSync(OUT);
+
+/** One named output file, for assertions about WHERE something shipped. */
+function fileText(name: string): string {
+  const hits: string[] = [];
+  const walk = (dir: string) => {
+    for (const n of readdirSync(dir)) {
+      const full = join(dir, n);
+      if (n === name) hits.push(readFileSync(full, "utf8"));
+      else if (!n.includes(".")) walk(full);
+    }
+  };
+  walk(OUT);
+  return hits.join("\n");
+}
 
 function bundleText(): string {
   const files: string[] = [];
@@ -49,7 +63,7 @@ describe("v1 submission scope", () => {
 
   it("no deferred detector is in the runtime registry", () => {
     const registered = new Set(DETECTORS.map((d) => d.patternId as string));
-    for (const id of DEFERRED_TO_V1_1) {
+    for (const id of DERIVED_FROM_HISTORY) {
       expect(registered.has(id), `${id} leaked into the shipped registry`).toBe(false);
     }
   });
@@ -61,7 +75,7 @@ describe("v1 submission scope", () => {
 
   it("shipped and deferred sets do not overlap", () => {
     const shipped = new Set<string>([...SHIPPED_PAGE_DETECTORS, ...SHIPPED_CROSS_STAGE_DETECTORS]);
-    for (const id of DEFERRED_TO_V1_1) expect(shipped.has(id)).toBe(false);
+    for (const id of DERIVED_FROM_HISTORY) expect(shipped.has(id)).toBe(false);
   });
 });
 
@@ -80,40 +94,35 @@ describe("built bundles", () => {
     }
   });
 
-  it.skipIf(!built)("contain NO deferred detector IMPLEMENTATION", () => {
-    // The real assertion, and it must be about CODE rather than pattern ids.
+  it.skipIf(!built)("ships a registered detector for every pattern the scope file claims", () => {
+    // Asserted on `<patternId>@1`, which is a string literal and survives minification.
+    // An earlier version of this checked internal function names — `contrastAsymmetry`,
+    // `relativeLuminance` — which the bundler renames, so it could only ever have passed by
+    // accident.
     //
-    // Every deferred pattern id does still appear twice in the bundle: once in taxonomy.ts
-    // and once in the copy pools. Both are inert data tables that ship whole, and neither
-    // can produce a detection — nothing reads them without a registered detector. Asserting
-    // on the ids therefore fails on correct code, which is how this test first behaved.
-    //
-    // A registered detector always contributes its versioned `<id>@1` detectorId and its
-    // named sub-signal keys, so those are what absence is proven against.
+    // It also used to assert ABSENCE. Tier 2 and the §18A engine were held for "v1.1 during
+    // store review", a schedule decision rather than a quality one: all of them were built
+    // and tested alongside Tier 1, and the temporal history had been accumulating from the
+    // first visit. flyfrontier's fare grid is a textbook decoy and produced zero detections
+    // because the only detector that could see it was excluded from the bundle. The boundary
+    // moved deliberately, and the test moved with it rather than being deleted.
     const js = bundleText();
-
-    const leakedIds = DEFERRED_TO_V1_1.filter((id) => js.includes(`${id}@1`));
-    expect(leakedIds, `deferred detectorIds in build: ${leakedIds.join(", ")}`).toEqual([]);
-
-    const internals = [
-      "contrastAsymmetry", // interference
-      "badgeOnWorseUnitPrice", // decoy
-      "rapidSuccession", // nagging
-      "percentFramingFlatters", // framing
-      "modalOnExit", // exit intent
-      "detectEvergreenCountdown", // §18A
-      "relativeLuminance", // §18E contrast maths
-    ];
-    const leakedCode = internals.filter((sym) => js.includes(sym));
-    expect(leakedCode, `deferred implementation in build: ${leakedCode.join(", ")}`).toEqual([]);
+    const missing = SHIPPED_PAGE_DETECTORS.filter((id) => !js.includes(`${id}@1`));
+    expect(missing, `shipped but not in any bundle: ${missing.join(", ")}`).toEqual([]);
   });
 
-  it.skipIf(!built)("keeps deferred taxonomy and copy present but inert", () => {
-    // Documents the above deliberately: the data ships (it is needed for v1.1 and costs
-    // ~1KB), and is unreachable without a registered detector.
-    const js = bundleText();
-    expect(js.includes("interference.visual_asymmetry")).toBe(true);
-    expect(js.includes("interference.visual_asymmetry@1")).toBe(false);
+  it.skipIf(!built)("derives temporal patterns in the worker, never in the page registry", () => {
+    // These are claims about how something CHANGED between visits, so they cannot be
+    // evaluated by a detector looking at one DOM. The engine belongs in the service worker,
+    // reading the observation store; finding one registered in the content script would mean
+    // someone had wired it as a page detector, which cannot work.
+    const worker = fileText("background.js");
+    const page = fileText("detector.js");
+
+    for (const id of DERIVED_FROM_HISTORY) {
+      expect(worker.includes(`${id}@1`), `${id} missing from the worker`).toBe(true);
+      expect(page.includes(`${id}@1`), `${id} wrongly registered as a page detector`).toBe(false);
+    }
   });
 
   it.skipIf(!built)("contain no n-gram classifier code", () => {

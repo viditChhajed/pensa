@@ -18,6 +18,9 @@
  *     than MIN_SITES load, rather than quietly passing on zero. A green run means real
  *     pages were genuinely exercised.
  */
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
 import {
   CLICKABLE,
@@ -48,11 +51,37 @@ const MIN_SITES = 2;
 const SCROLL_DEPTHS = [0, 0.35, 0.7];
 
 let context: BrowserContext;
-const loaded: string[] = [];
-const outcomes: { site: string; depth: number; mode: PlacementMode; ordinaryCovered: number }[] =
-  [];
+/**
+ * Run state, kept on disk rather than in module scope.
+ *
+ * Playwright restarts the worker after a failing test, which resets module-level state — so
+ * one flaky site (a slow load, a bot block) emptied `loaded` and made the "enough real sites"
+ * guard report a SECOND, false failure that masked the real one. A guard that lies when
+ * something else breaks is worse than no guard.
+ */
+const STATE = join(tmpdir(), "pp-real-retailers-state.json");
+
+interface RunState {
+  loaded: string[];
+  outcomes: { site: string; depth: number; mode: PlacementMode; ordinaryCovered: number }[];
+}
+
+function readState(): RunState {
+  try {
+    return JSON.parse(readFileSync(STATE, "utf8")) as RunState;
+  } catch {
+    return { loaded: [], outcomes: [] };
+  }
+}
+
+function writeState(patch: (s: RunState) => void): void {
+  const s = readState();
+  patch(s);
+  writeFileSync(STATE, JSON.stringify(s));
+}
 
 test.beforeAll(async () => {
+  rmSync(STATE, { force: true });
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",
     args: ["--disable-blink-features=AutomationControlled"],
@@ -88,7 +117,7 @@ for (const site of CANDIDATES) {
       test.skip(true, `${site.name} unreachable or bot-blocked from this environment`);
       return;
     }
-    loaded.push(site.name);
+    writeState((s) => s.loaded.push(site.name));
 
     for (const depth of SCROLL_DEPTHS) {
       await page.evaluate((d) => scrollTo(0, document.body.scrollHeight * d), depth);
@@ -145,12 +174,14 @@ for (const site of CANDIDATES) {
           `@ ${placement.anchor.v}-${placement.anchor.h}, ` +
           `covering ${placement.ordinaryCovered} ordinary`,
       );
-      outcomes.push({
-        site: site.name,
-        depth,
-        mode: placement.mode,
-        ordinaryCovered: placement.ordinaryCovered,
-      });
+      writeState((s) =>
+        s.outcomes.push({
+          site: site.name,
+          depth,
+          mode: placement.mode,
+          ordinaryCovered: placement.ordinaryCovered,
+        }),
+      );
 
       // Only meaningful at the top of the page: a bot-block page loads but is nearly empty.
       // Deeper in a real page a viewport of hero imagery legitimately has a handful of
@@ -231,6 +262,7 @@ for (const site of CANDIDATES) {
 
 test("enough real sites were actually exercised", () => {
   // Guards against the whole suite silently degrading to skips and reporting green.
+  const loaded = readState().loaded;
   expect(
     loaded.length,
     `only ${loaded.length} real site(s) loaded (${loaded.join(", ")}); need >= ${MIN_SITES}. ` +
@@ -244,6 +276,7 @@ test("a card is placeable at every scroll depth on every real page", () => {
   // across six live retailers. A safety rule that fires on every page is a broken product,
   // so this asserts the rule is satisfiable — and asserts it per scroll depth, because the
   // corners that fill a viewport are the ones that scroll away.
+  const outcomes = readState().outcomes;
   if (outcomes.length === 0) test.skip(true, "no sites loaded");
 
   const shown = outcomes.filter((o) => o.mode !== "suppressed");
