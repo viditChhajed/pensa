@@ -168,15 +168,19 @@ string can carry session and account identifiers, and this file is committed.
   | value | Settings column | means |
   |---|---|---|
   | `shown` | Shown | rendered on screen; you saw it |
-  | `no-room` | No room | ranked in, but nowhere on the page could hold the card without covering something clickable, so nothing rendered |
+  | `no-room` | No room | ranked in, but nothing rendered. Now rare by design: the card is anchored under the toolbar icon and is allowed to overlap page content, so it no longer refuses a page for being crowded. If you see this, say so — it means something else is wrong. |
   | `off-screen` | Off-screen | found, but never on screen long enough to have been seen (<800 ms), so never a candidate |
   | `not-fired` | absent from the table | the detector produced nothing at all |
   | `deduped` | — | a stronger detection in the same pattern family won the slot |
 
   **Threshold problems look like `not-fired`. Placement problems look like `no-room`.**
   I act on those two completely differently: `not-fired` means loosening a lexicon or
-  lowering a threshold; `no-room` means the card is too big, and no threshold change would
-  help. Please do not collapse them.
+  lowering a threshold; `no-room` means nothing could be rendered, which no threshold change
+  would help. Please do not collapse them.
+
+  Since the card moved under the toolbar icon, `no-room` should essentially never occur —
+  the earlier 60% suppression rate was the old "cover nothing clickable" rule, which was
+  unsatisfiable on real storefronts. A `no-room` row now is itself a bug report.
 
 - **correct?** — `Y`/`N`. Was the artifact genuinely on the page as described?
 - **false positive?** — `Y`/`N`. It fired, but the page did not actually display that
