@@ -315,6 +315,53 @@ Still to confirm by hand: a card rendering at **cart or checkout** on a real sit
 above is storefront and category pages, because a checkout page needs a populated cart and
 usually an account.
 
+## Spot-check run 2 — 2026-09-10, build 12:18
+
+Five of six sites, full journeys (product -> cart -> checkout), stopping at the first
+authenticated or payment step. Recorded from the console, which now prints the matched
+lexemes alongside the sample.
+
+| # | detector | page | retailer | stage | fired? | outcome | correct? | FP? | notes |
+|---|---|---|---|---|---|---|---|---|---|
+| 20 | anchoring.reference_price | hotel select | booking | cart | Y | not-shown | **Y** | N | x8-9, "$100"/"$120"/"$90". Real struck rates. |
+| 21 | — | your details | booking | **browse** | — | — | — | — | **BUG.** Checkout page classified `browse`, so no trigger and no card. Fixed: checkout detection required shipping-address autocomplete; a hotel booking has none. |
+| 22 | scarcity.stock | suite listing | ticketmaster | browse | Y | not-shown | **unverified** | ? | "Enjoy the US Open in a spacious, private luxury suite locate". Base copy scores 0 in isolation, so the match is in the truncated remainder. RE-CHECK with lexeme logging. |
+| 23 | — | ticket select | ticketmaster | **cart** | — | — | **Y** | — | Correctly `cart` (was `pdp` before the classifier rewrite). Journey ended at the sign-in wall. |
+| 24 | — | fare select / bundle | flyfrontier | checkout | **N** | not-fired | — | — | **MISS.** Zero detections on a page of pure persuasion. The decline is a CHECKBOX: "I understand purchasing options separately may result in a higher overall price." Blocked three ways at once — see the follow-ups below. |
+| 25 | goal_gradient.threshold | cart | shein | cart | Y | not-shown | **Y** | N | "Add $2.45 more to cart for FREE STANDARD SHIPPING [add,more]". **Previously a recorded miss; the fix is confirmed in the field.** |
+| 26 | scarcity.stock | cart | shein | cart | Y | not-shown | **Y** | N | x9 "Almost Sold Out". Correct, but nine duplicates of the same badge. |
+| 27 | bnpl.installments | pdp/cart | shein | cart | Y | **off-screen** | **Y** | N | "Pay now, or in 4 payments of $3.13". score=0.70 (below the 0.75 threshold) AND dwell=0ms. Two independent reasons it can never surface. |
+| 28 | anchoring.reference_price | bag | glossier | cart | Y | not-shown | **Y** | N | "$84 [regular price]". |
+| 29 | defaults.preselected | checkout | glossier | checkout | Y | **shown** | **Y** | N | Pre-ticked "Email me with news and offers". score=0.75, dwell=957ms, card rendered. |
+
+**Zero confirmed false positives across five sites.**
+
+Glossier is the first complete correct funnel traversal in the project: pdp -> cart ->
+checkout, all three right, ending in a rendered card.
+
+### pricing.drip still has not fired — and on this evidence that is correct
+
+Glossier was a full product -> cart -> checkout journey on one origin in one session, which
+is exactly what drip needs. It stayed quiet. The checkout showed Subtotal $56.00, Shipping
+"Enter shipping address", Total $56.00 — **no fee was ever added, so there was nothing to
+drip.** A finding would have been wrong.
+
+But the log could not distinguish "the site did not drip" from "the snapshots were empty",
+which are very different problems. Each stage transition now prints its captured snapshot —
+price, subtotal, total, shipping, and every fee — so the next run can tell them apart
+without guessing. Test the claim on a site that actually drips: ticketmaster fees, or an
+airline seat/bag flow.
+
+### Open calibration questions for this run
+
+- **bnpl.installments at 0.70** against a 0.75 threshold: correct on two sites, can never
+  surface. Same shape as the scarcity question below.
+- **scarcity.stock at 0.60 / 0.40** against 0.75: correct on two sites, can only surface
+  alongside a progress bar.
+- **Duplicate firings**: nine identical "Almost Sold Out" badges produce nine candidates.
+  The digest dedupes by family so only one would ever show, but the event log counts nine,
+  which will distort any prevalence measure built on it.
+
 ## Follow-ups resolved from the spot-check findings
 
 Three items from the table above, fixed and pinned as tests. One of them was recorded here

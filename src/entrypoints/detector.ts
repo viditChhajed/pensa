@@ -205,12 +205,28 @@ export default defineUnlistedScript(() => {
     // snapshot is what makes drip pricing possible, and it only exists page-side.
     if (stage !== lastReportedStage) {
       lastReportedStage = stage;
+      const snap = extractPriceSnapshot(ctx);
+      // The ONLY observable evidence that the cross-stage pipeline has anything to work
+      // with. `pricing.drip` compares fees between the earliest and latest stage snapshot,
+      // so when it stays quiet there are two very different explanations — the site did not
+      // drip, or the snapshots were empty — and nothing in the log distinguished them.
+      // A full Glossier journey ended with no drip finding and no way to say which it was.
+      const money = (m?: { amount: bigint; currency: string }): string =>
+        m ? `${m.currency} ${(Number(m.amount) / 100).toFixed(2)}` : "-";
+      console.info(
+        `[patterns] snapshot @${stage}: price ${money(snap.displayedPrice)}, ` +
+          `subtotal ${money(snap.subtotal)}, total ${money(snap.total)}, ` +
+          `shipping ${money(snap.shipping)}, ${snap.fees.length} fee(s)` +
+          (snap.fees.length > 0
+            ? ` — ${snap.fees.map((f) => `${f.labelSample ?? "?"} ${money(f.amount)}`).join("; ")}`
+            : ""),
+      );
       await send({
         type: "stage",
         origin: pageOrigin,
         pathTemplate: pathTemplate(location.href),
         stage,
-        priceSnapshot: encodePriceSnapshot(extractPriceSnapshot(ctx)),
+        priceSnapshot: encodePriceSnapshot(snap),
       });
     }
 
