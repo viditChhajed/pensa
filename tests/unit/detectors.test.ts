@@ -459,3 +459,92 @@ describe("field lexicon gaps", () => {
     expect(found[0]?.rawScore ?? 0).toBeCloseTo(0.6, 2);
   });
 });
+
+/**
+ * Checkout pages that collect no shipping address.
+ *
+ * Checkout detection required autocomplete="address-line1" and friends, which assumes a
+ * shipping checkout. booking.com's "Enter your details" is first name / last name / email /
+ * country — a hotel booking has no street address — so its checkout page classified as
+ * `browse`, the stage never changed, the checkout-intent trigger never fired, and no card
+ * ever appeared. Travel, ticketing and digital goods all check out this way.
+ */
+describe("identity-based checkouts", () => {
+  const bookingDetails = `
+    <div>Your Selection</div><div>Your Details</div><div>Finish booking</div>
+    <h2>Enter your details</h2>
+    <form>
+      <label>First name<input name="firstname" /></label>
+      <label>Last name<input name="lastname" /></label>
+      <label>Email address<input type="email" name="email" /></label>
+      <label>Country/Region<select name="cc1"><option>United States</option></select></label>
+    </form>
+    <div class="r"><span>Original price</span><span>$123</span></div>
+    <div class="r"><span>Total</span><span>$100</span></div>`;
+
+  it("classifies a booking details page as checkout", () => {
+    const url = "https://secure.booking.com/book.html?hotel_id=1";
+    document.body.innerHTML = bookingDetails;
+    expect(classifyStage(url, readDocumentMeta(document, url))).toBe("checkout");
+  });
+
+  it("reads name and email from name/placeholder, not just autocomplete", () => {
+    document.body.innerHTML = bookingDetails;
+    const meta = readDocumentMeta(document, "https://secure.booking.com/book.html");
+    expect(meta.hasContactCluster).toBe(true);
+  });
+
+  // The reason identity fields only count alongside money: a signup form is not a checkout.
+  it("does not turn a homepage with a newsletter signup into checkout", () => {
+    const url = "https://shop.example.com/";
+    document.body.innerHTML = `<h1>Welcome</h1><footer>
+      <input name="first_name" placeholder="First name" />
+      <input type="email" name="email" placeholder="Email" /><button>Subscribe</button></footer>`;
+    expect(classifyStage(url, readDocumentMeta(document, url))).toBe("browse");
+  });
+
+  it("does not turn a product page with a newsletter signup into checkout", () => {
+    const url = "https://shop.example.com/products/x";
+    document.body.innerHTML = `
+      <script type="application/ld+json">{"@type":"Product","name":"x"}</script>
+      <div>$24.00</div><button>Add to cart</button>
+      <footer><input name="first_name" placeholder="First name" />
+        <input type="email" placeholder="Email" /></footer>`;
+    expect(classifyStage(url, readDocumentMeta(document, url))).toBe("pdp");
+  });
+
+  it("still classifies an ordinary shipping checkout", () => {
+    const url = "https://shop.example.com/x";
+    document.body.innerHTML = `<form><input autocomplete="address-line1" />
+      <input autocomplete="address-level2" /><input autocomplete="postal-code" /></form>`;
+    expect(classifyStage(url, readDocumentMeta(document, url))).toBe("checkout");
+  });
+});
+
+/**
+ * Every shipped scarcity pattern must survive the harvest prefilter.
+ *
+ * `classifyText` rejects any node with no digit, no currency glyph and no trigger word, so a
+ * detector pattern whose copy contains none of those can never fire — the detector never
+ * sees the node. `/\bgoing fast\b/` was in STOCK_PATTERNS and unreachable: "Premium seats,
+ * going fast" scored nothing. Same shape of dead code that hid pricing.drip, one stage
+ * earlier in the pipeline.
+ */
+describe("scarcity patterns survive the prefilter", () => {
+  const copy = [
+    "Premium seats, going fast",
+    "Hurry — while supplies last",
+    "Limited quantity",
+    "Limited availability on this date",
+    "Almost sold out",
+    "Selling fast",
+    "Low stock",
+    "Only 2 left in stock",
+  ];
+
+  for (const t of copy) {
+    it(`reaches the detector: "${t}"`, () => {
+      expect(scarcityDetector.run(contextFrom(`<div>${t}</div>`)), t).toHaveLength(1);
+    });
+  }
+});

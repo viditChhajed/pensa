@@ -12,7 +12,14 @@ export function buildEvidence(
   return {
     selectorPath: node.selectorPath,
     textHash: createHash(node.normalizedText),
-    textSample: node.text.slice(0, 240),
+    // A control often carries no text of its own — a pre-ticked checkbox is the clearest
+    // case, and it produced an evidence sample of exactly one space. Its meaning lives in
+    // its accessible name or in the label wrapped around it, so fall through to those.
+    // Without this the card can only say "One choice was made for you in advance" and never
+    // say which, which is the difference between a question and a riddle.
+    textSample: (node.text.trim() || node.accessibleName.trim() || node.containerText.trim())
+      .replace(/\s+/g, " ")
+      .slice(0, 240),
     matchedLexemes: matchedLexemes.slice(0, 24),
     computedStyle: extraStyle ?? {
       fontWeight: node.style.fontWeight,

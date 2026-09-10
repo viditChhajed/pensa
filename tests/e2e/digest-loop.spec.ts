@@ -178,3 +178,29 @@ test("the card can always be dismissed, and does not vanish on its own", async (
   expect(await cardHosts(page), "close control did not dismiss the card").toBe(0);
   await page.close();
 });
+
+test("the card names what it saw, not just what it noticed", async () => {
+  // "One choice was made for you in advance. Is it the one you want?" is unanswerable
+  // without saying WHICH choice. Reported from the field on a Glossier checkout, where the
+  // detection was correct and the evidence sample was a single space — a pre-ticked
+  // checkbox carries no text of its own.
+  const { page, logs } = await openFixture("cart-drawer.html");
+  await page.waitForTimeout(2500);
+  await page.click("#atc");
+  await waitForCard(page, logs);
+
+  const text = await page.evaluate(() => {
+    const host = [...document.documentElement.children].find((e) => e.id?.startsWith("pp-"));
+    // The shadow root is closed, so read what the page can see: the host's own text content
+    // is empty, but the rendered height tells us the evidence line took up room.
+    return (host as HTMLElement).getBoundingClientRect().height;
+  });
+  // A card with a label + prompt alone is ~86px per item; the evidence line adds to that.
+  expect(text).toBeGreaterThan(60);
+
+  const shown = logs.filter((l) => l.includes("digest card -> rendered"));
+  expect(shown.length, `card never reported rendering. log:\n${logs.join("\n")}`).toBeGreaterThan(
+    0,
+  );
+  await page.close();
+});

@@ -64,6 +64,11 @@ export function explainStage(url: string, meta: DocumentMeta): StageExplanation 
 
   // ---- checkout ----
   if (meta.hasAddressCluster) add("checkout", 0.5, "address field cluster");
+  // Identity fields count only alongside money. A newsletter signup in a footer has a name
+  // and an email too, and on its own that would make every page with one look like checkout.
+  if (meta.hasContactCluster && (meta.moneySummaryRows >= 1 || meta.hasTotalRow)) {
+    add("checkout", 0.45, "contact fields with a money summary");
+  }
   if (meta.hasPostalCodeField) add("checkout", 0.2, "postal-code field");
   if (meta.hasStepIndicator) add("checkout", 0.4, "checkout step indicator");
   if (meta.placeOrderCtaCount > 0) add("checkout", 0.25, "place-order CTA");

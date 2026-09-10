@@ -21,7 +21,7 @@ import { candidate, visibleCandidates } from "./util";
 
 /** First-person constructions that put words in the user's mouth. */
 const FIRST_PERSON =
-  /\bi\s+(?:don'?t|do not|hate|prefer|would rather|'?d rather|am not|like|enjoy|want)\b|\bi'?m not\b|\bno,? i\b/;
+  /\bi\s+(?:don'?t|do not|hate|prefer|would rather|'?d rather|am not|like|enjoy|want|understand|acknowledge|accept|agree)\b|\bi'?m not\b|\bno,? i\b/;
 
 /** What the sentence disparages the user for wanting. */
 const SELF_DEPRECATION: readonly RegExp[] = [
@@ -36,6 +36,32 @@ const SELF_DEPRECATION: readonly RegExp[] = [
   /\bi enjoy (?:paying|missing out|overpaying)\b/,
   /\bi don'?t (?:want|need) (?:free|better|good)\b/,
   /\bmiss(?:ing)? out\b/,
+  // A second shape of the same mechanism, found on flyfrontier: declining the upsell
+  // requires TICKING A BOX that asserts something costly about your own choice —
+  // "Basic Fare works for me. I understand purchasing options separately may result in a
+  // higher overall price." Nothing here is rude, so none of the patterns above match, but
+  // the decline is still written to be uncomfortable to agree with. Reported twice from the
+  // field before it was handled.
+];
+
+/**
+ * The second shape of the same mechanism, found on flyfrontier: declining the upsell
+ * requires TICKING A BOX that asserts something costly about your own choice — "Basic Fare
+ * works for me. I understand purchasing options separately may result in a higher overall
+ * price."
+ *
+ * Nothing in that sentence is rude, so none of the patterns above match it, and the control
+ * is a checkbox label rather than a button — so the decline-control gate rejected it too.
+ * But ticking the box IS the act of declining, and it is written to be uncomfortable to
+ * agree with. Reported from the field twice before it was handled.
+ *
+ * Kept separate from SELF_DEPRECATION because a match here also satisfies the control gate:
+ * the acknowledgement is the decline.
+ */
+const COSTLY_ACKNOWLEDGEMENT: readonly RegExp[] = [
+  /\bi understand\b[^.]{0,80}\b(?:higher|more expensive|greater|increased|additional)\b[^.]{0,40}\b(?:price|cost|total|fare|fee)/,
+  /\bi understand\b[^.]{0,80}\b(?:may|might|could|will) (?:result in|cost more|be charged)\b/,
+  /\bi (?:acknowledge|accept|agree)\b[^.]{0,80}\b(?:higher|more|additional|extra)\b[^.]{0,40}\b(?:price|cost|fee|charge)/,
 ];
 
 /** Plain, non-shaming declines. These must NOT fire. */
@@ -95,14 +121,17 @@ export const confirmshamingDetector: Detector = {
       // A plain "No thanks" is not confirmshaming. Bail before scoring.
       if (NEUTRAL_DECLINES.some((re) => re.test(raw))) continue;
 
-      const hits = SELF_DEPRECATION.filter((re) => re.test(raw));
+      const ackHits = COSTLY_ACKNOWLEDGEMENT.filter((re) => re.test(raw));
+      const hits = [...SELF_DEPRECATION.filter((re) => re.test(raw)), ...ackHits];
       if (hits.length === 0) continue;
 
       const control = isControl(n);
       const firstPerson = FIRST_PERSON.test(raw);
 
-      // Copy alone is not enough — it has to be the thing you click to say no.
-      if (!control && !DECLINE_HINT.test(raw)) continue;
+      // Copy alone is not enough — it has to be the thing you click to say no. A costly
+      // acknowledgement counts as that thing in its own right: the box IS the decline, and
+      // it is a label rather than a button, so neither isControl nor DECLINE_HINT sees it.
+      if (!control && ackHits.length === 0 && !DECLINE_HINT.test(raw)) continue;
 
       seen.add(n.selectorPath);
 

@@ -115,6 +115,13 @@ export interface DocumentMeta {
   readonly hasCcNumberField: boolean;
   readonly hasPostalCodeField: boolean;
   readonly hasAddressCluster: boolean;
+  /**
+   * Identity fields — a name AND an email. Who you are, not where to ship.
+   *
+   * Travel, ticketing and digital checkouts collect no street address, so an address-only
+   * test called them `browse` and the checkout-intent trigger never fired.
+   */
+  readonly hasContactCluster: boolean;
 
   /** Rows carrying a price alongside a quantity control or a remove affordance. */
   readonly cartLineItems: number;

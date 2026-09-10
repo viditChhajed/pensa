@@ -12,7 +12,7 @@ import type { FunnelStage } from "@/shared/schema";
 
 const ATC_NAME = /\badd to (cart|bag|basket|order)\b|\badd item\b|\bbuy now\b|\badd to my bag\b/i;
 const CHECKOUT_NAME =
-  /\bcheckout\b|\bcheck out\b|\bplace order\b|\bcontinue to payment\b|\bproceed to\b|\bpay now\b|\bcomplete (order|purchase)\b/i;
+  /\bcheckout\b|\bcheck out\b|\bplace order\b|\bcontinue to payment\b|\bproceed to\b|\bpay now\b|\bcomplete (order|purchase)\b|\bi'?ll reserve\b|\breserve (?:now|tickets?|room)\b|\bbook now\b|\bconfirm (?:and pay|booking|reservation)\b/i;
 
 const ATC_ATTR_TOKENS = ["add-to-cart", "addtocart", "add_to_cart", "add-to-bag", "atc"];
 

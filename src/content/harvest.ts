@@ -67,9 +67,25 @@ const TRIGGER_WORDS = [
   "no thanks",
   "i don",
   "i'd rather",
+  // Self-incriminating acknowledgements: "I understand purchasing options separately may
+  // result in a higher overall price." Nothing in that sentence is a digit, a currency glyph
+  // or any word above, so the prefilter dropped the node and confirmshaming never saw it.
+  "i understand",
+  "i acknowledge",
+  "i accept",
   "almost gone",
   "selling fast",
   "in carts",
+  // These are shipped scarcity patterns whose text carries no digit, no currency glyph and
+  // none of the words above — so the prefilter rejected the node and the detector never saw
+  // it. The pattern existed and could not fire, which is the same shape of dead code that
+  // hid pricing.drip. Found by probing "Premium seats, going fast", which scored nothing.
+  "going fast",
+  "supplies last",
+  "limited quantity",
+  "limited availability",
+  "last chance",
+  "few left",
   // Purchase-toast copy carries no digit or currency glyph, so without these words the
   // prefilter rejects "Sarah in Denver just bought this" before any detector sees it.
   "bought",
@@ -462,7 +478,9 @@ export function readDocumentMeta(doc: Document, url: string): DocumentMeta {
 
   const ogType = doc.querySelector('meta[property="og:type"]')?.getAttribute("content") ?? null;
   const hasCc = doc.querySelector('input[autocomplete~="cc-number"]') !== null;
-  const hasPostal = doc.querySelector('input[autocomplete~="postal-code"]') !== null;
+  const contact = readContactFields(doc);
+  const hasPostal =
+    doc.querySelector('input[autocomplete~="postal-code"]') !== null || contact.postal;
   const addressFields = doc.querySelectorAll(
     'input[autocomplete~="address-line1"], input[autocomplete~="address-level2"], input[autocomplete~="country"]',
   ).length;
@@ -477,9 +495,64 @@ export function readDocumentMeta(doc: Document, url: string): DocumentMeta {
     jsonLd,
     hasCcNumberField: hasCc,
     hasPostalCodeField: hasPostal,
-    hasAddressCluster: addressFields >= 2,
+    hasAddressCluster: addressFields >= 2 || contact.addressish >= 2,
+    hasContactCluster: contact.name && contact.email,
     ...structural,
   };
+}
+
+/**
+ * Who you are, not where to ship. Read from every attribute a field might carry its meaning
+ * in, because `autocomplete` alone is not enough.
+ *
+ * Checkout detection used to require autocomplete="address-line1" and friends, which assumes
+ * a SHIPPING checkout. booking.com's "Enter your details" is first name, last name, email
+ * and country — a hotel booking has no street address — so its checkout page classified as
+ * `browse`, the stage never changed, the checkout-intent trigger never fired, and no card
+ * ever appeared. Travel, ticketing and digital goods all check out this way.
+ */
+function readContactFields(doc: Document): {
+  name: boolean;
+  email: boolean;
+  postal: boolean;
+  addressish: number;
+} {
+  let name = false;
+  let email = false;
+  let postal = false;
+  let addressish = 0;
+
+  for (const el of doc.querySelectorAll("input, select")) {
+    const type = (el.getAttribute("type") ?? "").toLowerCase();
+    if (type === "hidden" || type === "search" || type === "password") continue;
+    const hint = [
+      el.getAttribute("autocomplete"),
+      el.getAttribute("name"),
+      el.getAttribute("id"),
+      el.getAttribute("placeholder"),
+      el.getAttribute("aria-label"),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    if (hint.length === 0 && type !== "email") continue;
+
+    if (type === "email" || /\bemail\b|e-mail/.test(hint)) email = true;
+    if (
+      /first[\s_-]*name|last[\s_-]*name|given[\s_-]*name|family[\s_-]*name|surname|full[\s_-]*name/.test(
+        hint,
+      )
+    ) {
+      name = true;
+    }
+    if (/post(al)?[\s_-]*code|\bzip\b|\bpostcode\b/.test(hint)) postal = true;
+    if (
+      /address|street|\bcity\b|\btown\b|address-level|\bcountry\b|\bregion\b|\bstate\b/.test(hint)
+    ) {
+      addressish++;
+    }
+  }
+  return { name, email, postal, addressish };
 }
 
 const PRICE_SHAPED = /[$£€¥₹]\s?\d/;

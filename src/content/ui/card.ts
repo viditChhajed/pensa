@@ -368,6 +368,8 @@ export interface CardItem {
   patternId: string;
   label: string;
   prompt: string;
+  /** What was actually seen on the page. Rendered so the question can be connected to it. */
+  evidence?: string;
 }
 
 export class DigestCard {
@@ -460,6 +462,15 @@ export class DigestCard {
       li + li { border-top: 1px solid #eceef2; }
       .label { font-weight: 600; display: block; margin-bottom: 2px; }
       .prompt { color: inherit; }
+      /* The observation the question is about. Quoted, dimmer than the question itself. */
+      .evidence {
+        margin-top: 4px; font-size: 12.5px; color: #5b616e;
+        border-left: 2px solid #dfe1e6; padding-left: 8px;
+        overflow-wrap: anywhere;
+      }
+      @media (prefers-color-scheme: dark) {
+        .evidence { color: #a6acb8; border-left-color: #40444d; }
+      }
     `;
     return style;
   }
@@ -494,6 +505,14 @@ export class DigestCard {
       p.className = "prompt";
       p.textContent = item.prompt;
       li.append(label, p);
+
+      if (item.evidence && item.evidence.length > 0) {
+        const ev = document.createElement("p");
+        ev.className = "evidence";
+        // textContent, never innerHTML: this is page-authored text rendered back into a page.
+        ev.textContent = `“${item.evidence}”`;
+        li.append(ev);
+      }
       list.append(li);
     }
 

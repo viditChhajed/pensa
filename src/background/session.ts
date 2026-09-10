@@ -65,6 +65,18 @@ export interface DigestItem {
   patternId: string;
   prompt: string;
   label: string;
+  /**
+   * The text that actually matched, shown on the card.
+   *
+   * "One choice was made for you in advance. Is it the one you want?" is unanswerable
+   * without saying WHICH choice. A prompt the reader cannot connect to anything on the page
+   * is not a Socratic question, it is a riddle — and the whole design principle here is
+   * observe and question, which requires naming the observation.
+   *
+   * Local only. It came from the page the reader is looking at, and it is stripped from
+   * every telemetry shape (see TelemetryRecord in schema.ts).
+   */
+  evidence?: string;
 }
 
 export interface PlacementCapacity {
@@ -219,10 +231,23 @@ export async function decideDigest(
     const prompt = pickPrompt(ranked.patternId as PatternId, used);
     if (!prompt) continue;
     used.add(prompt);
+    // The matched text, trimmed to something a card can hold. A checkbox has no text of its
+    // own, so fall back to its accessible name via the lexemes that matched it.
+    const src = pool.find((p) => p.candidate.patternId === ranked.patternId);
+    const sample = (src?.candidate.evidence.textSample ?? "").replace(/\s+/g, " ").trim();
+    const lexemes = src?.candidate.evidence.matchedLexemes ?? [];
+    const evidence =
+      sample.length > 0
+        ? sample.slice(0, 120)
+        : lexemes.length > 0
+          ? lexemes.slice(0, 3).join(", ").slice(0, 120)
+          : undefined;
+
     items.push({
       patternId: ranked.patternId,
       prompt,
       label: TAXONOMY[ranked.patternId as PatternId].label,
+      ...(evidence ? { evidence } : {}),
     });
   }
 

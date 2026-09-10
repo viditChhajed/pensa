@@ -152,7 +152,16 @@ export default defineUnlistedScript(() => {
       // turns every spot-check page into usable data.
       const byPattern = new Map<string, string[]>();
       for (const { candidate: c } of collected) {
-        const sample = (c.evidence.textSample ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+        // Show WHAT MATCHED, not just the first 60 characters of the node's text.
+        //
+        // A firing logged as `scarcity.stock x1: "Enjoy the US Open in a spacious, private
+        // luxury suite locate"` cannot be judged correct or incorrect: the matched phrase is
+        // somewhere in the truncated remainder. Without the lexemes, every spot-check row's
+        // "correct?" column is guesswork.
+        const lexemes = c.evidence.matchedLexemes.slice(0, 4).join(",");
+        const sample =
+          `${(c.evidence.textSample ?? "").replace(/\s+/g, " ").trim().slice(0, 60)}` +
+          (lexemes.length > 0 ? ` [${lexemes}]` : "");
         const arr = byPattern.get(c.patternId);
         if (arr) arr.push(sample);
         else byPattern.set(c.patternId, [sample]);
