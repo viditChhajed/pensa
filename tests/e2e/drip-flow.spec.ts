@@ -120,3 +120,30 @@ test("fees disclosed only at checkout produce a pricing.drip finding", async () 
 
   await page.close();
 });
+
+test("an add-on the shopper never chose produces a basket.sneak finding", async () => {
+  // The OTHER cross-stage detector, and the other one never demonstrated. It shares the
+  // root cause drip had — a sibling-labelled row that no candidate could read — so proving
+  // drip works does not prove this does. `basket.sneak` additionally needs the add-to-cart
+  // trigger to have reached the ledger, which is a different link again.
+  const { page, logs } = await openJourney();
+
+  await page.goto("http://localhost/drip-pdp.html", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(2500);
+  await page.click("#atc");
+  await page.waitForTimeout(2500);
+
+  await page.goto("http://localhost/drip-cart.html", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(2000);
+
+  await page.goto("http://localhost/drip-checkout.html", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(6000);
+
+  const all = await events();
+  expect(
+    all.filter((e) => e.patternId === "basket.sneak").length,
+    `basket.sneak never fired.\nevents: ${JSON.stringify(all)}\nfull log:\n  ${logs.join("\n  ")}`,
+  ).toBeGreaterThan(0);
+
+  await page.close();
+});
