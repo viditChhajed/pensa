@@ -76,6 +76,27 @@ export interface QueryEnablement {
 export interface GetSummary {
   type: "get-summary";
 }
+
+/**
+ * Is the detector script ACTUALLY registered and matching this page?
+ *
+ * "Watching example.com" in the popup only means the permission was granted. Registration is
+ * a separate step that can fail on its own, and when it does the failure is logged to the
+ * service worker console — which is not reachable from the page console where a tester is
+ * looking. The symptom is a popup claiming to watch a site while nothing whatsoever runs on
+ * it, with no way to tell the difference from "the detectors found nothing".
+ */
+export interface DiagnoseRegistration {
+  type: "diagnose-registration";
+  url: string;
+}
+
+export interface RegistrationReport {
+  granted: boolean;
+  registered: boolean;
+  matchCount: number;
+  error?: string;
+}
 export interface GetSettings {
   type: "get-settings";
 }
@@ -97,6 +118,7 @@ export type Message =
   | TriggerPayload
   | QueryEnablement
   | GetSummary
+  | DiagnoseRegistration
   | GetSettings
   | SetSettings
   | ClearData

@@ -12,6 +12,7 @@
 
 import { BUILD_STAMP } from "@/shared/constants";
 import { domainMatchPattern, isGrantable, registrableDomain } from "@/shared/domain";
+import type { RegistrationReport } from "@/shared/messages";
 import { send } from "@/shared/messages";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
 import { DEFAULT_PROMPT_THRESHOLD, describeSignals, isDenied, scoreUrl } from "@/shared/urlScore";
@@ -83,6 +84,21 @@ async function init(): Promise<void> {
     statusEl.textContent = `Watching ${domain}.`;
     detailEl.textContent = "Patterns found on this page will appear when you add to cart.";
     renderRevoke(pattern, domain);
+
+    // "Watching" only means the permission was granted. Registering the detector script is a
+    // separate step that can fail on its own, and its error goes to the service worker
+    // console — which a tester looking at the page console cannot see. The symptom is a
+    // popup claiming to watch a site while nothing runs on it, indistinguishable from the
+    // detectors genuinely finding nothing. Ask, repair, and say so.
+    const report = await send<RegistrationReport>({ type: "diagnose-registration", url });
+    if (report && !report.registered) {
+      const line = document.createElement("p");
+      line.className = "detail score";
+      line.textContent = report.error
+        ? `Not running here — registration failed: ${report.error}. Reload the extension.`
+        : `Not running here yet. Reload this page to start (${report.matchCount} site(s) registered).`;
+      detailEl.after(line);
+    }
     return;
   }
 

@@ -113,6 +113,10 @@ export const QueryEnablement = z.object({
 });
 
 export const GetSummary = z.object({ type: z.literal("get-summary") });
+export const DiagnoseRegistration = z.object({
+  type: z.literal("diagnose-registration"),
+  url: z.string().max(2048),
+});
 export const GetSettings = z.object({ type: z.literal("get-settings") });
 export const SetSettings = z.object({
   type: z.literal("set-settings"),
@@ -128,6 +132,7 @@ export const Message = z.discriminatedUnion("type", [
   TriggerPayload,
   QueryEnablement,
   GetSummary,
+  DiagnoseRegistration,
   GetSettings,
   SetSettings,
   ClearData,

@@ -17,6 +17,7 @@ import {
   saveLedger,
 } from "@/background/sessionLedger";
 import { CONTENT_SCRIPT_FILE, DETECTOR_SCRIPT_ID } from "@/shared/constants";
+import { domainMatchPattern, matchesPattern } from "@/shared/domain";
 import type { ShowDigest } from "@/shared/messages";
 import { Message } from "@/shared/messages.schema";
 import { ALLOWLIST_DOMAINS, DEFAULT_PROMPT_THRESHOLD, scoreUrl } from "@/shared/urlScore";
@@ -274,6 +275,38 @@ async function handleMessage(raw: unknown): Promise<unknown> {
       // Record first; claims are derived at digest time from the accumulated history.
       await recordObservation(msg.origin, msg.offerKey, msg.offerKeySource, msg.observation);
       return { ok: true };
+    }
+
+    case "diagnose-registration": {
+      // Permission and registration are two separate things, and only the first is visible
+      // in the popup. This reports the second.
+      const pattern = domainMatchPattern(new URL(msg.url).hostname);
+      const granted = await chrome.permissions.contains({ origins: [pattern] });
+      let registered = false;
+      let matchCount = 0;
+      let error: string | undefined;
+      try {
+        const scripts = await chrome.scripting.getRegisteredContentScripts({
+          ids: [DETECTOR_SCRIPT_ID],
+        });
+        const matches = scripts[0]?.matches ?? [];
+        matchCount = matches.length;
+        registered = matches.some((m) => matchesPattern(m, new URL(msg.url)));
+      } catch (err) {
+        error = err instanceof Error ? err.message : String(err);
+      }
+      // Registration can drift from permissions — a service worker dies mid-grant, or a bad
+      // pattern makes the whole update throw. Repair it here rather than only reporting.
+      if (granted && !registered) {
+        await reconcileRegistrations();
+        const after = await chrome.scripting.getRegisteredContentScripts({
+          ids: [DETECTOR_SCRIPT_ID],
+        });
+        const matches = after[0]?.matches ?? [];
+        matchCount = matches.length;
+        registered = matches.some((m) => matchesPattern(m, new URL(msg.url)));
+      }
+      return { granted, registered, matchCount, ...(error ? { error } : {}) };
     }
 
     case "get-summary":
