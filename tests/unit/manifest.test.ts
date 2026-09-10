@@ -8,7 +8,24 @@ import { describe, expect, it } from "vitest";
 const MANIFEST = ".output/chrome-mv3/manifest.json";
 
 describe("built manifest", () => {
+  /**
+   * Absence of a build is a FAILURE, not a reason to skip.
+   *
+   * These assertions are the only thing standing between the project and an install prompt
+   * listing 150 sites, and they used to `skipIf` when no build was present — so an
+   * interrupted or forgotten `wxt build` produced a green suite that had verified nothing
+   * about the permission model. Observed: a broken .output left seven of these silently
+   * skipped while the run reported all green.
+   */
   const available = existsSync(MANIFEST);
+  it("has a build to check at all", () => {
+    expect(
+      available,
+      `No built manifest at ${MANIFEST}. Run \`npm run build\` first — these assertions ` +
+        "are the permission-model regression net and must never be skipped silently.",
+    ).toBe(true);
+  });
+
   const manifest = available
     ? (JSON.parse(readFileSync(MANIFEST, "utf8")) as Record<string, unknown>)
     : null;

@@ -186,9 +186,9 @@ and the exact steps.
 3. Settings → *What was noticed today*, showing the Noticed / Shown split.
 4. Settings → interruption frequency, showing the user is in control.
 
-One thing to get right in screenshot 1: capture it on a page where the card actually
-renders. On dense storefronts it deliberately suppresses itself rather than cover a control,
-so a cart or checkout page is a better bet than a homepage.
+One thing to get right in screenshot 1: the card only appears at add-to-cart or
+checkout-intent, never passively on a product page. So capture it just after clicking Add to
+Cart, or on arrival at checkout.
 
 ---
 

@@ -74,6 +74,17 @@ export interface CandidateNode {
    */
   readonly containerPath: string | null;
   readonly containerText: string;
+  /**
+   * Nearest ancestor within a few levels whose joined text reads like a labelled row: one
+   * price, plus other words. Empty when there is no such ancestor.
+   *
+   * `containerText` is only the immediate parent, which is not enough. A summary row is
+   * commonly `<div><span>Subtotal</span><span class="amt"><b>$40.00</b></span></div>` — the
+   * amount is two levels below the label — so a one-level lookup finds "$40.00" and no
+   * label at all. That is bounded and cached, not a walk to the document root, because
+   * widening it would pair a price with the whole cart.
+   */
+  readonly rowText: string;
   /** A <progress> or [role=progressbar] anywhere inside. Usually not itself a candidate. */
   readonly hasProgressDescendant: boolean;
   readonly childIdxs: readonly number[];

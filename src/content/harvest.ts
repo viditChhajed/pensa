@@ -310,6 +310,48 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
   // over and was the dominant cost of the pass: measured at 1839ms on target.com against a
   // 50ms budget.
   const containerTextCache = new Map<Element, string>();
+  /**
+   * Nearest labelled-row ancestor, bounded to 3 levels and cached per element.
+   *
+   * Bounded because the point is the row, not the page: widen it and a price pairs with the
+   * entire cart. Cached because joinedText is O(subtree), and calling it per candidate per
+   * level unguarded is exactly the quadratic pattern that made this phase the most expensive
+   * one in a pass.
+   */
+  const ROW_LOOKUP_LEVELS = 3;
+  const PRICE_GLYPH = /[$£€¥₹]\s?\d/;
+  const rowTextCache = new Map<Element, string>();
+  const joinedCached = (el: Element): string => {
+    let t = rowTextCache.get(el);
+    if (t === undefined) {
+      t = normalizeText(joinedText(el));
+      rowTextCache.set(el, t);
+    }
+    return t;
+  };
+  /** Text with prices and punctuation stripped. Empty means "this is only a price". */
+  const withoutPrice = (t: string): string =>
+    t.replace(/[$£€¥₹]\s?[\d.,]+/g, "").replace(/[\d.,\s\-–—:•]/g, "");
+
+  const rowTexts: string[] = selected.map((el) => {
+    // Only bare prices ever need this, and they are a small minority of candidates. Walking
+    // ancestors for every candidate cost ~30ms of harvest on newegg for values nothing read.
+    const own = joinedCached(el);
+    if (own.length === 0 || own.length > 40) return "";
+    if (!PRICE_GLYPH.test(own)) return "";
+    if (withoutPrice(own).length > 0) return "";
+
+    let node = el.parentElement;
+    for (let i = 0; node && i < ROW_LOOKUP_LEVELS; i++, node = node.parentElement) {
+      const t = joinedCached(node);
+      if (t.length === 0 || t.length > 140) continue;
+      if (!PRICE_GLYPH.test(t)) continue;
+      // Something besides the price: that is the label.
+      if (withoutPrice(t).length > 0) return t;
+    }
+    return "";
+  });
+
   const containerTexts: string[] = selected.map((el) => {
     const parent = el.parentElement;
     if (!parent) return "";
@@ -376,6 +418,7 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
       parentIdx: el.parentElement ? (indexOf.get(el.parentElement) ?? null) : null,
       containerPath: el.parentElement ? (containerPaths[i] ?? null) : null,
       containerText: containerTexts[i] ?? "",
+      rowText: rowTexts[i] ?? "",
       hasProgressDescendant: hasProgress[i] ?? false,
       childIdxs,
       textHistory: opts.textHistories?.get(el) ?? [],

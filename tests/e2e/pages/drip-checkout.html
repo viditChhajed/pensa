@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><title>Checkout — Test Shop</title>
+<style>body{font:16px system-ui;margin:0;padding:24px;max-width:640px}
+.row{display:flex;gap:12px;padding:8px 0}.amt{margin-left:auto}</style></head>
+<body>
+  <h1>Checkout</h1>
+  <!-- The fees that were never mentioned before this page. That is the pattern. -->
+  <form>
+    <input autocomplete="address-line1" placeholder="Address" />
+    <input autocomplete="address-level2" placeholder="City" />
+    <input autocomplete="postal-code" placeholder="ZIP" />
+  </form>
+  <div class="row"><span>Subtotal</span><span class="amt">$40.00</span></div>
+  <div class="row"><span>Service fee</span><span class="amt">$6.00</span></div>
+  <div class="row"><span>Shipping</span><span class="amt">$5.00</span></div>
+  <div class="row"><span>Order total</span><span class="amt">$51.00</span></div>
+  <button type="button">Place order</button>
+</body></html>
