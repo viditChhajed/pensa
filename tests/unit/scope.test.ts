@@ -36,14 +36,14 @@ function bundleText(): string {
 }
 
 describe("v1 submission scope", () => {
-  it("ships exactly 11 detectors: 9 page + 2 cross-stage", () => {
-    expect(SHIPPED_PAGE_DETECTORS).toHaveLength(9);
+  it("ships exactly 16 detectors: 14 page + 2 cross-stage", () => {
+    expect(SHIPPED_PAGE_DETECTORS).toHaveLength(14);
     expect(SHIPPED_CROSS_STAGE_DETECTORS).toHaveLength(2);
-    expect(SHIPPED_DETECTOR_COUNT).toBe(11);
+    expect(SHIPPED_DETECTOR_COUNT).toBe(16);
   });
 
-  it("the runtime registry contains exactly the 9 shipped page detectors", () => {
-    expect(DETECTORS).toHaveLength(9);
+  it("the runtime registry contains exactly the shipped page detectors", () => {
+    expect(DETECTORS).toHaveLength(14);
     expect(DETECTORS.map((d) => d.patternId).sort()).toEqual([...SHIPPED_PAGE_DETECTORS].sort());
   });
 

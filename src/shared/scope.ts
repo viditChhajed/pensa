@@ -12,8 +12,17 @@
  * their identifiers are absent from the build output.
  */
 
-/** The 9 page detectors that run inside the content script. */
+/**
+ * The page detectors that run inside the content script.
+ *
+ * Tier 2 was originally held for "v1.1 during store review". That was a schedule decision,
+ * not a quality one — all five were built and tested alongside Tier 1 — and the spot check
+ * made its cost concrete: flyfrontier's fare grid is a textbook asymmetric-dominance decoy
+ * and the extension produced zero detections on it, because the only detector that could see
+ * it was excluded from the bundle.
+ */
 export const SHIPPED_PAGE_DETECTORS = [
+  // Tier 1
   "anchoring.reference_price",
   "pricing.charm",
   "scarcity.stock",
@@ -23,6 +32,12 @@ export const SHIPPED_PAGE_DETECTORS = [
   "confirmshaming.decline_copy",
   "goal_gradient.threshold",
   "bnpl.installments",
+  // Tier 2
+  "interference.visual_asymmetry",
+  "decoy.asymmetric_dominance",
+  "nagging.repeat_interstitial",
+  "framing.savings_ratio",
+  "loss_aversion.exit_intent",
 ] as const;
 
 /**
@@ -31,7 +46,6 @@ export const SHIPPED_PAGE_DETECTORS = [
  */
 export const SHIPPED_CROSS_STAGE_DETECTORS = ["pricing.drip", "basket.sneak"] as const;
 
-/** Everything active in the submitted build: 9 + 2 = 11. */
 export const SHIPPED_DETECTORS = [
   ...SHIPPED_PAGE_DETECTORS,
   ...SHIPPED_CROSS_STAGE_DETECTORS,
@@ -39,15 +53,22 @@ export const SHIPPED_DETECTORS = [
 
 export const SHIPPED_DETECTOR_COUNT = SHIPPED_DETECTORS.length;
 
-/** Built, tested, and deliberately NOT shipped in v1. Held for v1.1 during store review. */
-export const DEFERRED_TO_V1_1 = [
-  "interference.visual_asymmetry",
-  "decoy.asymmetric_dominance",
-  "nagging.repeat_interstitial",
-  "framing.savings_ratio",
-  "loss_aversion.exit_intent",
+/**
+ * The §18A temporal patterns: still not in the page registry, and for a structural reason
+ * rather than a scheduling one.
+ *
+ * These cannot be evaluated from a single page. Each one is a claim about how something
+ * CHANGED between visits — a countdown that resets, a stock count that rises, a "was" price
+ * never actually charged — so they are derived in the service worker from the observation
+ * store, not by a detector looking at a DOM. The store ships and accumulates from the first
+ * visit; see `background/temporal.ts`.
+ */
+export const DERIVED_FROM_HISTORY = [
   "temporal.evergreen_countdown",
   "temporal.stock_nonmonotonic",
   "temporal.reference_price_ungrounded",
   "temporal.social_proof_synthetic",
 ] as const;
+
+/** Retained name for the scope tests, which assert these never reach the page registry. */
+export const DEFERRED_TO_V1_1 = DERIVED_FROM_HISTORY;

@@ -60,10 +60,31 @@ const LEXEMES = [
   "limited quantity",
 ] as const;
 
+/**
+ * Recalibrated after spot-check run 2 (EVAL.md), on evidence rather than taste.
+ *
+ * The old weights put a plain numeric claim at 0.60 and a qualitative one at 0.40, against a
+ * 0.75 surface threshold. So scarcity.stock could only ever show a card when a progress bar
+ * happened to sit beside the copy — and across five sites it fired correctly every single
+ * time and surfaced not once. A detector that is always right and never speaks is not
+ * cautious, it is broken, and it was silently costing the product its second-highest
+ * severity pattern.
+ *
+ * Zero false positives across booking, ticketmaster, shein, glossier and choicehotels was
+ * the evidence for moving. The shape of the change matters as much as the size:
+ *
+ *   - A numeric claim ("only 3 rooms left") is self-evidently scarcity and now clears the
+ *     threshold on its own.
+ *   - A qualitative one ("almost sold out") does not. It needs to be terse — badge-shaped
+ *     rather than buried in a paragraph — because that is what distinguishes a scarcity
+ *     badge from prose that happens to contain the words.
+ *
+ * Reversible: drop numericStock back to 0.5 and this returns to log-only.
+ */
 const WEIGHTS: Record<string, number> = {
-  numericStock: 0.5,
-  qualitativeStock: 0.3,
-  progressBar: 0.2,
+  numericStock: 0.75,
+  qualitativeStock: 0.65,
+  progressBar: 0.15,
   shortText: 0.1,
 };
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { anchoringDetector } from "@/content/detectors/anchoring";
+import { bnplDetector } from "@/content/detectors/bnpl";
 import { charmDetector } from "@/content/detectors/charm";
 import { defaultsDetector } from "@/content/detectors/defaults";
 import { goalGradientDetector } from "@/content/detectors/goalGradient";
@@ -451,12 +452,29 @@ describe("field lexicon gaps", () => {
     }
   });
 
-  it("documents that numeric scarcity does not reach the surface threshold alone", () => {
-    // 0.60 = numericStock 0.5 + shortText 0.1, against a 0.75 surfaceThreshold — so this
-    // logs but never shows a card unless a progress bar is also present. That is a
-    // calibration decision for the spot-check, not something to quietly reweight here.
-    const found = scarcityDetector.run(contextFrom(`<div>Only 3 rooms left at this price</div>`));
-    expect(found[0]?.rawScore ?? 0).toBeCloseTo(0.6, 2);
+  it("surfaces a numeric scarcity claim on its own", () => {
+    // Recalibrated after spot-check run 2. This previously scored 0.60 against a 0.75
+    // threshold, so scarcity.stock could only ever show a card when a progress bar happened
+    // to sit beside the copy — it fired correctly on five sites and surfaced on none.
+    // Zero false positives across those five was the evidence for moving it.
+    const found = scarcityDetector.run(contextFrom(`<div>Only 3 rooms left at this rate</div>`));
+    expect(found[0]?.rawScore ?? 0).toBeGreaterThanOrEqual(0.75);
+  });
+
+  it("keeps a qualitative claim below threshold when it is buried in prose", () => {
+    // "Almost sold out" as a badge is a scarcity cue; the same words inside a paragraph are
+    // description. Terseness is what separates them, which is why shortText still counts.
+    const prose =
+      "This is a long paragraph about our hotel which happens to mention that rooms are " +
+      "almost sold out during peak season and that you should plan ahead";
+    const found = scarcityDetector.run(contextFrom(`<div>${prose}</div>`));
+    expect(found[0]?.rawScore ?? 0).toBeLessThan(0.75);
+  });
+
+  it("surfaces an installment claim on its own", () => {
+    // Shein's "Pay now, or in 4 payments of $3.13" scored 0.70 against 0.75 on two visits.
+    const found = bnplDetector.run(contextFrom(`<div>Pay now, or in 4 payments of $3.13</div>`));
+    expect(found[0]?.rawScore ?? 0).toBeGreaterThanOrEqual(0.75);
   });
 });
 

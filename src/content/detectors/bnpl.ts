@@ -52,10 +52,19 @@ const LEXEMES = [
   "/mo",
 ] as const;
 
+/**
+ * Recalibrated with scarcity, and for the same reason: correct on every firing, never able
+ * to surface. Shein's "Pay now, or in 4 payments of $3.13" scored 0.70 against a 0.75
+ * threshold on two separate visits.
+ *
+ * installmentCopy carries the weight because it is the actual claim. A named provider
+ * (Klarna, Afterpay, Affirm) is corroboration, and an amount makes it concrete, but
+ * "4 payments of $3.13" is already unambiguous on its own.
+ */
 const WEIGHTS: Record<string, number> = {
-  installmentCopy: 0.55,
-  providerNamed: 0.3,
-  providerFrame: 0.3,
+  installmentCopy: 0.7,
+  providerNamed: 0.25,
+  providerFrame: 0.25,
   hasAmount: 0.15,
 };
 

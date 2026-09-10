@@ -11,19 +11,29 @@ import { anchoringDetector } from "./anchoring";
 import { bnplDetector } from "./bnpl";
 import { charmDetector } from "./charm";
 import { confirmshamingDetector } from "./confirmshaming";
+import { decoyDetector } from "./decoy";
 import { defaultsDetector } from "./defaults";
+import { exitIntentDetector } from "./exitIntent";
+import { framingDetector } from "./framing";
+import { interferenceDetector } from "./interference";
+import { naggingDetector } from "./nagging";
 import { goalGradientDetector } from "./goalGradient";
 import { scarcityDetector } from "./scarcity";
 import { socialProofDetector } from "./socialProof";
 import { urgencyDetector } from "./urgency";
 
 /**
- * The nine Tier-1 page detectors that ship in v1.
+ * Every page detector that ships.
  *
- * Tier-2 page detectors are built and tested but live in `deferred.ts`, deliberately outside
- * this import graph so they cannot reach a bundle. See `src/shared/scope.ts`.
+ * Tier 2 was held back for "v1.1 during store review", which was a schedule decision rather
+ * than a quality one — all five were built and tested at the same time as Tier 1. The spot
+ * check made the cost concrete: flyfrontier's fare grid is a textbook asymmetric-dominance
+ * decoy, four bundles priced so the middle one looks obvious, and the extension produced
+ * ZERO detections on that page because the only detector that could see it was excluded
+ * from the bundle. Shipping what is already built and passing is the better trade.
  */
 export const DETECTORS: readonly Detector[] = [
+  // Tier 1
   anchoringDetector,
   charmDetector,
   scarcityDetector,
@@ -33,6 +43,12 @@ export const DETECTORS: readonly Detector[] = [
   confirmshamingDetector,
   goalGradientDetector,
   bnplDetector,
+  // Tier 2
+  interferenceDetector,
+  decoyDetector,
+  naggingDetector,
+  framingDetector,
+  exitIntentDetector,
 ];
 
 export const DETECTORS_BY_ID = new Map(DETECTORS.map((d) => [d.id, d]));

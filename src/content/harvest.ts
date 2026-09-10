@@ -219,18 +219,39 @@ function accessibleName(el: Element): string {
  * When §18E ships, restore the walk — but do it for the handful of paired accept/decline
  * controls that detector identifies, not for every candidate on the page.
  */
-const WALK_ANCESTORS_FOR_BACKGROUND = false;
+/**
+ * Resolving a true painted background costs a getComputedStyle per ancestor. Doing it for
+ * every candidate meant tens of thousands of style resolutions per pass and was the single
+ * largest cost in the harvest — measured at 1839ms on target.com.
+ *
+ * But `interference.visual_asymmetry` genuinely needs it: contrast against a transparent
+ * element resolves to the wrong colour, and its whole claim is that one button is far more
+ * prominent than the other. So the walk is back, restricted to what that detector actually
+ * pairs — interactive controls — which is a few dozen nodes rather than a thousand.
+ */
+const BACKGROUND_WALK_MAX_HOPS = 8;
+
+function needsBackgroundWalk(el: Element): boolean {
+  const tag = el.tagName;
+  return (
+    tag === "BUTTON" ||
+    tag === "A" ||
+    tag === "INPUT" ||
+    tag === "LABEL" ||
+    el.getAttribute("role") === "button" ||
+    el.getAttribute("role") === "link"
+  );
+}
 
 function effectiveBackground(el: Element, styleOf: (e: Element) => CSSStyleDeclaration): string {
   const own = styleOf(el).backgroundColor;
   const isTransparent = !own || own === "transparent" || /rgba\(\s*0,\s*0,\s*0,\s*0\s*\)/.test(own);
   if (!isTransparent) return own;
-
-  if (!WALK_ANCESTORS_FOR_BACKGROUND) return "rgb(255, 255, 255)";
+  if (!needsBackgroundWalk(el)) return "rgb(255, 255, 255)";
 
   let node: Element | null = el.parentElement;
   let hops = 0;
-  while (node && hops < 12) {
+  while (node && hops < BACKGROUND_WALK_MAX_HOPS) {
     const bg = styleOf(node).backgroundColor;
     if (bg && bg !== "transparent" && !/rgba\(\s*0,\s*0,\s*0,\s*0\s*\)/.test(bg)) return bg;
     node = node.parentElement;

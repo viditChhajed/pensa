@@ -128,9 +128,29 @@ export default defineUnlistedScript(() => {
     const ctx = buildContext();
     const collected: Scored[] = [];
 
+    // One badge, one event.
+    //
+    // Shein renders "Almost Sold Out" on nine cards and Glossier repeats a price row
+    // thirteen times, so a single piece of copy produced nine or thirteen identical events.
+    // The digest dedupes by family so only one would ever be SHOWN — but the event log is
+    // the prevalence substrate, and counting one badge nine times would put a 9x multiplier
+    // on whichever retailers happen to repeat their markup most. That is a measurement
+    // error, not a display one, and it survives into every statistic built on the log.
+    //
+    // Keyed on pattern + hashed text, so two genuinely different scarcity claims still count
+    // twice. The first occurrence wins, which is the one nearest the top of the document.
+    const seenText = new Set<string>();
+    let duplicates = 0;
+
     const detectorCpuMs = await drainAcrossIdle(runDetectors(ctx), (run) => {
       for (const c of run.candidates) {
         if (c.rawScore < LOG_THRESHOLD) continue;
+        const key = `${c.patternId}|${c.evidence.textHash}`;
+        if (seenText.has(key)) {
+          duplicates++;
+          continue;
+        }
+        seenText.add(key);
         collected.push({ candidate: c, salienceKey: c.nodeRef });
         // Start dwell accounting for anything that might later be surfaced. Re-finding by
         // selector is best-effort by design — a miss costs a candidate, never a crash.
@@ -176,7 +196,11 @@ export default defineUnlistedScript(() => {
           return `${id} x${samples.length}: ${shown}${extra}`;
         })
         .join(" | ");
-      console.info(`[patterns] ${stage}: ${collected.length} detection(s) — ${summary}`);
+      console.info(
+        `[patterns] ${stage}: ${collected.length} detection(s)` +
+          (duplicates > 0 ? ` (+${duplicates} repeat(s) of the same copy)` : "") +
+          ` — ${summary}`,
+      );
     }
 
     // §18A: resolve this page's offer identity and contribute one observation per visit.
