@@ -23,6 +23,11 @@ const REMAINDER_PATTERNS: readonly RegExp[] = [
   /\byou'?re\s+.{0,16}?\s*away from\b/,
   /\bonly\s+.{0,16}?\s*(?:away|more|to go)\b/,
   /\badd\s+.{0,16}?\s*(?:more\s+)?to (?:get|unlock|qualify|receive)\b/,
+  // Shein: "Add $2.77 more to cart for FREE STANDARD SHIPPING on SHEIN products!" — the
+  // threshold is phrased as a destination ("to cart for X") rather than a purpose ("to get
+  // X"), and scored zero. "more" is load-bearing here: without it this would match the
+  // plain "Add to cart" on every product page in existence.
+  /\badd\s+.{0,16}?\s*more\s+to (?:your\s+)?(?:cart|bag|basket)\b/,
   /\bspend\s+.{0,16}?\s*(?:more\s+)?to (?:get|unlock|qualify)\b/,
   /\b.{0,16}?\s*away from free (?:shipping|delivery)\b/,
   /\byou are\s+.{0,16}?\s*away\b/,

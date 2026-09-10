@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { anchoringDetector } from "@/content/detectors/anchoring";
 import { charmDetector } from "@/content/detectors/charm";
 import { defaultsDetector } from "@/content/detectors/defaults";
+import { goalGradientDetector } from "@/content/detectors/goalGradient";
 import { scarcityDetector } from "@/content/detectors/scarcity";
 import { urgencyDetector } from "@/content/detectors/urgency";
 import { classifyStage, explainStage } from "@/content/funnel";
@@ -357,5 +358,104 @@ describe("anchoring on a savings-badge layout", () => {
     expect(
       anchoringDetector.run(contextFrom(`<div><span>$60</span> <s>$55</s></div>`)),
     ).toHaveLength(0);
+  });
+});
+
+/**
+ * charm used to rank priced nodes by rendered area, which on a grid page selects the largest
+ * BOX — a container whose text is every child run together. Logged on shein as
+ * "Customers Also Viewed 10 #KnitEssentials -15% SHEIN PETITE Balle": a blob whose visible
+ * sample contained no price at all, because the charm price sat further along in text the
+ * log truncated. A shopper shown that would not know what was being pointed at.
+ */
+describe("charm picks the price node, not the box around it", () => {
+  it("reports the price element, not its grid container", () => {
+    const card = (name: string, price: string) =>
+      `<li><h3>${name}</h3><span class="price">${price}</span></li>`;
+    const ctx = contextFrom(
+      `<ul class="grid">${card("Knit Essentials", "$19.99")}${card("Denim Jacket", "$34.99")}</ul>`,
+      {
+        // Make the grid container by far the largest box, which is what used to win.
+        patch: (n, el) => {
+          if (el?.tagName === "UL") Object.assign(n.box, { w: 1200, h: 900 });
+          else if (el?.classList.contains("price")) Object.assign(n.box, { w: 90, h: 30 });
+        },
+      },
+    );
+    const found = charmDetector.run(ctx);
+    expect(found).toHaveLength(1);
+    const sample = found[0]?.evidence.textSample ?? "";
+    expect(sample.length, `blob evidence: ${sample}`).toBeLessThanOrEqual(60);
+    expect(sample).toContain(".99");
+    expect(sample).not.toContain("Knit Essentials");
+  });
+
+  it("ignores a container whose text merely sweeps up a price", () => {
+    const ctx = contextFrom(
+      `<div class="wrap">Customers Also Viewed. Free returns on every order placed today.
+        Members save more. <span class="price">$24.99</span></div>`,
+    );
+    const found = charmDetector.run(ctx);
+    // Either it reports the span, or nothing — never the sentence-long wrapper.
+    for (const c of found) {
+      expect((c.evidence.textSample ?? "").length).toBeLessThanOrEqual(60);
+    }
+  });
+
+  it("still fires on an ordinary product price", () => {
+    expect(charmDetector.run(contextFrom(`<div class="price">$19.99</div>`))).toHaveLength(1);
+  });
+});
+
+/**
+ * Two misses recorded in EVAL.md during the field spot-check, pinned as tests.
+ *
+ * Both were real, but one was recorded with the wrong cause: "only 3 left at this price"
+ * matches the existing pattern and scores 0.60. Booking's actual copy puts a noun in the
+ * middle — "Only 3 rooms left at this price" — and that scored zero.
+ */
+describe("field lexicon gaps", () => {
+  it("scarcity: counts an inventory noun between the number and 'left'", () => {
+    for (const copy of [
+      "Only 3 rooms left at this price",
+      "Only 2 rooms left on our site",
+      "Only 4 tickets left at this price",
+      "3 seats left",
+    ]) {
+      expect(scarcityDetector.run(contextFrom(`<div>${copy}</div>`)), copy).toHaveLength(1);
+    }
+  });
+
+  it("scarcity: still ignores catalogue variant counts", () => {
+    // The exact false positive the plan warns causes uninstalls. Widening the pattern to
+    // any word would have swallowed these, which is why the nouns are enumerated.
+    for (const copy of ["Only 3 sizes left", "2 colours left", "Only 4 styles remaining"]) {
+      expect(scarcityDetector.run(contextFrom(`<div>${copy}</div>`)), copy).toHaveLength(0);
+    }
+  });
+
+  it("goal_gradient: catches a threshold phrased as a destination", () => {
+    // Shein says "to cart for FREE SHIPPING", not "to get free shipping".
+    const found = goalGradientDetector.run(
+      contextFrom(
+        `<div>Add $2.77 more to cart for FREE STANDARD SHIPPING on SHEIN products!</div>`,
+      ),
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0]?.rawScore ?? 0).toBeGreaterThanOrEqual(0.75);
+  });
+
+  it("goal_gradient: 'more' is load-bearing — plain add-to-cart must not fire", () => {
+    for (const copy of ["Add to cart", "Add to bag $45", "Add to basket"]) {
+      expect(goalGradientDetector.run(contextFrom(`<div>${copy}</div>`)), copy).toHaveLength(0);
+    }
+  });
+
+  it("documents that numeric scarcity does not reach the surface threshold alone", () => {
+    // 0.60 = numericStock 0.5 + shortText 0.1, against a 0.75 surfaceThreshold — so this
+    // logs but never shows a card unless a progress bar is also present. That is a
+    // calibration decision for the spot-check, not something to quietly reweight here.
+    const found = scarcityDetector.run(contextFrom(`<div>Only 3 rooms left at this price</div>`));
+    expect(found[0]?.rawScore ?? 0).toBeCloseTo(0.6, 2);
   });
 });

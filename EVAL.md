@@ -311,6 +311,45 @@ Still to confirm by hand: a card rendering at **cart or checkout** on a real sit
 above is storefront and category pages, because a checkout page needs a populated cart and
 usually an account.
 
+## Follow-ups resolved from the spot-check findings
+
+Three items from the table above, fixed and pinned as tests. One of them was recorded here
+with the wrong cause, which is noted rather than quietly corrected.
+
+**`pricing.charm` matched a container, not a price (row 11d).** It ranked priced nodes by
+rendered area, which on a grid page selects the largest BOX — a container whose text is every
+child run together. The logged evidence, "Customers Also Viewed 10 #KnitEssentials -15% SHEIN
+PETITE Balle", contains no price at all: the charm price sat further along in text the log
+truncated. It now requires the price to BE the node's content (text under 60 chars) and
+rejects any node with a descendant carrying the same price. Both guards are needed — the
+length test alone still admits a tight wrapper.
+
+**`goal_gradient.threshold` missed Shein's cart threshold (row 11f).** Confirmed. Shein
+phrases the threshold as a destination — "Add $2.77 more to cart for FREE STANDARD SHIPPING"
+— where the patterns wanted a purpose ("to get/unlock/qualify"). Added. "more" is
+load-bearing in the new pattern: without it, it would match the plain "Add to cart" on every
+product page on the web. Tested against that.
+
+**`scarcity.stock` on booking.com (row 2) — the recorded cause was wrong.** This was logged
+as "lexicon wants 'only N left'; 'at this price' is rate availability, not covered". Measured:
+"Only 3 left at this price" *does* match, and scores 0.60. The real gap is that Booking's copy
+puts a noun in the middle — "Only 3 **rooms** left at this price" — which scored zero. Fixed
+by allowing an enumerated set of inventory nouns (rooms, tickets, seats, units...). NOT `\w+`,
+which would have swallowed "only 3 sizes left" — the catalogue-vs-urgency false positive the
+plan warns causes uninstalls. Variant exclusions verified still holding.
+
+### Open calibration question, for the next spot-check to decide
+
+Numeric scarcity scores **0.60** (numericStock 0.5 + shortText 0.1) and qualitative scarcity
+scores **0.40**, both against a **0.75** surfaceThreshold. So `scarcity.stock` can only ever
+surface when a progress bar is present alongside the copy — otherwise it logs and stays
+silent. Every confirmed-correct scarcity firing in the table above is in that position.
+
+This is left as found. Reweighting a detector upward so it crosses the surfacing line is a
+calibration decision of the same kind as raising a threshold to silence a noisy one, and it
+belongs to the spot-check with real firings in front of it, not to a code change made on
+its own.
+
 ## Performance, observed during the spot-check
 
 | Site | Worst pass | Sustained | Backoff reached |

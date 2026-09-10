@@ -28,11 +28,30 @@ export const charmDetector: Detector = {
   run(ctx: PageContext): DetectionCandidate[] {
     const nodes = visibleCandidates(ctx);
 
-    let best: { node: (typeof nodes)[number]; sub: Record<string, number>; frac: string } | null =
-      null;
-    let bestArea = -1;
+    // Only nodes where the price IS the content, not nodes that merely contain one.
+    //
+    // Ranking every priced node by rendered area picked the biggest box on the page, which
+    // on a grid is a container whose text is every child run together. Observed on shein:
+    // the match was logged as "Customers Also Viewed 10 #KnitEssentials -15% SHEIN PETITE
+    // Balle" — a blob with no price in the visible sample at all; the charm price was
+    // further along in text that the log truncated. The evidence was meaningless, and a
+    // shopper shown that would have no idea what the extension was pointing at.
+    //
+    // Two guards, because either alone leaks. A price node's text is short — that rejects
+    // blobs. And no candidate deeper in the subtree may carry the same price — that rejects
+    // a tight wrapper around a real price node, which is short enough to pass the first.
+    const MAX_PRICE_TEXT = 60;
 
+    interface Priced {
+      node: (typeof nodes)[number];
+      sub: Record<string, number>;
+      frac: string;
+      amount: bigint;
+    }
+
+    const priced: Priced[] = [];
     for (const n of nodes) {
+      if (n.text.length > MAX_PRICE_TEXT) continue;
       const prices = parsePrices(n.text);
       if (prices.length === 0) continue;
 
@@ -49,20 +68,38 @@ export const charmDetector: Detector = {
               /^\d{2}$/.test(c.text.trim()),
           );
 
-        const area = n.box.w * n.box.h;
-        const sub = {
-          charmFraction: 1,
-          superscriptCents: centsChild ? 1 : 0,
-          // Largest rendered price on the page is almost certainly the item's own price.
-          isPrimaryPrice: area > 400 ? 1 : 0,
-        };
-
-        if (area > bestArea) {
-          bestArea = area;
-          best = { node: n, sub, frac: p.fraction };
-        }
+        priced.push({
+          node: n,
+          frac: p.fraction,
+          amount: p.amount,
+          sub: {
+            charmFraction: 1,
+            superscriptCents: centsChild ? 1 : 0,
+            // Filled in below, once wrappers are out of the running.
+            isPrimaryPrice: 0,
+          },
+        });
       }
     }
+
+    const isWrapperOf = (outer: Priced, inner: Priced): boolean =>
+      inner.node.selectorPath.length > outer.node.selectorPath.length &&
+      inner.node.selectorPath.startsWith(`${outer.node.selectorPath}>`) &&
+      inner.amount === outer.amount;
+
+    const leaves = priced.filter((a) => !priced.some((b) => isWrapperOf(a, b)));
+
+    let best: Priced | null = null;
+    let bestArea = -1;
+    for (const p of leaves) {
+      const area = p.node.box.w * p.node.box.h;
+      if (area > bestArea) {
+        bestArea = area;
+        best = p;
+      }
+    }
+    // The largest rendered price among real price nodes is the item's own price.
+    if (best && bestArea > 400) best.sub.isPrimaryPrice = 1;
 
     if (!best) return [];
     return [

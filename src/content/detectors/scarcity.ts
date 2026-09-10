@@ -11,8 +11,20 @@ import type { DetectionCandidate } from "@/shared/schema";
 import type { Detector, PageContext } from "../types";
 import { candidate, matchLexemes, visibleCandidates } from "./util";
 
+/**
+ * Inventory nouns that may sit between the count and "left".
+ *
+ * Booking.com says "Only 3 rooms left at this price", not "Only 3 left" — measured, and it
+ * scored zero. Enumerated rather than accepting any word, because `\w+` here would swallow
+ * "only 3 sizes left", which is a catalogue fact rather than manufactured urgency and is the
+ * exact false positive the plan warns causes uninstalls. Variant nouns stay excluded below.
+ */
+const UNIT_NOUN =
+  "(?:rooms?|tickets?|seats?|items?|units?|pieces?|spots?|places?|nights?|copies|copy|boxes|packs?|bottles?|sets?)";
+
 const STOCK_PATTERNS: readonly RegExp[] = [
-  /\bonly (\d{1,3}) (?:left|remaining|available)\b/,
+  new RegExp(`\\bonly (\\d{1,3}) (?:${UNIT_NOUN} )?(?:left|remaining|available)\\b`),
+  new RegExp(`\\b(\\d{1,3}) ${UNIT_NOUN} (?:left|remaining|available)\\b`),
   /\b(\d{1,3}) (?:left|remaining) in stock\b/,
   /\bonly (\d{1,3}) in stock\b/,
   /\b(\d{1,3}) items? left\b/,
