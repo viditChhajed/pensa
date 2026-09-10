@@ -78,6 +78,21 @@ export interface DigestItem {
    * every telemetry shape (see TelemetryRecord in schema.ts).
    */
   evidence?: string;
+  /**
+   * Why the pattern works, and the source for that claim.
+   *
+   * The product's stated principle is observe and question, never accuse. A question with
+   * nothing behind it is just an insinuation — the reader has no way to check whether the
+   * effect is real or whether the tool is editorialising. Every taxonomy entry already
+   * carries a one-line mechanism and a full citation to the literature; they were simply
+   * never surfaced anywhere a reader could see them.
+   *
+   * Sent from the worker rather than looked up page-side: the taxonomy is ~18KB and is not
+   * in the content bundle, and a few hundred bytes per shown item is much cheaper than
+   * shipping the whole table into every page.
+   */
+  mechanism?: string;
+  citation?: string;
 }
 
 export interface PlacementCapacity {
@@ -267,10 +282,13 @@ export async function decideDigest(
           ? lexemes.slice(0, 3).join(", ").slice(0, 120)
           : undefined;
 
+    const entry = TAXONOMY[ranked.patternId as PatternId];
     items.push({
       patternId: ranked.patternId,
       prompt,
-      label: TAXONOMY[ranked.patternId as PatternId].label,
+      label: entry.label,
+      mechanism: entry.mechanism,
+      citation: entry.citation,
       ...(evidence ? { evidence } : {}),
     });
   }

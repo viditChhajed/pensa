@@ -204,3 +204,45 @@ test("the card names what it saw, not just what it noticed", async () => {
   );
   await page.close();
 });
+
+test("the card can show why the pattern works, and cites a source", async () => {
+  // "Observe and question, never accuse" is the product's stated principle, and a question
+  // with nothing behind it is just an insinuation — the reader has no way to tell a real
+  // effect from the tool editorialising. Every taxonomy entry carries a one-line mechanism
+  // and a full citation; until now nothing surfaced them anywhere a reader could look.
+  //
+  // The shadow root is closed, so this is asserted the way a user experiences it: the card
+  // grows when the explanation is opened.
+  const { page, logs } = await openFixture("cart-drawer.html");
+  await page.waitForTimeout(2500);
+  await page.click("#atc");
+  await waitForCard(page, logs);
+  await page.waitForTimeout(300);
+
+  const heightOf = () =>
+    page.evaluate(() => {
+      const host = [...document.documentElement.children].find((e) => e.id?.startsWith("pp-"));
+      return (host as HTMLElement).getBoundingClientRect().height;
+    });
+
+  const collapsed = await heightOf();
+
+  // Click the "Why this works" summary, which sits just above the bottom edge of the card.
+  const spot = await page.evaluate(() => {
+    const host = [...document.documentElement.children].find((e) => e.id?.startsWith("pp-"));
+    const r = (host as HTMLElement).getBoundingClientRect();
+    return { x: Math.round(r.left + 40), y: Math.round(r.bottom - 24) };
+  });
+  await page.mouse.click(spot.x, spot.y);
+  await page.waitForTimeout(400);
+
+  const expanded = await heightOf();
+  expect(
+    expanded,
+    `card did not grow when the explanation was opened (${collapsed} -> ${expanded})`,
+  ).toBeGreaterThan(collapsed);
+
+  // Collapsed by default: it stays a question until asked to be more.
+  expect(collapsed).toBeLessThan(expanded);
+  await page.close();
+});

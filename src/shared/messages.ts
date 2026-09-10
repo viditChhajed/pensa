@@ -127,7 +127,14 @@ export type Message =
 /** What the worker sends back when a digest should be shown. */
 export interface ShowDigest {
   type: "show-digest";
-  items: { patternId: string; prompt: string; label: string; evidence?: string }[];
+  items: {
+    patternId: string;
+    prompt: string;
+    label: string;
+    evidence?: string;
+    mechanism?: string;
+    citation?: string;
+  }[];
   /** What the worker decided the page can hold. "suppressed" means render nothing. */
   mode: "card" | "pill" | "suppressed";
 }

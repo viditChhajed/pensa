@@ -370,6 +370,9 @@ export interface CardItem {
   prompt: string;
   /** What was actually seen on the page. Rendered so the question can be connected to it. */
   evidence?: string;
+  /** One line on why the pattern works, and the source for that claim. See DigestItem. */
+  mechanism?: string;
+  citation?: string;
 }
 
 export class DigestCard {
@@ -471,6 +474,20 @@ export class DigestCard {
       @media (prefers-color-scheme: dark) {
         .evidence { color: #a6acb8; border-left-color: #40444d; }
       }
+      /* Collapsed by default: the card is a question, not a lecture. */
+      .why { margin-top: 6px; }
+      .why summary {
+        cursor: pointer; font-size: 12px; color: #5b616e;
+        list-style: none; display: inline-block; padding: 1px 0;
+        border-bottom: 1px dotted currentColor;
+      }
+      .why summary::-webkit-details-marker { display: none; }
+      .why summary:focus-visible { outline: 2px solid #2b5cff; outline-offset: 2px; }
+      .mechanism { font-size: 12.5px; margin-top: 6px; }
+      .citation { font-size: 11.5px; color: #6b7280; margin-top: 4px; }
+      @media (prefers-color-scheme: dark) {
+        .why summary, .citation { color: #a6acb8; }
+      }
     `;
     return style;
   }
@@ -512,6 +529,27 @@ export class DigestCard {
         // textContent, never innerHTML: this is page-authored text rendered back into a page.
         ev.textContent = `“${item.evidence}”`;
         li.append(ev);
+      }
+
+      if (item.mechanism) {
+        // <details> rather than a scripted toggle: keyboard reachable and announced to a
+        // screen reader for free, and collapsed by default so the card stays a question
+        // rather than a lecture.
+        const why = document.createElement("details");
+        why.className = "why";
+        const summary = document.createElement("summary");
+        summary.textContent = "Why this works";
+        const mech = document.createElement("p");
+        mech.className = "mechanism";
+        mech.textContent = item.mechanism;
+        why.append(summary, mech);
+        if (item.citation) {
+          const cite = document.createElement("p");
+          cite.className = "citation";
+          cite.textContent = item.citation;
+          why.append(cite);
+        }
+        li.append(why);
       }
       list.append(li);
     }
