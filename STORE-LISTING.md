@@ -116,6 +116,16 @@ The full source, including the list of sites and the exact wording of every prom
 public.
 ```
 
+> **DO NOT SUBMIT THE LAST PARAGRAPH AS-IS.** `viditChhajed/persuasion-patterns` is
+> currently **private**, so "the full source … is public" is false, and it is false in the
+> one direction a reviewer can check in ten seconds. Two ways out, both fine:
+>
+> 1. Make the repo public before submitting, and the paragraph becomes true. Worth adding the
+>    URL to it if so — an unverifiable claim of openness is weaker than a link.
+> 2. Delete the paragraph. Nothing else in the listing depends on it.
+>
+> This is your call, not mine, which is why it is flagged rather than edited.
+
 ---
 
 ## Permission justifications
@@ -185,20 +195,18 @@ for creditworthiness.
 
 ---
 
-## Privacy policy URL — **NEEDS A DECISION FROM YOU**
+## Privacy policy URL — **DONE**
 
-Required by the store; the listing cannot be submitted without a reachable URL.
-[PRIVACY.md](PRIVACY.md) is written and current. Options:
+```
+https://viditchhajed.github.io/persuasion-patterns-docs/privacy.html
+```
 
-1. **GitHub Pages** — make the repo public (or a small docs-only repo) and serve
-   `PRIVACY.md`. Free, ~10 minutes, gives a stable
-   `https://viditchhajed.github.io/persuasion-patterns/privacy` URL. **Recommended.**
-2. **A gist** — fastest, but a gist URL looks improvised to a reviewer.
-3. **Your own domain**, if you have one.
+Live and returning 200, served from a separate docs repo so the extension repo can stay
+private. Paste it into the listing's Privacy policy field.
 
-I cannot make the repo public or create the Pages site for you — publishing is your call, and
-the repo is currently private on purpose. Tell me which you want and I will prepare the file
-and the exact steps.
+Keep it in step with [PRIVACY.md](PRIVACY.md): that file is the source and the page is a
+copy, so a change to one that does not reach the other means the published policy and the
+committed policy disagree. Re-check the page after any edit to PRIVACY.md.
 
 ---
 
@@ -248,7 +256,7 @@ be judged. Flipping to Public later is one setting.
 - [ ] `npm run build` clean; `npm test` and `npm run test:e2e` green
 - [ ] `host_permissions` empty in the built manifest (CI-enforced, but look anyway)
 - [x] Icons present at all four sizes
-- [ ] Privacy policy URL live and reachable
+- [x] Privacy policy URL live and reachable
 - [ ] **[EVAL.md](EVAL.md) filled in, and any detector over ~4 false positives raised or disabled**
 - [ ] Screenshots captured
 - [ ] Version bumped in `wxt.config.ts`
