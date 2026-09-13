@@ -15,7 +15,12 @@ import { defineUnlistedScript } from "wxt/utils/define-unlisted-script";
 import { runDetectors } from "@/content/detectors";
 import { createHash } from "@/content/detectors/hash";
 import { explainStage } from "@/content/funnel";
-import { harvest, readDocumentMeta } from "@/content/harvest";
+import {
+  harvest,
+  invalidateAllStyles,
+  invalidateStyles,
+  readDocumentMeta,
+} from "@/content/harvest";
 import { extractObservations, isEmpty } from "@/content/observations";
 import { PageObserver } from "@/content/observer";
 import { resolveOffer } from "@/content/offerKey";
@@ -65,15 +70,18 @@ export default defineUnlistedScript(() => {
    * Adaptive, because a full re-harvest on every mutation batch is the wrong algorithm and
    * the right one is not a quick fix.
    *
-   * Plan §18C specifies dirty-subtree invalidation: coalesce MutationObserver records into
-   * dirty roots and re-score only those, memoised by subtree fingerprint. `PageObserver`
-   * already collects the roots (`takeDirtyRoots`) but `pass()` still re-harvests the whole
-   * document, so a busy SPA re-scans everything continuously. Measured on target.com: passes
-   * of 1839ms, and still ~1000ms after trimming the two biggest constant factors.
+   * Plan §18C's dirty-subtree invalidation now covers the expensive half: computed style is
+   * memoised across passes and dropped only for the subtrees the observer saw change, so a
+   * busy SPA no longer re-resolves style for thousands of unchanged elements every pass.
+   * (Measured on target.com before any of this: passes of 1839ms.) Boxes are still re-read
+   * every pass and always will be — they are viewport-relative, so a scroll invalidates them
+   * with no mutation to notice.
    *
-   * Until §18C lands, this bounds the damage rather than hiding it: the gap before the next
-   * pass scales with how long the last one took, so detection can never occupy more than
-   * MAX_DUTY_CYCLE of the main thread no matter how hostile the page.
+   * This backoff stays regardless, because the cache helps a page that settles and does
+   * nothing for one that rewrites itself continuously. It bounds the damage rather than
+   * hiding it: the gap before the next pass scales with how long the last one took, so
+   * detection can never occupy more than MAX_DUTY_CYCLE of the main thread no matter how
+   * hostile the page.
    */
   let debounceMs = PASS_DEBOUNCE_MS;
   let lastReportedStage: FunnelStage | null = null;
@@ -94,6 +102,13 @@ export default defineUnlistedScript(() => {
     const t0 = performance.now();
     const meta = readDocumentMeta(document, url);
     const t1 = performance.now();
+
+    // Plan §18C, the affordable half. Computed style is memoised across passes and dropped
+    // only for the subtrees the MutationObserver actually saw change, so an unchanged page
+    // is not re-resolved from scratch every pass — which is both the cost and the reason
+    // the time budget kept truncating dense pages at the same node, pass after pass.
+    invalidateStyles(observer.takeDirtyRoots());
+
     const candidates = harvest(document, {
       textHistories: observer.state.textHistories,
       ephemeral: observer.state.ephemeral,
@@ -464,6 +479,19 @@ export default defineUnlistedScript(() => {
 
   observer.start();
   triggers.attach();
+
+  /**
+   * A resize re-evaluates every media query and every relative unit on the page, and no
+   * element reports it — there is no mutation record to invalidate against, so the style
+   * cache would keep serving pre-resize values indefinitely. Dropped wholesale rather than
+   * selectively, because after a resize there is no "unchanged" subtree to preserve.
+   *
+   * Passive and coalesced by the pass debounce: resize fires continuously while a window is
+   * being dragged, and bumping an integer per event is deliberately the cheapest possible
+   * response to that.
+   */
+  addEventListener("resize", () => invalidateAllStyles(), { passive: true });
+
   void pass();
 
   // SPA routing: the `navigation` API where available, a light URL poll otherwise. Never

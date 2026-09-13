@@ -251,6 +251,27 @@ behind this.
 the extension will miss the funnel transition that drip depends on. §18C
 dirty-subtree invalidation is specified and unbuilt.
 
+> **FIXED — 2026-09-13.** Two changes. The backoff was switched from wall-clock
+> to CPU time, and no site now approaches the 15s ceiling (worst ~1s). Then §18C
+> landed for the expensive half: computed style is memoised across passes and
+> dropped only for the subtrees the observer saw change. Boxes are still re-read
+> every pass, and always will be — `getBoundingClientRect` is viewport-relative,
+> so a cached box is wrong after any scroll and no mutation would invalidate it.
+>
+> Measured on newegg, the densest page in the set (~3900 qualifying nodes against
+> a 35 ms per-pass budget):
+>
+> | | before | after |
+> |---|---|---|
+> | nodes ever read | ~2700, the same stop every pass | 3909, reached by pass 3 |
+> | passes over budget in 35 s | continuous | none after 7.4 s |
+>
+> The first version of the invalidation had a bug worth recording: any dirty root
+> with more than 2000 descendants triggered a *global* flush, which on a loading
+> retail page fires every batch. The measured cache hit rate was exactly zero,
+> and nothing said so. It is a work budget now, and both the flush and the
+> truncation log themselves.
+
 **5. The user never saw a card.** Six sites, zero digests displayed. Placement
 suppression is doing exactly what it should — never covering a control — but a
 tool whose core interaction never fires is not yet a product.

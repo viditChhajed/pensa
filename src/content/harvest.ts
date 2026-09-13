@@ -51,6 +51,107 @@ const MAX_CANDIDATES = 4000;
  * costs least where it matters most — but it is a real limitation and not a rounding error.
  */
 const HARVEST_BUDGET_MS = 35;
+/**
+ * Computed styles, kept ACROSS passes. Plan §18C, the affordable half of it.
+ *
+ * `pass()` re-harvests the whole document every time, so a busy SPA re-resolves style for
+ * thousands of unchanged elements continuously — measured at 1839ms on target.com, and the
+ * reason the time budget above has to truncate newegg at roughly 2700 of its 3900 candidates.
+ * A page that is blind past node 2700 stays blind, pass after pass, because every pass
+ * starts from the same cold state and stops in the same place.
+ *
+ * Caching turns that into convergence: the nodes read last time are nearly free this time,
+ * so the budget is spent on the ones that were skipped, and after two or three passes the
+ * whole page has been seen.
+ *
+ * STYLES ONLY, and that is not a shortcut — it is the correctness boundary.
+ * `getBoundingClientRect` is VIEWPORT-relative, so a cached box is wrong the instant the
+ * page scrolls, with no mutation to invalidate it. Boxes are therefore re-read every pass;
+ * they are also the cheap half, which is how this was found in the first place: budgeting
+ * only the rects changed newegg's harvest by nothing at all.
+ *
+ * Invalidation is by dirty subtree (`invalidateStyles`, fed from the MutationObserver's
+ * roots) plus an epoch counter for changes that produce no mutation record at all — a
+ * resize re-evaluates every media query and is not something any element reports.
+ */
+interface CachedStyle {
+  epoch: number;
+  snap: StyleSnapshot;
+}
+const styleMemo = new WeakMap<Element, CachedStyle>();
+let styleEpoch = 0;
+
+/**
+ * Forget the cached style for these elements and everything under them.
+ *
+ * The subtree, not just the root: `effectiveBackground` is resolved by walking ancestors, so
+ * a background that changes on a wrapper invalidates every descendant's snapshot even though
+ * only the wrapper mutated. Bounded by the size of what actually changed, which is the whole
+ * point of dirty-root invalidation.
+ */
+export function invalidateStyles(roots: Iterable<Element>): void {
+  /**
+   * A total work budget, not a per-root size limit.
+   *
+   * The first version bailed to a global epoch bump whenever any single root had more than
+   * 2000 descendants. On a loading retail page a high-up container is dirty almost every
+   * batch, so that path fired continuously and the cache hit rate measured on newegg was
+   * exactly ZERO across every pass — a cache that is flushed before it is ever read is worse
+   * than no cache, because it costs a WeakMap write per node for nothing.
+   *
+   * Walking is cheap; `querySelectorAll("*")` over a few thousand elements is microseconds,
+   * far less than re-resolving style for even a handful of them. So walk, and keep the
+   * global flush only for the genuinely pathological case where the dirty set approaches the
+   * whole document — at which point there is nothing worth preserving anyway.
+   */
+  let budget = 50_000;
+  let rootCount = 0;
+  let elementCount = 0;
+  for (const root of roots) {
+    rootCount++;
+    styleMemo.delete(root);
+    let descendants: NodeListOf<Element>;
+    try {
+      descendants = root.querySelectorAll("*");
+    } catch {
+      continue;
+    }
+    budget -= descendants.length;
+    if (budget < 0) {
+      // Loud, for the same reason the truncation warning is: a silent global flush and a
+      // page that simply never repeats a node look identical from the outside, and the
+      // first version of this fired on every batch without anything saying so.
+      console.warn(
+        `[patterns] style cache flushed entirely — ${rootCount} dirty root(s) covering more ` +
+          "than 50k elements between them",
+      );
+      styleEpoch++;
+      harvestStats.invalidatedRoots = rootCount;
+      harvestStats.invalidatedElements = -1;
+      return;
+    }
+    elementCount += descendants.length;
+    for (const el of descendants) styleMemo.delete(el);
+  }
+  harvestStats.invalidatedRoots = rootCount;
+  harvestStats.invalidatedElements = elementCount;
+}
+
+/** Drop every cached style. For changes no element reports: resize, zoom, print. */
+export function invalidateAllStyles(): void {
+  styleEpoch++;
+}
+
+/** Test seam: how many of the last pass's style reads came from cache. */
+export const harvestStats = {
+  cached: 0,
+  cold: 0,
+  truncatedAt: -1,
+  /** Last invalidateStyles call: how much was dropped. -1 elements means a global flush. */
+  invalidatedRoots: 0,
+  invalidatedElements: 0,
+};
+
 const MAX_PATH_DEPTH = 12;
 
 /** Single characters that are cheap to test and imply a detector might care. */
@@ -355,11 +456,24 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
   const readStarted = performance.now();
   const boxes: BoxSnapshot[] = [];
   const styles: StyleSnapshot[] = [];
+  harvestStats.cached = 0;
+  harvestStats.cold = 0;
+  harvestStats.truncatedAt = -1;
+
   const readOne = (el: Element): void => {
+    // Always re-read. Viewport-relative, so a cache would be wrong after any scroll.
     const r = el.getBoundingClientRect();
     boxes.push({ x: r.x, y: r.y, w: r.width, h: r.height });
+
+    const memo = styleMemo.get(el);
+    if (memo && memo.epoch === styleEpoch) {
+      harvestStats.cached++;
+      styles.push(memo.snap);
+      return;
+    }
+
     const cs = styleOf(el);
-    styles.push({
+    const snap: StyleSnapshot = {
       fontWeight: Number.parseInt(cs.fontWeight, 10) || 400,
       fontSizePx: Number.parseFloat(cs.fontSize) || 16,
       textDecorationLine: cs.textDecorationLine || cs.textDecoration || "none",
@@ -369,7 +483,10 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
       display: cs.display,
       visibility: cs.visibility,
       opacity: Number.parseFloat(cs.opacity) || 1,
-    });
+    };
+    harvestStats.cold++;
+    styleMemo.set(el, { epoch: styleEpoch, snap });
+    styles.push(snap);
   };
 
   let stoppedAt = -1;
@@ -381,6 +498,7 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
     readOne(selected[i] as Element);
   }
 
+  harvestStats.truncatedAt = stoppedAt;
   if (stoppedAt >= 0) {
     // Drop what we cannot afford, so every parallel array below stays the same length and no
     // detector ever sees a candidate with no box.
@@ -406,7 +524,13 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
     console.warn(
       `[patterns] harvest budget (${HARVEST_BUDGET_MS}ms) hit at ${stoppedAt} of ` +
         `${stoppedAt + dropped.length} candidates — ${dropped.length - rescued} not read` +
-        (rescued > 0 ? `, ${rescued} ephemeral node(s) read anyway` : ""),
+        (rescued > 0 ? `, ${rescued} ephemeral node(s) read anyway` : "") +
+        // Whether this page is converging matters more than the truncation itself: a rising
+        // cache share means the next pass reaches further, and a flat one means it never
+        // will.
+        ` (styles ${harvestStats.cached} cached / ${harvestStats.cold} cold; last ` +
+        `invalidation ${harvestStats.invalidatedRoots} root(s), ` +
+        `${harvestStats.invalidatedElements === -1 ? "ALL" : harvestStats.invalidatedElements} elements)`,
     );
   }
 

@@ -64,11 +64,16 @@ scoring real pages would be worse than no classifier.
 - **The permission gesture is unverified by automation.** `permissions.request()` raises a
   native dialog no automation can accept, so the grant flow is checked by hand
   ([SPOT-CHECK.md](SPOT-CHECK.md)). It has been exercised manually on six sites.
-- **On very dense pages the extension reads only part of the DOM.** The harvest phase is
-  time-budgeted at 35 ms; newegg has ~3900 qualifying nodes and about 2700 are read. Truncation
-  follows document order, so what is dropped is the bottom of a long page. It logs when this
-  happens. Nodes that appeared or changed while you were looking are exempt from the budget,
-  because those carry the highest-value signals.
+- **A dense page is read over several passes, not one.** The harvest phase is time-budgeted
+  at 35 ms per pass, and newegg's ~3900 qualifying nodes do not fit. Computed style is
+  memoised across passes and dropped only for subtrees the MutationObserver saw change (plan
+  §18C), so each pass spends its budget on what the last one skipped: measured on newegg,
+  coverage goes 1696 → 3456 → full, and after about 7 seconds no pass exceeds the budget at
+  all. Within a single pass truncation still follows document order, and nodes that appeared
+  or changed while you were looking are exempt from the budget because they carry the
+  highest-value signals. Bounding boxes are re-read every pass and deliberately never cached
+  — they are viewport-relative, so a scroll would make a cached one wrong with no mutation to
+  notice.
 - **No telemetry backend**, by design. The consent checkbox and the local record shape exist;
   nothing transmits, and four e2e tests assert that. Wiring a real endpoint is a decision that
   has not been made, and would invalidate the zero-network claim above.
