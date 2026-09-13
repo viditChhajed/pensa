@@ -7,9 +7,10 @@
  *   - Non-modal. `pointer-events` is enabled on the card and NOTHING else, so the overlay
  *     can never intercept a click meant for a checkout button. There is an e2e test for
  *     exactly this, because getting it wrong makes the extension actively harmful.
- *   - Dismissible, keyboard reachable, auto-dismiss after 20s.
- *
- * Day 1 ships one hardcoded prompt per pattern. The 4–6 variant pools land Day 2.
+ *   - Dismissible and keyboard reachable, with an explicit close control and NO timer.
+ *     It used to dismiss itself after 20 seconds, which meant it vanished mid-sentence
+ *     while someone was reading it. A prompt that asks a question and then leaves before
+ *     the answer is worse than one that never appeared.
  */
 
 /**
@@ -211,7 +212,8 @@ export interface Placement {
  *     any button or link whose name puts it on the purchase path.
  *   - Among the positions that satisfy that, prefer the one covering the fewest ordinary
  *     controls — but do not refuse to render because that number is above zero. The card is
- *     small, dismissible, keyboard reachable and disappears on its own after 20 seconds.
+ *     small, dismissible and keyboard reachable, and anything it does cover is one click
+ *     away from being uncovered.
  *
  * The e2e test asserting a checkout button can never be covered still holds, because a
  * checkout button is critical by name.

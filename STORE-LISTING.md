@@ -44,17 +44,37 @@ page. It asks.
 
 WHAT IT NOTICES
 
+On the page in front of you:
+
 • Reference prices — a higher crossed-out price next to the real one
 • Charm pricing — prices that stop just short of a round number
 • Limited-stock messages
 • Countdown timers
 • Live activity notices — "23 people are viewing this"
-• Pre-selected options — warranties, add-ons, marketing opt-ins
+• Preselected options — warranties, add-ons, marketing opt-ins
 • Loaded decline wording — "No thanks, I don't want to save money"
 • Spend thresholds — "You're $12 away from free shipping"
-• Instalment framing — "4 interest-free payments of $24.99"
+• Installment framing — "4 interest-free payments of $24.99"
+• Unequal button emphasis — one choice made far louder than the other
+• Decoy options — a third option that exists to make a second one look better
+• Repeated interruptions
+• Savings framing — the same discount shown as whichever number looks bigger
+• Exit-intent offers — something that appears as you move to leave
+
+By comparing one page to the next:
+
 • Fees added later — charges that were not in the first price you saw
 • Unrequested cart items
+
+By comparing today to what the same site showed you before:
+
+• Timers that reset on each visit
+• Stock counts that go up as well as down
+• "Was" prices that have never been the actual price
+• Viewer counts that repeat or never vary
+
+The last four say nothing on a first visit, by construction — they are claims about change
+over time, and there is nothing to compare against until you have seen the same item twice.
 
 HOW IT TALKS TO YOU
 
@@ -63,9 +83,9 @@ what you think — it never claims a message is false, and it makes no claim abo
 retailer's intent. A limited-stock message may be perfectly accurate; the point is whether
 knowing that changes your decision.
 
-The card is small, appears in a corner, disappears by itself after 20 seconds, and will not
-show at all if there is nowhere on the page it can sit without covering something you might
-want to click.
+The card is small, appears in a corner, and stays until you close it — it does not time out
+while you are reading it. It is never placed over a form field, a submit button, or anything
+on the purchase path; it may sit over an ordinary link, which one click uncovers.
 
 PRIVACY
 
@@ -85,6 +105,10 @@ CONTROLS
 Choose how often you are interrupted: every checkout, once per site, or never — read the
 summary on your own schedule instead. The setting is there from day one, because being
 interrupted repeatedly is the fastest way for a tool like this to become annoying.
+
+Every technique in the list above has its own switch. Turn off anything you find unhelpful —
+one you already watch for yourself is just noise. Switching one off stops it being recorded
+at all, not merely stops it being shown.
 
 OPEN SOURCE
 
@@ -124,11 +148,29 @@ Highlights the toolbar icon on URLs that look like shopping pages. This is evalu
 browser from the URL alone — it grants no page access and reads no page content.
 ```
 
-**`optional_host_permissions` (~150 shopping origins)**
+**`optional_host_permissions` (~150 named shopping origins, plus `https://*/*`)**
+
+> Read the manifest before submitting this one. It declares ~150 named origins AND the broad
+> `https://*/*` pattern, and a justification that mentions only the named list will not match
+> what the reviewer is looking at. The broad pattern is there because shopping happens on
+> sites no list contains; nothing about it is granted at install.
+
 ```
-None of these are granted at install. Each is requested individually, from a button in the
-popup, only when you choose to enable that site, and can be revoked at any time from
-Settings.
+Nothing here is granted at install — this is the optional list, not the required one, so the
+extension has no site access when it is added and the install prompt asks for none.
+
+Access is requested one site at a time, by clicking a button in the popup while you are on
+that site, and Chrome shows its own prompt for that single site each time. Any site can be
+revoked from Settings, and revoking it immediately unregisters the script.
+
+The list includes https://*/* because a fixed list of shopping sites is always wrong: people
+shop on small independent stores, regional retailers, and sites that did not exist when the
+list was written, and a user who wants the extension on one of those should be able to grant
+it. The extension never requests this pattern. It only ever requests the single site you are
+looking at when you press the button.
+
+The extension will not offer to run on banking, health, government or webmail sites. That
+denylist is checked before anything else, and on those sites the button is not shown at all.
 ```
 
 **Single purpose statement**
@@ -164,10 +206,9 @@ and the exact steps.
 
 ### I can generate
 
-- **Icons** (16 / 32 / 48 / 128 px). Currently **missing entirely** — the manifest declares
-  no icons, so Chrome is using a default placeholder. I can produce a simple mark (a
-  magnifier over a price tag, or a question mark in a tag outline) as SVG and export the PNG
-  sizes. Say the word and I will.
+- **Icons** (16 / 32 / 48 / 128 px). **Done** — present in `public/icon/`, declared in the
+  manifest, and in the build output. Replace them if you want a different mark; nothing is
+  blocked on it.
 - **Promotional tile text**, if you use the optional 440×280 tile.
 
 ### NEEDS YOU
@@ -184,7 +225,9 @@ and the exact steps.
 1. The card on a real product page, showing one question.
 2. The popup with **Enable on this site**, showing the near-empty permission ask.
 3. Settings → *What was noticed today*, showing the Noticed / Shown split.
-4. Settings → interruption frequency, showing the user is in control.
+4. Settings → *What to watch for*, showing a switch per technique and the frequency control.
+   This is the screenshot that answers "can I turn it down?", which is the first thing a
+   sceptical installer wants to know.
 
 One thing to get right in screenshot 1: the card only appears at add-to-cart or
 checkout-intent, never passively on a product page. So capture it just after clicking Add to
@@ -204,7 +247,7 @@ be judged. Flipping to Public later is one setting.
 
 - [ ] `npm run build` clean; `npm test` and `npm run test:e2e` green
 - [ ] `host_permissions` empty in the built manifest (CI-enforced, but look anyway)
-- [ ] Icons present at all four sizes
+- [x] Icons present at all four sizes
 - [ ] Privacy policy URL live and reachable
 - [ ] **[EVAL.md](EVAL.md) filled in, and any detector over ~4 false positives raised or disabled**
 - [ ] Screenshots captured

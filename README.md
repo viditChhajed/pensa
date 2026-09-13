@@ -58,9 +58,12 @@ Four, and no host permissions at install:
 | `activeTab` | Read the current tab's URL in the popup, so it can offer that site |
 | `declarativeContent` | Light up the toolbar icon on shopping URLs **without reading pages** |
 
-Site access is granted one origin at a time, by you, from the popup. ~150 shopping origins
-are listed in `optional_host_permissions`, which is what keeps the install prompt near-empty;
-none of them are granted until you ask.
+Site access is granted one origin at a time, by you, from the popup. `optional_host_permissions`
+lists ~150 named shopping origins **and `https://*/*`** — optional, so none of it is granted
+at install and the install prompt asks for nothing. The broad pattern is there because a
+fixed list of shopping sites is always wrong: the extension is useless on the small
+independent store a person actually buys from. It is never *requested* as a pattern; the
+popup only ever requests the single registrable domain you are looking at.
 
 The extension never offers to run on banking, health, government, or webmail origins. That
 denylist is checked *before* any commerce score and cannot be overridden by one.
