@@ -80,6 +80,21 @@ describe("v1 submission scope", () => {
 });
 
 describe("built bundles", () => {
+  /**
+   * Absence of a build is a FAILURE, not a reason to skip — the same lesson the manifest
+   * suite already learned the hard way, where a broken .output left seven assertions
+   * silently skipped while the run reported green. These assertions are the only thing
+   * keeping the shipped scope a property of the artifact rather than a claim in a comment,
+   * and a scope check that quietly declines to run is worse than not having one.
+   */
+  it("has a build to check at all", () => {
+    expect(
+      built,
+      `No build at ${OUT}. Run \`npm run build\` first — these assertions are the scope ` +
+        "regression net and must never be skipped silently.",
+    ).toBe(true);
+  });
+
   it.skipIf(!built)("contain every shipped page detector", () => {
     const js = bundleText();
     for (const id of SHIPPED_PAGE_DETECTORS) {

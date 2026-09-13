@@ -220,6 +220,12 @@ export async function decideDigest(
   for (const decision of result.decisions) {
     const source = pool.find((p) => p.candidate.patternId === decision.patternId);
     if (!source) continue;
+    // A pattern the user switched off is not recorded at all, not merely withheld from the
+    // card. The settings page promises exactly that, and a local database quietly
+    // accumulating rows for something someone asked us to stop watching for would make that
+    // promise false — in a product whose whole claim is that it does not do things behind
+    // your back.
+    if (!decision.surfaced && decision.reason === "user_disabled") continue;
     // `surfaced` must mean "the user saw this", not "we intended to show it". Previously it
     // was set before the card attempted placement, so a suppressed digest still recorded
     // surfaced:true and the popup's Noticed/Shown split was wrong.

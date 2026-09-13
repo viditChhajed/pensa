@@ -133,3 +133,29 @@ button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+
+/* Per-pattern toggles. Twenty rows is a lot to scan, so the group heading and a one-line
+   mechanism under each name carry the reading, and the rows themselves stay tight. */
+.group + .group {
+  margin-top: 22px;
+}
+.group h3 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0 0 8px;
+}
+.group .small {
+  margin: -4px 0 10px;
+}
+label.pattern {
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+  line-height: 1.45;
+}
+label.pattern strong {
+  font-weight: 600;
+}
+label.pattern .muted {
+  font-size: 12px;
+}
