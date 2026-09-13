@@ -77,6 +77,12 @@ scoring real pages would be worse than no classifier.
 - **No telemetry backend**, by design. The consent checkbox and the local record shape exist;
   nothing transmits, and four e2e tests assert that. Wiring a real endpoint is a decision that
   has not been made, and would invalidate the zero-network claim above.
+- **Plan §14.4's post-first-digest consent screen is deliberately not built.** §14.4 asks for
+  a one-screen telemetry ask after the first digest. Interrupting someone to request consent
+  to send data to a server that does not exist is a worse thing to do than not asking — in a
+  product whose central argument is about unnecessary interruption. The consent lives in
+  Settings, unticked, next to a line saying no server is connected. If an endpoint is ever
+  added, the §14.4 screen is the right way to ask for it and should be built then.
 
 ## Permissions
 
