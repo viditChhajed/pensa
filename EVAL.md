@@ -221,6 +221,24 @@ blob — because it selects the largest-area priced node. bnpl missed
 across elements so no single node carries the whole match. Over-reaching and
 under-reaching, same root cause.
 
+> **FIXED — 2026-09-13, under-reaching half.** Reproduced first, which changed
+> the diagnosis: bnpl was not missing outright but scoring **0.70 against a 0.75
+> threshold** when the amount sat in a sibling span, and scarcity was worse than
+> recorded — "Only 3 left at this price" split across spans produced **no
+> detection at all**, against 0.85 flat. Both now read the immediate parent's
+> joined text when their own node carries only part of the sentence, one claim
+> per parent, never for a parent already matched directly. The evidence quotes
+> the sentence rather than the fragment, or the card would say “3”.
+> `tests/unit/splitNodes.test.ts`, 10 tests including the negatives that hold the
+> line: "2 sizes left" is still refused, and a bare number is not paired with
+> words from an unrelated sibling.
+>
+> **The over-reaching half is fixed too**, earlier and separately. charm now
+> requires a price node's text to be short (<60 chars) AND requires that no
+> deeper candidate carries the same price, which rejects blobs and tight
+> wrappers respectively. Verified against the recorded shein blob: it attributes
+> to the `$12.99` span, not to "Customers Also Viewed 10 #KnitEssentials …".
+
 **3. The stage classifier is 1-for-4, and it is the most expensive defect.**
 Shopify keeps /products/ on the bag drawer; Ticketmaster keeps /event/ on a page
 with a subtotal and a Reserve button. pricing.drip compares snapshots ACROSS

@@ -8,16 +8,31 @@ export function buildEvidence(
   node: CandidateNode,
   matchedLexemes: string[],
   extraStyle?: Evidence["computedStyle"],
+  /**
+   * The text the match was actually made against, when that is not the node's own.
+   *
+   * A detector that matched on `containerText` — because a site split one sentence across
+   * three spans — must quote the sentence, not the fragment it happened to attach to. The
+   * card renders this verbatim, so without it the evidence line reads "3" and the question
+   * becomes a riddle.
+   */
+  matchedText?: string,
 ): Evidence {
+  const sample = matchedText?.trim();
   return {
     selectorPath: node.selectorPath,
-    textHash: createHash(node.normalizedText),
+    textHash: createHash(sample && sample.length > 0 ? sample : node.normalizedText),
     // A control often carries no text of its own — a pre-ticked checkbox is the clearest
     // case, and it produced an evidence sample of exactly one space. Its meaning lives in
     // its accessible name or in the label wrapped around it, so fall through to those.
     // Without this the card can only say "One choice was made for you in advance" and never
     // say which, which is the difference between a question and a riddle.
-    textSample: (node.text.trim() || node.accessibleName.trim() || node.containerText.trim())
+    textSample: (
+      (sample && sample.length > 0 ? sample : "") ||
+      node.text.trim() ||
+      node.accessibleName.trim() ||
+      node.containerText.trim()
+    )
       .replace(/\s+/g, " ")
       .slice(0, 240),
     matchedLexemes: matchedLexemes.slice(0, 24),
@@ -48,13 +63,15 @@ export function candidate(
   subSignals: Record<string, number>,
   weights: Record<string, number>,
   matchedLexemes: string[],
+  /** See buildEvidence: the text matched against, when it is not the node's own. */
+  matchedText?: string,
 ): DetectionCandidate {
   return {
     detectorId,
     patternId,
     rawScore: score(subSignals, weights),
     subSignals,
-    evidence: buildEvidence(node, matchedLexemes),
+    evidence: buildEvidence(node, matchedLexemes, undefined, matchedText),
     nodeRef: node.selectorPath,
   };
 }

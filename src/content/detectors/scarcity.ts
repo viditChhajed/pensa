@@ -8,7 +8,7 @@
  */
 
 import type { DetectionCandidate } from "@/shared/schema";
-import type { Detector, PageContext } from "../types";
+import type { CandidateNode, Detector, PageContext } from "../types";
 import { candidate, matchLexemes, visibleCandidates } from "./util";
 
 /**
@@ -97,23 +97,54 @@ export const scarcityDetector: Detector = {
     const out: DetectionCandidate[] = [];
     const seen = new Set<string>();
 
-    for (const n of visibleCandidates(ctx)) {
-      const t = n.normalizedText;
-      if (t.length === 0 || t.length > 160) continue;
+    /**
+     * Two passes, because a stock message is a SENTENCE and sites do not keep sentences in
+     * one element.
+     *
+     * "Only 3 left at this price" is commonly `Only <span>3</span> left at this price`, or
+     * three spans for animation. Split that way, no node carries both the number and the
+     * words: "3" has no words, "left at this price" has no number, and this detector
+     * returned NOTHING at all on copy it scores 0.85 on when flat. That is not a lexicon
+     * gap — the lexicon is right — it is reading at the wrong granularity, which EVAL run 1
+     * named as the second most expensive defect in the product.
+     *
+     * Pass 1 matches each node's own text, which is the precise reading and stays first.
+     * Pass 2 retries the leftovers against the IMMEDIATE parent's joined text, one claim per
+     * parent, and never for a parent that pass 1 already matched. Immediate parent only: a
+     * walk up the tree would eventually pair "3" with the whole page, and a detector that
+     * always finds its own evidence is not a detector.
+     */
+    const claimedContainers = new Set<string>();
+    const leftovers: CandidateNode[] = [];
 
-      if (VARIANT_EXCLUSIONS.some((re) => re.test(t))) continue;
-
+    const evaluate = (text: string): { numeric: number; qualitative: number } | null => {
+      if (text.length === 0 || text.length > 160) return null;
+      if (VARIANT_EXCLUSIONS.some((re) => re.test(text))) return null;
       let numeric = 0;
       let qualitative = 0;
       for (const re of STOCK_PATTERNS) {
-        const m = re.exec(t);
+        const m = re.exec(text);
         if (!m) continue;
         if (m[1] !== undefined) numeric = 1;
         else qualitative = 1;
       }
-      if (numeric === 0 && qualitative === 0) continue;
+      return numeric === 0 && qualitative === 0 ? null : { numeric, qualitative };
+    };
+
+    for (const n of visibleCandidates(ctx)) {
+      const t = n.normalizedText;
+      const hit = evaluate(t);
+      if (!hit) {
+        if (n.containerPath) leftovers.push(n);
+        continue;
+      }
       if (seen.has(n.selectorPath)) continue;
       seen.add(n.selectorPath);
+      // Claim THIS node's path, not its parent's. A child's `containerPath` is its parent's
+      // `selectorPath`, so this is what stops pass 2 re-reporting the same sentence from
+      // inside it — `Only <b>3</b> left` matched on the div and then again on the bold.
+      claimedContainers.add(n.selectorPath);
+      const { numeric, qualitative } = hit;
 
       // A stock bar rendered near the copy: role=progressbar, or a percent-width child.
       const progressBar = n.childIdxs.some((i) => {
@@ -136,6 +167,35 @@ export const scarcityDetector: Detector = {
           },
           WEIGHTS,
           matchLexemes(n, LEXEMES),
+        ),
+      );
+    }
+
+    for (const n of leftovers) {
+      const container = n.containerPath;
+      if (!container || claimedContainers.has(container)) continue;
+      const hit = evaluate(n.containerText);
+      if (!hit) continue;
+      claimedContainers.add(container);
+      seen.add(n.selectorPath);
+
+      out.push(
+        candidate(
+          scarcityDetector.id,
+          "scarcity.stock",
+          n,
+          {
+            numericStock: hit.numeric,
+            qualitativeStock: hit.qualitative,
+            // A progress bar is a sibling in this shape, not a child, and this pass has no
+            // cheap way to see one. Scoring it 0 understates rather than invents.
+            progressBar: 0,
+            shortText: n.containerText.length < 60 ? 1 : 0,
+          },
+          WEIGHTS,
+          matchLexemes(n, LEXEMES),
+          // Quote the sentence, not the fragment. Without this the card says “3”.
+          n.containerText,
         ),
       );
     }

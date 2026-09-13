@@ -92,7 +92,22 @@ export const bnplDetector: Detector = {
       if (copy === 0 && frame === 0) continue;
 
       seen.add(n.selectorPath);
-      const prices = parsePrices(n.text);
+
+      /**
+       * The amount is allowed to live in a sibling element.
+       *
+       * Recorded field miss: Shein renders "or 4 interest-free payments of" and "$8.75" as
+       * two spans, so the node carrying the claim carries no price and scored 0.70 against a
+       * 0.75 threshold — correct on every signal it could see, and never surfaced, twice.
+       *
+       * Scoped deliberately: `containerText` is the IMMEDIATE parent only, and it is
+       * consulted only once the installment copy has already matched on this node. A price
+       * sharing a parent with "4 payments of" is that payment; this is not a licence to go
+       * hunting up the tree, which is how a detector starts pairing a phrase with the whole
+       * page.
+       */
+      const prices =
+        parsePrices(n.text).length > 0 ? parsePrices(n.text) : parsePrices(n.containerText);
 
       out.push(
         candidate(
