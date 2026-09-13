@@ -27,7 +27,30 @@ const MAX_TEXT = 400;
  * thousands of elements and essentially none of the interesting ones are past the first
  * several hundred that pass the character-class prefilter.
  */
-const MAX_CANDIDATES = 1200;
+/**
+ * Hard ceiling, not the working limit. See HARVEST_BUDGET_MS.
+ *
+ * A fixed count was the wrong instrument, and measuring showed why: rei has 1437 qualifying
+ * nodes and reads them in 55ms, while newegg has 3807 and takes 347ms. One number cannot
+ * serve both — at 1200 rei was needlessly truncated, and without a limit newegg spent seven
+ * times its whole frame budget in a single phase.
+ */
+const MAX_CANDIDATES = 4000;
+
+/**
+ * How long the batched layout/style phase may spend before it stops taking on more nodes.
+ *
+ * Every candidate costs a getBoundingClientRect and a getComputedStyle, both of which force
+ * style resolution, and that phase is where nearly all of the harvest cost lives. Tying the
+ * limit to time rather than to a count means a cheap page is read completely and an
+ * expensive one degrades at a known cost instead of at an arbitrary node index.
+ *
+ * Known bias, stated rather than hidden: truncation follows document order, so what gets
+ * dropped is the bottom of a long page. The salience gate already requires a node to have
+ * been on screen, and the digest fires at cart and checkout where pages are shorter, so this
+ * costs least where it matters most — but it is a real limitation and not a rounding error.
+ */
+const HARVEST_BUDGET_MS = 35;
 const MAX_PATH_DEPTH = 12;
 
 /** Single characters that are cheap to test and imply a detector might care. */
@@ -320,10 +343,72 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
     return s;
   };
 
-  const boxes: BoxSnapshot[] = selected.map((el) => {
+  // Layout AND style together, bounded by time rather than by count.
+  //
+  // Both in the same loop deliberately. getBoundingClientRect turns out to be cheap once
+  // layout has been computed once; getComputedStyle is what actually costs — budgeting only
+  // the rects changed newegg's harvest by nothing at all, because the expense was still
+  // ahead in a separate pass. Measuring what is slow before limiting it is the whole point.
+  //
+  // Checked every 32 nodes: often enough to stop promptly, rarely enough that
+  // performance.now() is not itself a cost.
+  const readStarted = performance.now();
+  const boxes: BoxSnapshot[] = [];
+  const styles: StyleSnapshot[] = [];
+  const readOne = (el: Element): void => {
     const r = el.getBoundingClientRect();
-    return { x: r.x, y: r.y, w: r.width, h: r.height };
-  });
+    boxes.push({ x: r.x, y: r.y, w: r.width, h: r.height });
+    const cs = styleOf(el);
+    styles.push({
+      fontWeight: Number.parseInt(cs.fontWeight, 10) || 400,
+      fontSizePx: Number.parseFloat(cs.fontSize) || 16,
+      textDecorationLine: cs.textDecorationLine || cs.textDecoration || "none",
+      color: cs.color,
+      backgroundColor: cs.backgroundColor,
+      effectiveBackground: effectiveBackground(el, styleOf),
+      display: cs.display,
+      visibility: cs.visibility,
+      opacity: Number.parseFloat(cs.opacity) || 1,
+    });
+  };
+
+  let stoppedAt = -1;
+  for (let i = 0; i < selected.length; i++) {
+    if ((i & 31) === 0 && i > 0 && performance.now() - readStarted > HARVEST_BUDGET_MS) {
+      stoppedAt = i;
+      break;
+    }
+    readOne(selected[i] as Element);
+  }
+
+  if (stoppedAt >= 0) {
+    // Drop what we cannot afford, so every parallel array below stays the same length and no
+    // detector ever sees a candidate with no box.
+    const dropped = selected.splice(stoppedAt);
+
+    // Ephemeral nodes are exempt from the budget. They are appended after the tree walk, so
+    // they sit at the very end of `selected` and a time limit would drop them first — and a
+    // just-inserted toast or a countdown that rewrites itself is the single highest-value
+    // thing on the page. Silencing `urgency.countdown` to save 2ms is the wrong trade, and
+    // there are never many of them, so reading all of them cannot itself blow the budget.
+    let rescued = 0;
+    if (opts.ephemeral) {
+      for (const el of dropped) {
+        if (!opts.ephemeral.has(el)) continue;
+        selected.push(el);
+        readOne(el);
+        rescued++;
+      }
+    }
+
+    // Loud, because the consequence is that the page was only partly seen. A quiet
+    // truncation looks exactly like a page that simply had fewer candidates.
+    console.warn(
+      `[patterns] harvest budget (${HARVEST_BUDGET_MS}ms) hit at ${stoppedAt} of ` +
+        `${stoppedAt + dropped.length} candidates — ${dropped.length - rescued} not read` +
+        (rescued > 0 ? `, ${rescued} ephemeral node(s) read anyway` : ""),
+    );
+  }
 
   // Container identity and text, read in the same batched phase as everything else.
   const containerPathCache = new Map<Element, string>();
@@ -405,21 +490,6 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
   const hasProgress: boolean[] = selected.map(
     (el) => el.querySelector('progress, [role="progressbar"]') !== null,
   );
-
-  const styles: StyleSnapshot[] = selected.map((el) => {
-    const cs = styleOf(el);
-    return {
-      fontWeight: Number.parseInt(cs.fontWeight, 10) || 400,
-      fontSizePx: Number.parseFloat(cs.fontSize) || 16,
-      textDecorationLine: cs.textDecorationLine || cs.textDecoration || "none",
-      color: cs.color,
-      backgroundColor: cs.backgroundColor,
-      effectiveBackground: effectiveBackground(el, styleOf),
-      display: cs.display,
-      visibility: cs.visibility,
-      opacity: Number.parseFloat(cs.opacity) || 1,
-    };
-  });
 
   // --- pass 3: assemble plain objects. Zero DOM access below this line. ---
   const indexOf = new Map<Element, number>();
