@@ -7,45 +7,71 @@ and, at add-to-cart or checkout, asks a question about what was actually on scre
 ("this page showed a countdown timer") and asks a question. It never asserts intent,
 deception, or illegality — an ethical constraint first, and a store-review one second.
 
-## Status — pilot, scope-locked for v1 submission
+## Status — feature-complete, not submitted
 
-Working locally, verified in real Chromium, **not submitted**.
+Working locally, verified in real Chromium, **not submitted**. The remaining blockers are
+things I cannot do: a $5 developer account, a reachable privacy-policy URL, and screenshots
+taken through a native permission dialog no automation can accept.
 
 | | |
 |---|---|
-| Detectors shipped | **16** — 14 page + 2 cross-stage, plus 4 patterns derived from observation history |
-| Built but deferred to v1.1 | 9 — 5 Tier-2 page + 4 §18A temporal |
-| Unit tests | 233 |
-| Real-browser e2e | 26 (1 skipped: native permission dialog) |
-| Bundle | 108 KB gzipped (budget 120) |
-| `host_permissions` | empty — build throws otherwise, verified by regression |
-| Network requests | **zero, asserted** — including with telemetry enabled |
+| Patterns shipped | **20** — 14 on-page + 2 cross-stage + 4 derived from visit history |
+| Unit tests | 321 |
+| Real-browser e2e | 38 passing, 3 skipped (sites unreachable from this network) |
+| Bundle | 116 KB gzipped across all bundles; 27 KB is the content script, which is the number that matters on every page load |
+| `host_permissions` | empty — the build throws otherwise, asserted on the built manifest |
+| Network requests | **zero, asserted** — including with telemetry switched on |
+| Card placement | 12/12 samples across 4 live retailers × 3 scroll depths |
+| Precision | 0 confirmed false positives in ~44 firings across 6 retailers — see the caveat below |
 
-**Shipped (11):** `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
+**On the page (14):** `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
 `urgency.countdown`, `defaults.preselected`, `social_proof.live_activity`,
 `confirmshaming.decline_copy`, `goal_gradient.threshold`, `bnpl.installments`,
-`pricing.drip`, `basket.sneak`
+`interference.visual_asymmetry`, `decoy.asymmetric_dominance`, `nagging.repeat_interstitial`,
+`framing.savings_ratio`, `loss_aversion.exit_intent`
 
-**Deferred to v1.1** (plan §13 scopes both post-submission; they were built early — real
-scope drift): the 5 Tier-2 page detectors and the 4 §18A temporal claims. Enforced by
-exclusion from the import graph, not a flag — `tests/unit/scope.test.ts` asserts their
-implementations are absent from the built bundles. `src/shared/classifier.ts` is unwired
-scaffolding with no trained weights and ships nothing.
+**Across a checkout flow (2):** `pricing.drip`, `basket.sneak` — these live in the service
+worker and take a session ledger rather than a page, so they are not in the content-script
+registry.
+
+**Across repeat visits (4):** `temporal.evergreen_countdown`, `temporal.stock_nonmonotonic`,
+`temporal.reference_price_ungrounded`, `temporal.social_proof_synthetic` — claims about how
+something *changed* between visits, so they are derived in the worker from the observation
+store and cannot be page detectors. They say nothing on a first visit, by construction.
+
+Tier 2 and the temporal set were originally held for v1.1 (plan §13). That boundary moved
+deliberately: both were built and tested alongside Tier 1, and the spot-check made the cost
+concrete — flyfrontier's fare grid is a textbook asymmetric-dominance decoy and the extension
+produced zero detections on it, because the only detector that could see it was excluded from
+the bundle. `tests/unit/scope.test.ts` now asserts the shipped set is *present* in the built
+bundles, and that the temporal four are in the worker and never in the page registry.
+
+`src/shared/classifier.ts` is unwired scaffolding with no trained weights. It ships nothing,
+and a test asserts its identifiers are absent from the build — a partially-trained classifier
+scoring real pages would be worse than no classifier.
 
 ### Known gaps — not claimed as done
 
-- **Precision is unmeasured.** The 30–40 page spot-check has not run. Every threshold is a
-  hand-set guess, marked `hand_set` in the schema. See [EVAL.md](EVAL.md) and
-  [SPOT-CHECK.md](SPOT-CHECK.md). **No precision claim may be made until that file has data.**
-- **The permission gesture is unverified.** `permissions.request()` raises a native dialog no
-  automation can accept. Checklist in [SPOT-CHECK.md](SPOT-CHECK.md).
-- **The digest suppresses itself often on dense pages.** Measured on live storefronts: target,
-  ikea and newegg had no placement free of interactive controls, so nothing showed; rei fit a
-  full card. Correct safety behaviour, but it may mean the core interaction rarely fires.
-  Storefronts are a pessimistic sample — the digest triggers at cart/checkout, which are
-  sparser — and the spot-check will give the real rate.
-- **No icons.** The manifest declares none; Chrome shows a placeholder.
-- **No telemetry backend**, by design — consent flow and local queue only.
+- **Precision passed its gate on a smaller sample than planned.** Plan §10 asked for 30–40
+  pages across ≥6 retailers; what ran was 6 retailers and ~44 firings, with zero confirmed
+  false positives ([EVAL.md](EVAL.md)). That satisfies the "~4 false positives" gate, but it
+  is a narrow sample and every threshold is still a hand-set guess, marked
+  `confidenceBasis: "hand_set"` so it cannot be mistaken for a calibrated value. **No stronger
+  precision claim than the one in the table above may be made anywhere.**
+- **Recall is unmeasured, and is the weaker side.** The §10 gate was built to catch a detector
+  crying wolf. Nothing is crying wolf. What the spot-check actually surfaced was misses, which
+  that gate cannot see.
+- **The permission gesture is unverified by automation.** `permissions.request()` raises a
+  native dialog no automation can accept, so the grant flow is checked by hand
+  ([SPOT-CHECK.md](SPOT-CHECK.md)). It has been exercised manually on six sites.
+- **On very dense pages the extension reads only part of the DOM.** The harvest phase is
+  time-budgeted at 35 ms; newegg has ~3900 qualifying nodes and about 2700 are read. Truncation
+  follows document order, so what is dropped is the bottom of a long page. It logs when this
+  happens. Nodes that appeared or changed while you were looking are exempt from the budget,
+  because those carry the highest-value signals.
+- **No telemetry backend**, by design. The consent checkbox and the local record shape exist;
+  nothing transmits, and four e2e tests assert that. Wiring a real endpoint is a decision that
+  has not been made, and would invalidate the zero-network claim above.
 
 ## Permissions
 

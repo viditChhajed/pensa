@@ -1,11 +1,22 @@
 # EVAL — manual spot-check
 
-**Status: DATA COLLECTION COMPLETE — 6 sites. Threshold decisions below.**
+**Status: two runs complete, 6 retailers. §10 gate passed. Decisions below.**
 
-Precision is currently **unmeasured**. Every threshold in the shipped build is a hand-set
-guess, marked `confidenceBasis: "hand_set"` in the schema so it cannot be mistaken for a
-calibrated value. Until this file has real numbers in it, **no precision claim may be made
-about this extension** — not in the README, not in the store listing, not anywhere.
+The header used to say precision was unmeasured while the tables below held two runs of
+data — the file contradicted itself, which is the specific failure this document exists to
+prevent. What is true now:
+
+**Measured:** zero confirmed false positives in ~44 firings across six retailers (run 1),
+and zero across five (run 2). That satisfies the §10 gate.
+
+**Not measured:** recall, and precision at the sample size the plan actually asked for
+(30–40 pages). Six retailers is a narrow sample, and every threshold in the shipped build is
+still a hand-set guess, marked `confidenceBasis: "hand_set"` in the schema so it cannot be
+mistaken for a calibrated value.
+
+**The claim that may be made**, and no stronger one: *zero confirmed false positives in ~44
+firings across six retailers.* Anything that implies a measured precision rate, a recall
+rate, or performance on sites not in these tables is not supported by this file.
 
 ---
 

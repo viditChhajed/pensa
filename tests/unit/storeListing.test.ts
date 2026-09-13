@@ -1,6 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PATTERN_GROUPS } from "@/entrypoints/options/groups";
+import {
+  DERIVED_FROM_HISTORY,
+  SHIPPED_CROSS_STAGE_DETECTORS,
+  SHIPPED_PAGE_DETECTORS,
+} from "@/shared/scope";
 import { TAXONOMY } from "@/shared/taxonomy";
 
 /**
@@ -21,8 +26,10 @@ import { TAXONOMY } from "@/shared/taxonomy";
  */
 
 const LISTING = "STORE-LISTING.md";
+const README = "README.md";
 const MANIFEST = ".output/chrome-mv3/manifest.json";
 const listing = readFileSync(LISTING, "utf8");
+const readme = readFileSync(README, "utf8");
 
 describe("store listing describes what ships", () => {
   it("names every pattern the settings page offers a switch for", () => {
@@ -74,5 +81,65 @@ describe("store listing describes what ships", () => {
           "permission justification would not match what the reviewer is reading",
       ).toBe(true);
     }
+  });
+});
+
+/**
+ * The README's status table is the project's front door, and it rots silently because
+ * nothing reads it. It was simultaneously claiming 16 detectors and 9 "deferred to v1.1"
+ * (the deferred ones had shipped), 233 unit tests (321), that the digest suppressed itself
+ * on dense pages (12/12 samples now place a card), and that the extension had no icons.
+ *
+ * Counts go stale by the hour and are not worth a test. The SET of what ships does not, and
+ * a README naming a detector that is not in the build — or omitting one that is — is the
+ * failure that matters.
+ */
+describe("README describes what ships", () => {
+  it("lists exactly the patterns that ship, in backticks", () => {
+    const all = [
+      ...SHIPPED_PAGE_DETECTORS,
+      ...SHIPPED_CROSS_STAGE_DETECTORS,
+      ...DERIVED_FROM_HISTORY,
+    ];
+    const missing = all.filter((id) => !readme.includes(`\`${id}\``));
+    expect(missing, `ships but absent from the README: ${missing.join(", ")}`).toEqual([]);
+  });
+
+  it("states the right total", () => {
+    const total =
+      SHIPPED_PAGE_DETECTORS.length +
+      SHIPPED_CROSS_STAGE_DETECTORS.length +
+      DERIVED_FROM_HISTORY.length;
+    expect(
+      readme.includes(`**${total}**`),
+      `the README does not state the shipped total of ${total}`,
+    ).toBe(true);
+  });
+
+  it.skipIf(!existsSync(MANIFEST))(
+    "does not claim icons are missing while they are declared",
+    () => {
+      const manifest = JSON.parse(readFileSync(MANIFEST, "utf8")) as {
+        icons?: Record<string, string>;
+      };
+      const declared = Object.keys(manifest.icons ?? {}).length > 0;
+      if (!declared) return;
+      for (const doc of [readme, listing]) {
+        expect(
+          /no icons|icons.{0,40}missing entirely/i.test(doc),
+          "a doc says the icons are missing; the manifest declares them",
+        ).toBe(false);
+      }
+    },
+  );
+
+  it("does not describe shipped detectors as deferred", () => {
+    // The exact contradiction that was live: a table row saying 16 ship directly above a row
+    // saying 9 of them are deferred to v1.1.
+    const deferralClaim = /deferred to v1\.1\s*\|?\s*\**\s*\d/i;
+    expect(
+      deferralClaim.test(readme),
+      "the README still counts shipped detectors as deferred to v1.1",
+    ).toBe(false);
   });
 });
