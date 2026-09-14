@@ -265,7 +265,7 @@ async function scrollThrough(page) {
   }
 }
 
-async function collectFrom(page, url, site) {
+async function collectFrom(page, _url, site) {
   let nodes;
   try {
     nodes = await page.evaluate(() => {

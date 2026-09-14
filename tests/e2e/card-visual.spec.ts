@@ -99,8 +99,7 @@ async function cardText(page: Page): Promise<string> {
   const walk = (node: CdpNode, within: boolean): void => {
     // Card hosts carry a random id, so the prefix is the handle — the same one the other
     // e2e tests use.
-    const isHost =
-      node.nodeName === "DIV" && (attr(node, "id") ?? "").startsWith("pp-") ? true : false;
+    const isHost = !!(node.nodeName === "DIV" && (attr(node, "id") ?? "").startsWith("pp-"));
     // The card's own stylesheet is a text node too, and so is the UA sheet the browser
     // attaches for <details>. Neither is something the reader sees.
     if (node.nodeName === "STYLE") return;

@@ -21,7 +21,12 @@ const event = (over: Partial<DetectionEvent> = {}): DetectionEvent =>
     patternId: "scarcity.stock",
     confidence: 0.85,
     confidenceBasis: "hand_set",
-    salience: { visibleMs: 2000, viewportFraction: 0.5, scrollDepthAtFirstView: 0.1, ephemeral: false },
+    salience: {
+      visibleMs: 2000,
+      viewportFraction: 0.5,
+      scrollDepthAtFirstView: 0.1,
+      ephemeral: false,
+    },
     surfaced: true,
     suppressionReason: "none",
     funnelStage: "pdp",
