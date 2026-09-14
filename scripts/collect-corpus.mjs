@@ -28,6 +28,7 @@
 import { execFileSync } from "node:child_process";
 import {
   appendFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -213,6 +214,9 @@ function buildHarvestBundle() {
   return `${code}\n;globalThis.__ppHarvest = __ppHarvest;\n`;
 }
 
+const seenText = new Set();
+let written = 0;
+
 // ---------------------------------------------------------------- crawl
 
 /**
@@ -242,9 +246,6 @@ async function linksFrom(page, origin) {
     return [];
   }
 }
-
-const seenText = new Set();
-let written = 0;
 
 /**
  * Scroll before harvesting. Lazy-loaded badges — "Only 3 left", "23 viewing" — are commonly
@@ -310,18 +311,66 @@ async function collectFrom(page, url, site) {
 // ---------------------------------------------------------------- main
 
 mkdirSync(OUT_DIR, { recursive: true });
-writeFileSync(OUT, "");
+
+/**
+ * Cumulative by default; --fresh to start over.
+ *
+ * Truncating on every run means one crash twenty-one sites in throws away everything
+ * collected so far — which is exactly what happened, and it happened on a run that had
+ * already spent forty minutes. The dedupe key makes merging free, so there is no reason to
+ * ever discard a crawl that cost real time and real requests to other people's servers.
+ */
+if (args.fresh) {
+  writeFileSync(OUT, "");
+} else if (existsSync(OUT)) {
+  let kept = 0;
+  for (const line of readFileSync(OUT, "utf8").split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      seenText.add(JSON.parse(line).key);
+      kept++;
+    } catch {
+      /* a truncated last line from a hard kill is not worth losing the file over */
+    }
+  }
+  if (kept > 0) console.log(`Resuming: ${kept} snippets already collected (--fresh to discard).`);
+}
 
 console.log(`Bundling the shipped harvest…`);
 const harvestCode = buildHarvestBundle();
 
-const browser = await chromium.launch({ channel: "chromium" });
-const context = await browser.newContext({
-  viewport: { width: 1280, height: 900 },
-  userAgent:
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
-});
-await context.addInitScript({ content: harvestCode });
+/**
+ * The browser is recreatable, because it dies.
+ *
+ * The first full run collected from twenty-one sites and then reported "unreachable" for the
+ * remaining twenty-nine — including rei.com and glossier.com, which had been crawled
+ * successfully minutes earlier in the same session. Twenty-nine sites do not independently
+ * start blocking you in the same second. The browser had died on a heavy page (boohoo, 848
+ * snippets) and every later goto threw into the same catch, which printed a message about
+ * the SITE for a failure that had nothing to do with the site.
+ *
+ * A fresh context per site also keeps cookies and consent state from leaking between shops,
+ * which is worth having on its own.
+ */
+let browser = await chromium.launch({ channel: "chromium" });
+
+async function freshContext() {
+  const ctx = await browser.newContext({
+    viewport: { width: 1280, height: 900 },
+    userAgent:
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+  });
+  await ctx.addInitScript({ content: harvestCode });
+  return ctx;
+}
+
+async function ensureBrowser() {
+  if (browser.isConnected()) return;
+  console.log("  (browser died — restarting)");
+  browser = await chromium.launch({ channel: "chromium" });
+}
+
+let context = await freshContext();
 
 /**
  * Prove the bundle actually runs before crawling twenty sites with it.
@@ -353,8 +402,19 @@ await context.addInitScript({ content: harvestCode });
   console.log(`Harvest bundle OK (${found} candidates on the probe page).`);
 }
 
+let consecutiveFailures = 0;
+
 for (const site of sites) {
   const origin = `https://www.${site.replace(/^www\./, "")}`;
+
+  await ensureBrowser();
+  try {
+    await context.close();
+  } catch {
+    /* already gone */
+  }
+  context = await freshContext();
+
   const page = await context.newPage();
   let got = 0;
   try {
@@ -400,10 +460,34 @@ for (const site of sites) {
       }
     }
     console.log(`  ${site.padEnd(22)} ${String(got).padStart(5)} new snippets`);
-  } catch {
-    console.log(`  ${site.padEnd(22)} unreachable`);
+    consecutiveFailures = 0;
+  } catch (err) {
+    // Say WHICH failure. "unreachable" covered a bot block, a timeout and a dead browser
+    // with one word, and the word was wrong for the one that mattered.
+    const why = String(err?.message ?? err)
+      .split("\n")[0]
+      .slice(0, 90);
+    console.log(`  ${site.padEnd(22)} failed — ${why}`);
+    consecutiveFailures++;
+    if (consecutiveFailures >= 3) {
+      // Three in a row is not three unlucky sites. Force a clean browser before blaming the
+      // fourth one.
+      console.log("  (three failures in a row — recycling the browser)");
+      try {
+        await browser.close();
+      } catch {
+        /* already gone */
+      }
+      browser = await chromium.launch({ channel: "chromium" });
+      context = await freshContext();
+      consecutiveFailures = 0;
+    }
   }
-  await page.close();
+  try {
+    await page.close();
+  } catch {
+    /* the page may have gone down with the browser */
+  }
 }
 
 await browser.close();
