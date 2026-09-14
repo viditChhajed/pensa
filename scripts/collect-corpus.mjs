@@ -248,12 +248,21 @@ const CATEGORY_LINK =
 
 async function linksFrom(page, origin) {
   try {
+    /**
+     * Cap AFTER filtering, not before.
+     *
+     * `.slice(0, 200)` used to run on the raw href list, so a site whose product links sit
+     * past the first 200 anchors lost all of them — zappos has 33 product links among 328
+     * anchors and the crawl reported "no product link from the homepage" for it. Nav,
+     * footer and account links come first on almost every retail homepage, which is exactly
+     * the wrong 200 to keep.
+     */
     return await page.$$eval(
       "a[href]",
       (els, o) =>
         [...new Set(els.map((e) => e.href))]
           .filter((h) => h.startsWith(o) && !h.includes("#") && !/\.(pdf|jpg|png|zip)$/i.test(h))
-          .slice(0, 200),
+          .slice(0, 600),
       origin,
     );
   } catch {
@@ -344,43 +353,90 @@ const ATC_NAME = /add to (?:cart|bag|basket)|^add$|^buy now$/i;
  * declines to push further on.
  */
 async function addToCart(page) {
-  const clickFirst = async (selector, re, timeout = 2500) => {
-    for (const el of await page.$$(selector)) {
-      const label =
-        (await el.getAttribute("aria-label").catch(() => null)) ??
-        (await el.textContent().catch(() => "")) ??
-        "";
-      if (!re.test(label.replace(/\s+/g, " ").trim())) continue;
-      const ok = await el
-        .click({ timeout })
+  /**
+   * Located by ROLE and accessible name, not by scanning elements for text.
+   *
+   * The hand-rolled scan found nothing on target, kohls or chewy — all three real product
+   * pages with a real button. Playwright's role locator resolves the accessible name the way
+   * the browser computes it, which covers a button whose label lives in a nested span, an
+   * aria-label, or a sibling. It also auto-waits and auto-scrolls, and "not found" on those
+   * sites mostly meant "not laid out yet when I looked".
+   */
+  const atc = page
+    .getByRole("button", { name: /add to (?:cart|bag|basket)/i })
+    .or(page.getByRole("link", { name: /add to (?:cart|bag|basket)/i }))
+    .filter({ visible: true });
+
+  const tryClick = async () => {
+    const n = await atc.count().catch(() => 0);
+    for (let i = 0; i < Math.min(n, 3); i++) {
+      const ok = await atc
+        .nth(i)
+        .click({ timeout: 4000 })
         .then(() => true)
         .catch(() => false);
-      if (ok) return true;
+      if (ok) {
+        await page.waitForTimeout(3000);
+        return true;
+      }
     }
     return false;
   };
 
   try {
-    if (await clickFirst('button, [role="button"], input[type="submit"]', ATC_NAME)) {
-      await page.waitForTimeout(3000);
-      return true;
-    }
-    // Many product pages disable add-to-cart until a size or colour is chosen. Pick the
-    // first swatch and try once more.
-    await clickFirst(
-      '[data-size], [class*="swatch"] button, [class*="size"] button, fieldset button',
-      /^[a-z0-9]{1,6}$/i,
-      1500,
-    );
-    await page.waitForTimeout(900);
-    if (await clickFirst('button, [role="button"], input[type="submit"]', ATC_NAME)) {
-      await page.waitForTimeout(3000);
-      return true;
+    // Bring it into view first. A sticky add-to-cart bar and a lazily hydrated button are
+    // both common, and both are absent from the DOM at scroll position zero.
+    await page.evaluate(() => scrollTo(0, 400)).catch(() => {});
+    await page.waitForTimeout(1200);
+    if (await tryClick()) return true;
+
+    // Many product pages keep add-to-cart disabled until a size or colour is chosen.
+    for (const sel of ["[data-size]", '[class*="swatch"] button', '[class*="size"] button']) {
+      const swatch = page.locator(sel).filter({ visible: true }).first();
+      if ((await swatch.count().catch(() => 0)) === 0) continue;
+      await swatch.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(1200);
+      if (await tryClick()) return true;
     }
   } catch {
     /* not addable without more interaction than this crawl is willing to do */
   }
   return false;
+}
+
+/**
+ * Shopify's documented cart permalink, which skips the UI entirely.
+ *
+ * Driving add-to-cart across arbitrary retailers turned out to be a tar pit: fifty sites
+ * produced ONE cart. Target's product page has no add-to-cart control at all until a
+ * fulfillment option is chosen, Chewy's first product link was a gift card, and every site
+ * that fails needs its own bespoke handling — brittle, and a steady march toward driving
+ * someone's checkout, which this crawl should not be doing.
+ *
+ * Shopify publishes a clean alternative: `/products.json` lists variants and `/cart/<id>:1`
+ * creates a cart from one. Both are documented, public, unauthenticated endpoints. It covers
+ * a smaller slice than it sounds — 5 of 15 fashion and DTC sites tested — but it needs no
+ * clicking, no variant guessing, and no interaction the site has not published an API for.
+ */
+async function shopifyCart(page, origin) {
+  try {
+    const res = await page.request.get(`${origin}/products.json?limit=5`, { timeout: 12_000 });
+    if (!res.ok()) return false;
+    const body = await res.json().catch(() => null);
+    const variant = body?.products
+      ?.flatMap((prod) => prod.variants ?? [])
+      .find((v) => v?.available !== false && v?.id);
+    if (!variant) return false;
+
+    await page.goto(`${origin}/cart/${variant.id}:1`, {
+      waitUntil: "domcontentloaded",
+      timeout: 20_000,
+    });
+    await page.waitForTimeout(2500);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** The usual cart paths. Read only — the crawl stops here and never enters checkout. */
@@ -608,9 +664,11 @@ for (const site of sites) {
         await page.goto(queue[0], { waitUntil: "domcontentloaded", timeout: 25_000 });
         await page.waitForTimeout(2000);
         await dismissConsent(page);
-        const added = await addToCart(page);
+        // Shopify first: it needs no clicking and cannot half-work.
+        const viaShopify = await shopifyCart(page, origin);
+        const added = viaShopify || (await addToCart(page));
         console.log(
-          `    ${site}: add-to-cart ${added ? "clicked" : "NOT FOUND"} on ${queue[0].slice(0, 70)}`,
+          `    ${site}: cart via ${viaShopify ? "shopify permalink" : added ? "click" : "NOTHING"}`,
         );
 
         // Harvest wherever the click left us. Shopify-style drawers render the cart in
@@ -647,8 +705,13 @@ for (const site of sites) {
                       t,
                     );
                   const money = /[$£€¥]\s?\d/.test(t);
+                  // "Subtotal" is not universal: Everlane and Forever21 both build a real
+                  // cart via the permalink and label it "Total". Requiring money AND a
+                  // total-ish row AND no empty-cart message still excludes ordinary pages.
                   const summary =
-                    /\b(?:subtotal|order total|estimated total|your (?:cart|bag|basket))\b/.test(t);
+                    /\b(?:sub-?total|order total|estimated total|cart total|bag total|total|proceed to checkout|your (?:cart|bag|basket))\b/.test(
+                      t,
+                    );
                   return !empty && money && summary;
                 })
                 .catch(() => false);
