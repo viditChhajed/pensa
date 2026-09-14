@@ -50,7 +50,51 @@ the crawl being refused, not the collector failing. It fails loudly if the harve
 itself is broken, because "0 snippets from every site" and "every site blocked us" look
 identical otherwise.
 
-## 2. Label
+## 2. Label — automated, with one human check
+
+```bash
+npm run corpus:export     # stratified batches -> corpus/batches/
+# labellers write corpus/auto/batch-N.jsonl
+npm run corpus:ingest     # merge into corpus/labels.jsonl
+```
+
+Hand-labelling 500 items was the original plan and it was the wrong ask: most snippets are
+obvious, and a person clicking "no" four hundred times is expensive attention spent where it
+adds nothing. The automated pass reads **every message-shaped snippet** — 2,639 of them,
+capped at 120 per site so eBay does not teach the model its house style — and asks which of
+the six patterns each one is, if any.
+
+Note this is NOT the tiered queue the interactive tool serves. Those tiers exist to spend a
+person's attention well, and they inherit the loose regexes' blind spots — fatal here, since
+the entire reason to widen the labelling is to find positives the lexicons never recruited.
+
+### What automated labels are, and are not
+
+**They are legitimate training data.** The text is real, from 36 real shops. Judging real
+sentences is a different act from inventing them, and inventing them is what produced the
+lexicon misses in the first place.
+
+**They are not validation.** A classifier trained on them learns a compression of one
+judgement. If that judgement is wrong in some systematic way, the model will be wrong the
+same way and will agree with itself confidently. So:
+
+- Nothing in [EVAL.md](EVAL.md) may cite them as a precision result.
+- `npm run corpus:train` reports, per pattern, **how many positives the existing lexicon would
+  have missed**. If that number is near zero the model has learned the regexes in a more
+  expensive form, and the honest response is not to ship it.
+- Every row carries `source: "auto"`. Hand labels are never overwritten by automated ones.
+
+### The human check that is still worth doing
+
+`npm run label` still exists, and it is now a **spot check rather than a shift**: label 50
+items, compare against what the automated pass said for the same snippets, and you have a
+measured disagreement rate. Three minutes, and it is the only thing that can tell you whether
+the automated labels are any good. Without it the whole pipeline is unfalsifiable.
+
+<details>
+<summary>The interactive tool, for that spot check</summary>
+
+## 2b. Label by hand
 
 ```bash
 npm run label     # opens http://localhost:5173
@@ -80,6 +124,8 @@ this project has had came from a list written in advance; this is the one place 
 outside it.
 
 Starting over: `npm run label -- --reset` discards every answer and says how many it dropped.
+
+</details>
 
 One item, one keystroke, advances itself. Answers are written to disk immediately — close the
 tab whenever, reopen and it resumes at the next unlabelled item.

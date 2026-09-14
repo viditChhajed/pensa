@@ -18,7 +18,9 @@
     "measure:perf": "node scripts/measure-perf.mjs",
     "corpus:collect": "node scripts/collect-corpus.mjs",
     "label": "node scripts/label.mjs",
-    "corpus:train": "tsx scripts/train-classifier.ts"
+    "corpus:train": "tsx scripts/train-classifier.ts",
+    "corpus:ingest": "node scripts/ingest-auto-labels.mjs",
+    "corpus:export": "node scripts/export-for-labelling.mjs"
   },
   "author": "",
   "license": "ISC",

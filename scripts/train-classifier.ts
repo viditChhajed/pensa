@@ -17,6 +17,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type ClassifierModel, evaluate, type TrainingExample, train } from "@/shared/classifier";
+import { TRAINABLE } from "./label-queue.mjs";
 
 const LABELS = resolve("corpus/labels.jsonl");
 const OUT = resolve("corpus/models.json");
@@ -27,6 +28,15 @@ const MIN_POSITIVES = 40;
 const MIN_PRECISION = 0.8;
 /** A model that only fires on what the lexicon already caught has bought us nothing. */
 const MIN_RECALL = 0.5;
+/**
+ * Negatives per positive.
+ *
+ * Labelling every snippet against every pattern produces roughly 400 negatives for each
+ * positive, and a logistic regression trained on that learns one rule — say no — which
+ * scores 99.7% accuracy and is useless. Capped rather than balanced 1:1 because negatives
+ * are genuinely the common case and the model should know that.
+ */
+const NEG_PER_POS = 4;
 
 interface LabelRow {
   patternId: string;
@@ -99,6 +109,7 @@ for (const r of byKey.values()) {
 
 const models: Record<string, ClassifierModel> = {};
 const report: string[] = [];
+const novelty: string[] = [];
 
 for (const [patternId, rows] of [...byPattern.entries()].sort()) {
   const positives = rows.filter((r) => r.label === 1);
@@ -116,14 +127,44 @@ for (const [patternId, rows] of [...byPattern.entries()].sort()) {
     continue;
   }
 
+  /**
+   * Did the labelling find anything the LEXICON would not have?
+   *
+   * This is the question the whole §18D exercise turns on. If every positive is one the
+   * existing regexes already match, the classifier has learned the lexicon in a more
+   * expensive form and the honest thing is to say so rather than ship it. A positive the
+   * lexicon misses is the thing that justifies a model at all.
+   */
+  const strict = TRAINABLE.find((p) => p.id === patternId)?.strict ?? [];
+  const lexiconWouldCatch = positives.filter((r) => strict.some((re) => re.test(r.text))).length;
+  const novel = positives.length - lexiconWouldCatch;
+  novelty.push(
+    `  ${patternId.padEnd(30)} ${String(novel).padStart(4)} of ${String(positives.length).padStart(4)} ` +
+      `positives are phrasings the lexicon MISSES`,
+  );
+
   // Hold out whole sites. See the header: a row-wise split leaks repeated markup.
   const sites = [...new Set(rows.map((r) => r.site ?? "?"))].sort();
   const holdout = new Set(sites.filter((_, i) => i % 4 === 3));
   if (holdout.size === 0 && sites.length > 1) holdout.add(sites[sites.length - 1] as string);
 
   const toExample = (r: LabelRow): TrainingExample => ({ text: r.text, label: r.label as 0 | 1 });
-  const trainRows = rows.filter((r) => !holdout.has(r.site ?? "?"));
-  const testRows = rows.filter((r) => holdout.has(r.site ?? "?"));
+
+  // Cap negatives. Deterministic stride rather than random sampling, so a retrain produces
+  // the same model and a weights diff stays reviewable.
+  const capNegatives = (list: LabelRow[]): LabelRow[] => {
+    const pos = list.filter((r) => r.label === 1);
+    const neg = list.filter((r) => r.label === 0);
+    const want = Math.max(pos.length * NEG_PER_POS, 40);
+    if (neg.length <= want) return list;
+    const stride = neg.length / want;
+    const kept = [];
+    for (let k = 0; k < want; k++) kept.push(neg[Math.floor(k * stride)] as LabelRow);
+    return [...pos, ...kept];
+  };
+
+  const trainRows = capNegatives(rows.filter((r) => !holdout.has(r.site ?? "?")));
+  const testRows = capNegatives(rows.filter((r) => holdout.has(r.site ?? "?")));
 
   if (testRows.length < 20 || testRows.every((r) => r.label === 0)) {
     line(
@@ -168,6 +209,15 @@ if (unnamed.size > 0) {
   console.log(
     `\n  These are not trained — there is no detector to train. They are the argument for\n` +
       `  adding one, which is a deliberate decision rather than something this script makes.`,
+  );
+}
+
+if (novelty.length > 0) {
+  console.log(`\n  Does a model buy anything the regexes do not?`);
+  console.log(novelty.join("\n"));
+  console.log(
+    `\n  A pattern whose positives are ALL lexicon matches has learned the lexicon in a more\n` +
+      `  expensive form. The number that matters is the left one.`,
   );
 }
 
