@@ -27,8 +27,36 @@ const CLOCK_RE = /\b(\d{1,3}):([0-5]\d)(?::([0-5]\d))?\b/;
  * and pushes a decision toward now"), and Mathur et al. treat limited-time messages as one
  * category rather than only ticking ones.
  */
-const DEADLINE_COPY =
-  /\b(?:sale|offer|deal|discount|promo(?:tion)?|price|event)\b[^.]{0,20}?\b(?:ends?|ending|expires?|expiring|closes?)\b|\b(?:ends?|ending|expires?|expiring)\s+(?:soon|today|tonight|tomorrow|shortly)\b|\blast (?:chance|day|call|hours?)\b|\b(?:today|tonight) only\b|\bwhile (?:stocks?|supplies) last\b/i;
+const DEADLINE_COPY = new RegExp(
+  [
+    // "sale ends", "offer expires", "promo closes" — a noun and a verb, in either order.
+    /\b(?:sale|offer|deal|discount|promo(?:tion)?|price|event|coupon)\b[^.]{0,24}?\b(?:ends?|ending|expires?|expiring|closes?|runs?)\b/,
+    // "ends soon", "expires in 3 days", "ends 9/16/26", "ending tomorrow".
+    /\b(?:ends?|ending|expires?|expiring)\s+(?:soon|today|tonight|tomorrow|shortly|in\b|on\b|\d)/,
+    // "thru Sep 17", "through September 17", "valid thru 9.30.26" — Ulta and Sephora write
+    // almost every promotion this way, and it was the single largest family of misses.
+    /\b(?:thru|through)\s+(?:\d|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/,
+    // "book by Jan 7", "buy by 9/16/26" — a purchase deadline hidden in terms text.
+    /\b(?:book|buy|order|shop)\s+by\s+(?:\d|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/,
+    /\blimited[-\s]time\b/,
+    /\b\d+\s+days?\s+left\b/,
+    /\blast (?:chance|day|call|hours?)\b/,
+    /\b(?:today|tonight) only\b/,
+    /\bhurry\b/,
+  ]
+    .map((r) => r.source)
+    .join("|"),
+  "i",
+);
+
+/**
+ * "While supplies last" is NOT here, deliberately.
+ *
+ * It was, and it produced every one of this detector's false positives. It is a claim about
+ * SUPPLY, not about time — the labelling put it under scarcity, and scarcity is where it
+ * now lives. A deadline detector that fires on a stock claim reports the wrong technique
+ * with full confidence, which is worse than missing it.
+ */
 
 /**
  * Does the deadline name WHEN? A weekday, a date, or a time.

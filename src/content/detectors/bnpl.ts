@@ -37,6 +37,13 @@ const INSTALLMENT_PATTERNS: readonly RegExp[] = [
   /\bas low as\s*[$£€]?\s*[\d.,]+\s*\/\s*(?:mo|month)\b/,
   /\bfrom\s*[$£€]\s*[\d.,]+\s*\/\s*(?:mo|month)\b/,
   /\bsplit (?:it )?into \d+ payments\b/,
+  /**
+   * "Get the Apple Watch Series 11 starting at $38/mo." — Target's framing, and five of the
+   * seven instalment messages in the labelled corpus. No provider name, no "interest-free",
+   * no "4 payments of": just a monthly figure standing in for the price.
+   */
+  /\bstarting at\s*[$£€]\s*[\d.,]+\s*\/\s*mo\b/,
+  /\b(?:from|only)\s*[$£€]\s*[\d.,]+\s*(?:a|per|\/)\s*(?:mo|month)\b/,
   /\b\d+ (?:bi-?weekly|fortnightly|monthly) payments\b/,
 ];
 

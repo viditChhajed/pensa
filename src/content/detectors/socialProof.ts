@@ -24,6 +24,17 @@ const COUNTER_PATTERNS: readonly RegExp[] = [
   /\b(\d{1,4})\s+(?:sold|bought|purchased|ordered)\s+in the (?:last|past)\s+\d+\s*(?:hour|hours|day|days|minute|minutes)\b/,
   /\b(\d{1,4})\s+(?:in|added to)\s+(?:\d+\s+)?(?:carts|baskets|bags)\b/,
   /\b(\d{1,4})\s+people (?:have )?(?:booked|reserved)\b/,
+  /**
+   * From the labelled corpus. "447 people have purchased this in the last 3 hours!" scored
+   * zero: the verb list above covers booked and reserved but not purchased or bought, and
+   * the count-plus-timeframe pattern requires the number to sit directly before the verb.
+   */
+  /\b(\d{1,4})\s+(?:people|shoppers|customers|others)\s+(?:have\s+)?(?:bought|purchased|ordered|grabbed|claimed)\b/,
+  /**
+   * "LIVE • 279" — a bare viewer count on a live-shopping card, with no verb and no noun.
+   * Requires the LIVE marker: a naked number is not a claim about anybody.
+   */
+  /\blive\b[^a-z0-9]{0,4}(\d{2,6})\b/i,
   /\bbooked\s+\d+\s+times? in the last\b/,
   /\bin high demand\b/,
   /\b(\d{1,4})\s+others? (?:are )?(?:looking|interested)\b/,

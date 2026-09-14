@@ -238,6 +238,33 @@ phrasings I invented that no real site uses:
 > only", "Back in stock soon", "While supplies last", "Hurry! Before these items
 > sold out!", "starting at $38/mo.", "I don't want my mystery offer".
 >
+> **FIXED — 2026-09-14, same day.** The lexicons were rewritten against the real
+> copy, measured by `npm run eval:detectors` on the same 2,639 snippets:
+>
+> | pattern | recall before | recall after | precision after |
+> |---|---|---|---|
+> | `goal_gradient.threshold` | 0.04 | **0.60** | 0.98 |
+> | `urgency.countdown` | 0.11 | **0.79** | 0.93 (was 0.58) |
+> | `scarcity.stock` | 0.43 | **0.64** | 1.00 |
+> | `bnpl.installments` | 0.29 | **1.00** | 1.00 |
+> | `social_proof.live_activity` | 0.00 | 0.05 | 1.00 — see caveat |
+>
+> Precision did not have to be traded for it. The first threshold rewrite DID cost
+> it — recall 0.72 at precision 0.49 — and the cause was one optional group:
+> `with (?:any|select|your)?` made a bare "with" a threshold, so every boohoo
+> product card ("Extra 15% Off, With Code: 15EXTRA") qualified. 40 of 54 false
+> positives from a single `?`.
+>
+> `social_proof` stays at 0.05 and that is the honest number, not a failure to
+> try: 40 of its 42 positives are AliExpress product-title blobs with "N,000+
+> sold" welded on. The detector declines them correctly. The two real messages in
+> the set — "447 people have purchased this in the last 3 hours!" and a bare
+> "LIVE • 279" — both now fire.
+>
+> Quantity thresholds (BOGO, "buy 3 get the 4th free") are deliberately NOT
+> matched. The labelling disagreed with itself about them, and a detector should
+> not encode a judgement the labels could not reach consensus on.
+>
 > **The classifier is not the fix available today.** One model qualified
 > (`goal_gradient`, held-out P 0.86 / R 0.67 over 18 positives); `urgency` was
 > rejected at P 0.55; three had too few positives to train. 200 positives is not

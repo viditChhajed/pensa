@@ -23,6 +23,18 @@ const UNIT_NOUN =
   "(?:rooms?|tickets?|seats?|items?|units?|pieces?|spots?|places?|nights?|copies|copy|boxes|packs?|bottles?|sets?)";
 
 const STOCK_PATTERNS: readonly RegExp[] = [
+  /**
+   * Added from the labelled corpus. Each is real copy that scored zero: "While supplies
+   * last" — the commonest scarcity phrase in the whole set, and it was being reported as
+   * URGENCY — plus "Back in stock soon", "Hurry! Before these items sold out!", and
+   * "A limited number of passes will be sold at special introductory pricing".
+   */
+  /\bwhile (?:stocks?|supplies) last\b/,
+  /\bwhile they last\b/,
+  /\bback in stock soon\b/,
+  /\bbefore (?:these |they |it )?(?:items? )?(?:are |is )?(?:sold ?out|gone)\b/,
+  /\ba limited (?:number|quantity|amount)\b/,
+  /\blimited (?:quantity|quantities|availability|stock|supply)\b/,
   new RegExp(`\\bonly (\\d{1,3}) (?:${UNIT_NOUN} )?(?:left|remaining|available)\\b`),
   new RegExp(`\\b(\\d{1,3}) ${UNIT_NOUN} (?:left|remaining|available)\\b`),
   /\b(\d{1,3}) (?:left|remaining) in stock\b/,
