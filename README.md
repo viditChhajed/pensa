@@ -10,19 +10,21 @@ deception, or illegality — an ethical constraint first, and a store-review one
 ## Status — feature-complete, not submitted
 
 Working locally, verified in real Chromium, **not submitted**. The remaining blockers are
-things I cannot do: a $5 developer account, a reachable privacy-policy URL, and screenshots
-taken through a native permission dialog no automation can accept.
+things I cannot do: a $5 developer account, and screenshots taken through a native permission
+dialog no automation can accept. (The privacy-policy URL is live — see
+[STORE-LISTING.md](STORE-LISTING.md).)
 
 | | |
 |---|---|
 | Patterns shipped | **20** — 14 on-page + 2 cross-stage + 4 derived from visit history |
-| Unit tests | 321 |
-| Real-browser e2e | 38 passing, 3 skipped (sites unreachable from this network) |
-| Bundle | 116 KB gzipped across all bundles; 27 KB is the content script, which is the number that matters on every page load |
+| Unit tests | 431 |
+| Real-browser e2e | 43 passing, 3 skipped (sites unreachable from this network) |
+| Bundle | 119 KB gzipped across all bundles; 28 KB is the content script, which is the number that matters on every page load |
 | `host_permissions` | empty — the build throws otherwise, asserted on the built manifest |
 | Network requests | **zero with telemetry off** (the shipped default), asserted; with it on, the only reachable address is the declared endpoint, also asserted |
 | Card placement | 12/12 samples across 4 live retailers × 3 scroll depths |
-| Precision | 0 confirmed false positives in ~44 firings across 6 retailers — see the caveat below |
+| Detector recall | measured against 2,639 labelled snippets from 36 shops — `npm run eval:detectors` |
+| Manual precision | 0 confirmed false positives in ~44 firings across 6 retailers — see the caveat below |
 
 **On the page (14):** `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
 `urgency.countdown`, `defaults.preselected`, `social_proof.live_activity`,
@@ -49,6 +51,34 @@ bundles, and that the temporal four are in the worker and never in the page regi
 `src/shared/classifier.ts` is unwired scaffolding with no trained weights. It ships nothing,
 and a test asserts its identifiers are absent from the build — a partially-trained classifier
 scoring real pages would be worse than no classifier.
+
+### Measured on real copy
+
+`npm run eval:detectors` runs the shipped detectors over 2,639 labelled snippets collected
+from 36 shops and reports precision and recall per pattern. Before that instrument existed,
+every number this project had came from fixtures written against lexicons written from the
+same imagination — they agreed with each other and with nothing else.
+
+| pattern | recall | precision | |
+|---|---|---|---|
+| `bnpl.installments` | 1.00 | 1.00 | |
+| `urgency.countdown` | 0.79 | 0.93 | |
+| `scarcity.stock` | 0.64 | 1.00 | |
+| `goal_gradient.threshold` | 0.60 | 0.98 | |
+| `social_proof.live_activity` | 0.05 | 1.00 | 40 of its 42 positives are product-title blobs the detector is right to decline |
+| `confirmshaming.decline_copy` | — | — | only 3 instances in the corpus; not measurable |
+
+Those are at the LOG threshold — what gets counted. The surface threshold, which is what
+interrupts anyone, is far stricter and its precision is 1.00 across the board.
+
+Read them as **agreement, not correctness**: the labels were produced by a model, not a
+person, so a detector agreeing with them is not the same as being right. They support "this
+change made it worse", which is the property worth having while lexicons are rewritten —
+`tests/eval/baseline.json` is a ratchet and a regression past 0.02 fails.
+
+The structural detectors — `anchoring`, `charm`, `defaults`, `interference`, `decoy` — are
+NOT covered by this. They read strikethroughs, price endings, checked boxes and contrast, and
+a text corpus cannot measure them.
 
 ### Known gaps — not claimed as done
 
