@@ -32,6 +32,20 @@ const REMAINDER_PATTERNS: readonly RegExp[] = [
   /\b.{0,16}?\s*away from free (?:shipping|delivery)\b/,
   /\byou are\s+.{0,16}?\s*away\b/,
   /\bjust\s+.{0,16}?\s*(?:more\s+)?(?:away|to go|until)\b/,
+  /**
+   * Field-reported misses. Each one is a phrasing a shopper offered from memory that scored
+   * exactly zero, which is the same failure mode EVAL run 1 recorded seven times: the
+   * lexicon was written against copy I imagined rather than copy that exists.
+   *
+   * "until" was in the `just …` pattern and nowhere else, so "only $30 until free shipping"
+   * — as ordinary a sentence as this detector will ever see — was invisible.
+   */
+  /\bonly\s+.{0,16}?\s*until\b/,
+  /\b(?:only|just)?\s*.{0,12}?\s*(?:more\s+)?(?:until|till|to reach|to hit)\s+(?:free|your)\b/,
+  /** "You're almost there! $8 to go" — the remainder is in a second clause. */
+  /\balmost there\b/,
+  /\b[$£€]\s?[\d.,]+\s*(?:more\s+)?to go\b/,
+  /\b[$£€]\s?[\d.,]+\s*(?:more\s+)?(?:and|for)\s+(?:you\s+)?(?:get|unlock|qualify)\b/,
 ];
 
 /** Threshold copy without a personalised remainder — needs a progress bar to count. */
