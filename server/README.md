@@ -62,12 +62,19 @@ be applied at read time as `where reporters >= 20`. There is no reporter id and 
 way to reconstruct one — the count is of batches, not of people, and that is the strongest
 form available without an identifier.
 
-## Deploying — an open decision
+## Deploying
 
-`handler.ts` is written as a plain `(Request) => Response`, which is the native shape for
-Vercel Edge Functions, Cloudflare Workers and Deno Deploy, and is three lines away from a
-Node `http` server. Pick a host, add a database, set `TELEMETRY_ENDPOINT`, and change the
-Chrome listing's data disclosure (the wording for both cases is already in
-[STORE-LISTING.md](../STORE-LISTING.md)).
+**Cloudflare Workers + D1** — step by step in [DEPLOY.md](DEPLOY.md), about 20 minutes. The
+entry point is `cloudflare/worker.ts`, which is deliberately thin: every rule about what may
+be accepted lives in `handler.ts`, so the rules are unit-tested without a Worker runtime and
+moving host is a change to one file.
 
-**Until then the extension sends nothing**, and four e2e tests assert exactly that.
+`handler.ts` is a plain `(Request) => Response`, the native shape for Cloudflare Workers,
+Vercel Edge and Deno Deploy, and three lines from a Node server.
+
+The step that matters most is not in this repo: **turn off Cloudflare's request logging before
+deploying.** An IP beside an hour bucket and a site category re-identifies a person, and the
+platform records it by default. DEPLOY.md §3.
+
+**Until `TELEMETRY_ENDPOINT` is set at build time the extension sends nothing**, and the
+egress tests assert exactly that.

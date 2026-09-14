@@ -1,0 +1,16 @@
+name = "persuasion-patterns-counts"
+main = "worker.ts"
+compatibility_date = "2026-01-01"
+
+# No analytics engine binding, no logpush, no tail consumer. See DEPLOY.md: Cloudflare
+# records the client IP in its own request logs by default, and an IP beside an hour bucket
+# and a site category re-identifies a person. Disabling that is a dashboard step, not a
+# config one, which is why it is a checklist item rather than a line here.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "persuasion-patterns-counts"
+database_id = "PUT-YOUR-D1-DATABASE-ID-HERE"
+
+[observability]
+enabled = false
