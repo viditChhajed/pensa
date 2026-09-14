@@ -228,7 +228,21 @@ let written = 0;
  * product page and in the cart. Crawling two levels to reach one is worth it; harvesting a
  * hundred category listings is not.
  */
-const PRODUCT_LINK = /\/(?:products?|item|itm|dp|pd|p|prod|sku|buy)\//i;
+/**
+ * A "product" page, including the shapes travel and ticketing use.
+ *
+ * Booking, Agoda and Expedia have no /products/ anywhere — their detail pages are /hotel/,
+ * /rooms/, /flights/ — so the crawl skipped every one of them and reported "no product link
+ * from the homepage". That is precisely backwards: travel is where drip pricing lives, and
+ * `pricing.drip` is the highest-severity detector in the taxonomy.
+ *
+ * Widening this does NOT widen what the crawl clicks. `addToCart` looks for an add-to-cart
+ * control by name and finds none on a hotel page, so these get harvested and nothing is
+ * added — which is the correct boundary anyway: "Reserve" on a travel site leads straight
+ * into a form asking for a guest's name, and this crawl stops well before that.
+ */
+const PRODUCT_LINK =
+  /\/(?:products?|item|itm|dp|pd|p|prod|sku|buy|hotel|hotels|rooms?|flights?|stays?|event|events|tickets?|listing)\//i;
 const CATEGORY_LINK =
   /\/(?:collections?|category|categories|c|s|shop|sale|deals?|clearance|new)\b/i;
 
