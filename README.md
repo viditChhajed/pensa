@@ -77,8 +77,18 @@ change made it worse", which is the property worth having while lexicons are rew
 `tests/eval/baseline.json` is a ratchet and a regression past 0.02 fails.
 
 The structural detectors — `anchoring`, `charm`, `defaults`, `interference`, `decoy` — are
-NOT covered by this. They read strikethroughs, price endings, checked boxes and contrast, and
-a text corpus cannot measure them.
+NOT covered by this, and that is now measured rather than assumed. The labelling flagged
+**163** snippets as reference-price anchoring, which is more evidence than any of the six
+text patterns had. **Zero** of them carry a strikethrough in the corpus.
+
+They are not mislabelled. The harvested node is the container — "EGOWide Leg Low Rise
+Trousers£21.60£27.00-20%" — and the `<s>` sits on a child the corpus flattens away, so the
+style recorded is the wrapper's. Measuring these needs the subtree, not the text, which is a
+different collection format and a different privacy question: storing DOM structure from real
+pages is a bigger commitment than storing scrubbed sentences.
+
+Worth doing, not done, and the 163 labels are already sitting in `corpus/auto/` for whoever
+does it.
 
 ### Known gaps — not claimed as done
 
