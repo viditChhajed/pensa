@@ -265,6 +265,113 @@ async function scrollThrough(page) {
   }
 }
 
+/**
+ * Cart and modal copy, which a page-fetching crawl can never reach.
+ *
+ * The first corpus found THREE confirmshaming instances in 15,822 snippets, and zero
+ * evidence for pricing.drip or basket.sneak. That is not a detector problem: "no thanks, I
+ * don't want to save money" lives in a newsletter modal, a drip fee appears only once a cart
+ * has a subtotal, and a sneaked add-on exists only in a cart. Crawling product pages and then
+ * asking why the cart detectors have no data is asking the wrong question.
+ *
+ * The boundary, and the reason this is a separate mode rather than the default: add to cart
+ * and READ the cart. Nothing else. No account is created, no personal data is entered into
+ * any field, no checkout is entered, no order is placed. Adding an item to a cart is what
+ * every shopper does and leaves nothing behind but a session; entering an address is not,
+ * and the crawl stops before it.
+ */
+
+/** Decline non-essential cookies where offered. Accept nothing. */
+async function dismissConsent(page) {
+  const DECLINE = [
+    /^(?:reject|decline|refuse)\b/i,
+    /only (?:necessary|essential|required)/i,
+    /necessary (?:cookies )?only/i,
+    /continue without accepting/i,
+  ];
+  try {
+    for (const el of await page.$$('button, [role="button"], a')) {
+      const name = ((await el.textContent()) ?? "").replace(/\s+/g, " ").trim();
+      if (name.length === 0 || name.length > 60) continue;
+      if (!DECLINE.some((re) => re.test(name))) continue;
+      await el.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(600);
+      return;
+    }
+  } catch {
+    /* a consent banner that will not be dismissed is not a failed page */
+  }
+}
+
+/**
+ * Nudge the page into showing what it only shows under pressure.
+ *
+ * Newsletter and exit-intent modals are where confirmshaming lives, and both are triggered
+ * by dwell or by the cursor leaving toward the top of the window. Both are things a real
+ * visitor does; neither submits anything.
+ */
+async function provokeModals(page) {
+  try {
+    await page.waitForTimeout(2500);
+    await page.mouse.move(640, 300);
+    await page.mouse.move(640, 2);
+    await page.waitForTimeout(1800);
+  } catch {
+    /* nothing to provoke */
+  }
+}
+
+const ATC_NAME = /add to (?:cart|bag|basket)|^add$|^buy now$/i;
+
+/**
+ * Click add-to-cart, selecting a variant first if the button will not engage without one.
+ *
+ * Best-effort by design: a site that will not add without a login is a site this crawl
+ * declines to push further on.
+ */
+async function addToCart(page) {
+  const clickFirst = async (selector, re, timeout = 2500) => {
+    for (const el of await page.$$(selector)) {
+      const label =
+        (await el.getAttribute("aria-label").catch(() => null)) ??
+        (await el.textContent().catch(() => "")) ??
+        "";
+      if (!re.test(label.replace(/\s+/g, " ").trim())) continue;
+      const ok = await el
+        .click({ timeout })
+        .then(() => true)
+        .catch(() => false);
+      if (ok) return true;
+    }
+    return false;
+  };
+
+  try {
+    if (await clickFirst('button, [role="button"], input[type="submit"]', ATC_NAME)) {
+      await page.waitForTimeout(3000);
+      return true;
+    }
+    // Many product pages disable add-to-cart until a size or colour is chosen. Pick the
+    // first swatch and try once more.
+    await clickFirst(
+      '[data-size], [class*="swatch"] button, [class*="size"] button, fieldset button',
+      /^[a-z0-9]{1,6}$/i,
+      1500,
+    );
+    await page.waitForTimeout(900);
+    if (await clickFirst('button, [role="button"], input[type="submit"]', ATC_NAME)) {
+      await page.waitForTimeout(3000);
+      return true;
+    }
+  } catch {
+    /* not addable without more interaction than this crawl is willing to do */
+  }
+  return false;
+}
+
+/** The usual cart paths. Read only — the crawl stops here and never enters checkout. */
+const CART_PATHS = ["/cart", "/bag", "/basket", "/shopping-cart", "/shoppingcart"];
+
 async function collectFrom(page, _url, site) {
   let nodes;
   try {
@@ -402,6 +509,9 @@ let context = await freshContext();
   console.log(`Harvest bundle OK (${found} candidates on the probe page).`);
 }
 
+/** `--cart` adds one item per site and reads the cart. See the note above addToCart. */
+const CART_MODE = Boolean(args.cart);
+let cartsReached = 0;
 let consecutiveFailures = 0;
 
 for (const site of sites) {
@@ -420,7 +530,13 @@ for (const site of sites) {
   try {
     await page.goto(origin, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await page.waitForTimeout(2500);
+    if (CART_MODE) await dismissConsent(page);
     await scrollThrough(page);
+    if (CART_MODE) {
+      // Dwell on the homepage first: newsletter modals are timed, and the homepage is where
+      // most sites fire them.
+      await provokeModals(page);
+    }
     got += await collectFrom(page, origin, site);
 
     // Two levels, product-first. Take whatever products the homepage exposes; if that is not
@@ -457,6 +573,88 @@ for (const site of sites) {
         await visit(link);
       } catch {
         /* one dead link is not a failed site */
+      }
+    }
+
+    /**
+     * The cart pass. Add one item, then read the cart — and stop.
+     *
+     * Only ONE item and only one product page attempted per site: enough to give a cart a
+     * subtotal, a line item and whatever the site chooses to put beside them, without
+     * hammering anyone's basket service for a corpus.
+     */
+    if (CART_MODE && queue.length === 0) {
+      console.log(`    ${site}: no product link from the homepage — cart pass skipped`);
+    }
+    if (CART_MODE && queue.length > 0) {
+      // Narrated, because every silent failure in this crawler has cost a whole run. "0 cart
+      // pages reached" could mean no product link, a refused click, or a cart that loaded
+      // empty, and those have three different fixes.
+      try {
+        await page.goto(queue[0], { waitUntil: "domcontentloaded", timeout: 25_000 });
+        await page.waitForTimeout(2000);
+        await dismissConsent(page);
+        const added = await addToCart(page);
+        console.log(
+          `    ${site}: add-to-cart ${added ? "clicked" : "NOT FOUND"} on ${queue[0].slice(0, 70)}`,
+        );
+
+        // Harvest wherever the click left us. Shopify-style drawers render the cart in
+        // place, so this is often the cart itself and the only chance to see it.
+        got += await collectFrom(page, page.url(), site);
+
+        if (added) {
+          for (const path of CART_PATHS) {
+            await page.waitForTimeout(delayMs);
+            try {
+              const res = await page.goto(`${origin}${path}`, {
+                waitUntil: "domcontentloaded",
+                timeout: 20_000,
+              });
+              if (!res || res.status() >= 400) continue;
+              await page.waitForTimeout(2000);
+              await scrollThrough(page);
+              got += await collectFrom(page, page.url(), site);
+
+              /**
+               * Decide "this is a populated cart" from the PAGE, not from how many snippets
+               * were new.
+               *
+               * The first version counted newly-written snippets, which measures corpus
+               * novelty rather than the page in front of it: glossier's cart deduped to zero
+               * against text already collected from its drawer, and the run reported zero
+               * carts reached while sitting on one.
+               */
+              const looksLikeACart = await page
+                .evaluate(() => {
+                  const t = (document.body?.innerText ?? "").toLowerCase();
+                  const empty =
+                    /your (?:cart|bag|basket) is empty|no items in your|cart is currently empty/.test(
+                      t,
+                    );
+                  const money = /[$£€¥]\s?\d/.test(t);
+                  const summary =
+                    /\b(?:subtotal|order total|estimated total|your (?:cart|bag|basket))\b/.test(t);
+                  return !empty && money && summary;
+                })
+                .catch(() => false);
+
+              console.log(`    ${site}: ${path} -> ${looksLikeACart ? "CART" : "not a cart"}`);
+              if (looksLikeACart) {
+                cartsReached++;
+                break;
+              }
+            } catch {
+              /* try the next cart path */
+            }
+          }
+        }
+      } catch (err) {
+        console.log(
+          `    ${site}: cart pass failed — ${String(err?.message ?? err)
+            .split("\n")[0]
+            .slice(0, 70)}`,
+        );
       }
     }
     console.log(`  ${site.padEnd(22)} ${String(got).padStart(5)} new snippets`);
@@ -498,5 +696,6 @@ if (written === 0) {
   );
   process.exit(1);
 }
+if (CART_MODE) console.log(`\n${cartsReached} cart page(s) reached.`);
 console.log(`\n${written} unique snippets -> ${OUT}`);
 console.log(`Next: npm run label`);
