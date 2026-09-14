@@ -116,15 +116,20 @@ The full source, including the list of sites and the exact wording of every prom
 public.
 ```
 
-> **DO NOT SUBMIT THE LAST PARAGRAPH AS-IS.** `viditChhajed/persuasion-patterns` is
-> currently **private**, so "the full source … is public" is false, and it is false in the
-> one direction a reviewer can check in ten seconds. Two ways out, both fine:
+> **ORDERING DEPENDENCY — the repo must be public BEFORE this listing is submitted.**
 >
-> 1. Make the repo public before submitting, and the paragraph becomes true. Worth adding the
->    URL to it if so — an unverifiable claim of openness is weaker than a link.
-> 2. Delete the paragraph. Nothing else in the listing depends on it.
+> `viditChhajed/persuasion-patterns` is private today, deliberately: the decision is to stay
+> private while the detectors are still being refined, and to flip public immediately before
+> launch. That is a sound order — refine in private, ship in public — but it makes the
+> paragraph above **false until the flip happens**, in the one direction a reviewer can check
+> in ten seconds.
 >
-> This is your call, not mine, which is why it is flagged rather than edited.
+> So this is not an open question, it is a sequencing item, and it lives in the pre-submission
+> checklist below. Add the repo URL to the paragraph when you flip it; an unverifiable claim
+> of openness is weaker than a link.
+>
+> Before flipping: the history is public forever afterwards, and EVAL.md records real browsing
+> sessions. Audit the history first.
 
 ---
 
@@ -259,6 +264,9 @@ be judged. Flipping to Public later is one setting.
 - [x] Privacy policy URL live and reachable
 - [ ] **[EVAL.md](EVAL.md) filled in, and any detector over ~4 false positives raised or disabled**
 - [ ] Screenshots captured
+- [ ] **Repo flipped to public** — the listing claims the source is public, and it is
+      private until this is done. Audit the commit history first (EVAL.md holds real
+      browsing sessions).
 - [ ] Version bumped in `wxt.config.ts`
 - [ ] `npm run zip`
 
