@@ -207,7 +207,48 @@ string can carry session and account identifiers, and this file is committed.
 Ranked by how much it matters, not by how loud it was.
 
 **1. Every miss is a lexicon written against imagined copy.** Seven misses, seven
-phrasings I invented that no real site uses: "only 3 left AT THIS PRICE",
+phrasings I invented that no real site uses:
+
+> **MEASURED — 2026-09-14.** 2,639 real snippets from 36 shops were labelled and
+> compared against the shipped lexicons. The finding is much larger than run 1
+> suspected:
+>
+> | pattern | positives found | phrasings the lexicon MISSES |
+> |---|---|---|
+> | `goal_gradient.threshold` | 72 | **71** |
+> | `urgency.countdown` | 63 | **56** |
+> | `social_proof.live_activity` | 42 | 41 — but see the caveat |
+> | `scarcity.stock` | 14 | 12 |
+> | `bnpl.installments` | 7 | 5 |
+>
+> Read that as roughly **nine in ten real instances are phrased in a way the
+> regexes cannot see**. Not a handful of gaps — the lexicons are catching the
+> minority case.
+>
+> **Caveat on social_proof, stated because the number flatters us otherwise:**
+> 41 of its 42 are AliExpress product-title blobs with "N,000+ sold" welded onto
+> the end. That is a sold count, so the label is defensible, but the harvested
+> text is a title rather than a badge, and a model trained on it would learn
+> AliExpress's title formatting. That figure should not be quoted as recall
+> evidence.
+>
+> Concrete misses, all real copy: "Free standard shipping on orders $40+",
+> "(Free standard shipping over $40)", thresholds in ¥ and MX$, "Save 10% when
+> you buy 3 or more pairs", "Limited time offer, ends 09/17", "Limited time
+> only", "Back in stock soon", "While supplies last", "Hurry! Before these items
+> sold out!", "starting at $38/mo.", "I don't want my mystery offer".
+>
+> **The classifier is not the fix available today.** One model qualified
+> (`goal_gradient`, held-out P 0.86 / R 0.67 over 18 positives); `urgency` was
+> rejected at P 0.55; three had too few positives to train. 200 positives is not
+> enough, and the corpus needs cart and checkout pages, which a homepage crawl
+> does not reach. The lexicon additions are available immediately and are most of
+> the value — see [CORPUS.md](CORPUS.md).
+>
+> **These labels are not validation.** They were produced by a model, not a
+> person. They are legitimate training data — the text is real — but nothing here
+> may be quoted as a precision result, and a model agreeing with the judgement
+> that trained it proves nothing. "only 3 left AT THIS PRICE",
 "add $2.77 more TO CART FOR", "purchasing options separately may result in a
 higher overall price". The unit tests all pass because I wrote the fixtures and
 the lexicons from the same imagination. This is the strongest possible argument

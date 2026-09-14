@@ -74,7 +74,7 @@ for (const r of rows) {
 // indistinguishable from a difference between shops.
 mkdirSync(OUT_DIR, { recursive: true });
 const chunks = Array.from({ length: CHUNKS }, () => []);
-kept.forEach((item, n) => chunks[n % CHUNKS].push(item));
+for (const [n, item] of kept.entries()) chunks[n % CHUNKS].push(item);
 
 for (const [n, chunk] of chunks.entries()) {
   writeFileSync(join(OUT_DIR, `batch-${n + 1}.json`), `${JSON.stringify(chunk, null, 1)}\n`);

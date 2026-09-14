@@ -175,22 +175,75 @@ for (const [patternId, rows] of [...byPattern.entries()].sort()) {
   }
 
   const model = train(patternId, trainRows.map(toExample));
-  const metrics = evaluate(model, testRows.map(toExample));
+
+  /**
+   * Pick the decision threshold on the TRAINING set, then measure at it on the held-out one.
+   *
+   * 0.5 is the right default for balanced data and the wrong one here: with negatives
+   * outnumbering positives four to one, a well-calibrated model puts most true positives
+   * below 0.5 and the first run reported recall of 0.11, 0.22 and 0.00 while precision was
+   * 0.80 to 1.00. That is not a model that cannot tell them apart — it is a model being read
+   * at the wrong operating point.
+   *
+   * Tuned on training data specifically, never on the holdout. Sweeping thresholds against
+   * the test set and reporting the best one is how a model that generalises badly comes to
+   * look excellent, and this project has enough ways to fool itself already.
+   */
+  const trainExamples = trainRows.map(toExample);
+  let bestThreshold = 0.5;
+  let bestF1 = -1;
+  for (let t = 0.05; t <= 0.95; t += 0.05) {
+    const m = evaluate(model, trainExamples, t);
+    const f1 =
+      m.precision + m.recall > 0 ? (2 * m.precision * m.recall) / (m.precision + m.recall) : 0;
+    if (f1 > bestF1) {
+      bestF1 = f1;
+      bestThreshold = Number(t.toFixed(2));
+    }
+  }
+
+  const metrics = evaluate(model, testRows.map(toExample), bestThreshold);
+  const heldOutPositives = testRows.filter((r) => r.label === 1).length;
+
+  /**
+   * A rate over a handful of positives is not a rate.
+   *
+   * The first run that produced a model reported held-out precision and recall of 1.00 for
+   * social_proof, which is the sort of number that should provoke suspicion rather than
+   * satisfaction — with few enough held-out positives, a model that memorised one string
+   * template scores perfectly and has learned nothing. Refusing here is cheaper than
+   * discovering it after shipping.
+   */
+  const MIN_HELDOUT_POSITIVES = 8;
+  if (heldOutPositives < MIN_HELDOUT_POSITIVES) {
+    line(
+      "SKIPPED",
+      `only ${heldOutPositives} held-out positive(s) — any precision figure over that many ` +
+        "is noise, whatever it says",
+    );
+    continue;
+  }
 
   if (metrics.precision < MIN_PRECISION || metrics.recall < MIN_RECALL) {
     line(
       "REJECTED",
-      `held-out precision ${metrics.precision.toFixed(2)} recall ${metrics.recall.toFixed(2)} ` +
+      `held-out P ${metrics.precision.toFixed(2)} R ${metrics.recall.toFixed(2)} ` +
+        `over ${heldOutPositives} positive(s) @t=${bestThreshold} ` +
         `(need ${MIN_PRECISION}/${MIN_RECALL})`,
     );
     continue;
   }
 
-  models[patternId] = model;
+  // The threshold travels WITH the weights. A model shipped without its operating point is
+  // one the caller has to guess at, and the guess will be 0.5, which is the value that just
+  // made three working models look broken.
+  models[patternId] = { ...model, threshold: bestThreshold } as ClassifierModel & {
+    threshold: number;
+  };
   line(
     "OK",
-    `held-out precision ${metrics.precision.toFixed(2)} recall ${metrics.recall.toFixed(2)} ` +
-      `on ${testRows.length} rows from ${[...holdout].join(", ")}`,
+    `held-out P ${metrics.precision.toFixed(2)} R ${metrics.recall.toFixed(2)} ` +
+      `over ${heldOutPositives} positive(s) @t=${bestThreshold}`,
   );
 }
 
