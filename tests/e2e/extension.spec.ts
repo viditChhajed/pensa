@@ -61,6 +61,9 @@ test.describe("extension runtime", () => {
       "scripting",
       "activeTab",
       "declarativeContent",
+      // Added late, after the round-trip test revealed both alarms had been silent no-ops
+      // for the whole build. It shows no install warning and grants no page or data access.
+      "alarms",
     ]);
     expect((manifest?.optional_host_permissions ?? []).length).toBeGreaterThan(100);
   });

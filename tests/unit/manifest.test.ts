@@ -40,13 +40,35 @@ describe("built manifest", () => {
     expect(scripts).toEqual([]);
   });
 
-  it.skipIf(!available)("requests only the four justified permissions", () => {
+  it.skipIf(!available)("requests only the five justified permissions", () => {
+    // Exact, not a superset. Every entry has a written justification in STORE-LISTING.md,
+    // and a permission that appears here without one is a permission nobody has argued for.
     expect(manifest?.permissions).toEqual([
       "storage",
       "scripting",
       "activeTab",
       "declarativeContent",
+      "alarms",
     ]);
+  });
+
+  it.skipIf(!available)("declares `alarms`, because the code has always assumed it", () => {
+    /**
+     * Its own test, because its absence was invisible for the whole build.
+     *
+     * `chrome.alarms?.create(...)` is written with optional chaining, so without the
+     * permission `chrome.alarms` is `undefined` and both alarms became silent no-ops. The
+     * 30-day event prune and the offer-store eviction had therefore NEVER run, which made
+     * the retention promise in PRIVACY.md a promise with nothing behind it. Nothing failed,
+     * nothing logged, and it took an unrelated telemetry test to surface it.
+     *
+     * Optional chaining on a browser API is exactly how a missing permission stays invisible,
+     * so the permission gets an assertion of its own rather than living inside the list above.
+     */
+    expect(
+      (manifest?.permissions ?? []) as string[],
+      "alarms is missing: housekeeping and telemetry flush will silently never run",
+    ).toContain("alarms");
   });
 
   it.skipIf(!available)("never requests a broad pattern as a REQUIRED permission", () => {

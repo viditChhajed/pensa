@@ -30,19 +30,18 @@
  *   few fields it carries. Batches wait until they are worth sending.
  */
 import { getDb } from "@/background/db";
-import { TELEMETRY_ENDPOINT } from "@/shared/constants";
+import {
+  K_FLOOR,
+  MAX_BATCH_AGE_MS,
+  MIN_BATCH,
+  QUEUE_CAP,
+  TELEMETRY_ENDPOINT,
+} from "@/shared/constants";
 import type { DetectionEvent, Settings } from "@/shared/schema";
 import { TelemetryRecord } from "@/shared/schema";
 import { ALLOWLIST_VERSION, categoryForOrigin } from "@/shared/urlScore";
 
-/** Hold a batch until it is this big, so no record is the only one of its kind in flight. */
-export const MIN_BATCH = 25;
-/** …but not forever. A slow week should still report. */
-export const MAX_BATCH_AGE_MS = 24 * 60 * 60 * 1000;
-/** Never grow without bound if the endpoint is down or unset. */
-export const QUEUE_CAP = 5000;
-/** §18G: a cohort smaller than this is a fingerprint. Enforced here AND server-side. */
-export const K_FLOOR = 20;
+export { K_FLOOR, MAX_BATCH_AGE_MS, MIN_BATCH, QUEUE_CAP, TELEMETRY_ENDPOINT };
 
 export interface QueuedRecord {
   /** Autoincrement. Dexie needs a key; it never leaves the device. */

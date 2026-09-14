@@ -69,6 +69,18 @@ export default defineConfig({
     plugins: [preact()],
     define: {
       __BUILD_STAMP__: JSON.stringify(new Date().toISOString().replace("T", " ").slice(0, 16)),
+      /**
+       * Where anonymous counts are POSTed. Empty unless the build says otherwise.
+       *
+       * Build-time rather than hardcoded, because there is more than one legitimate value —
+       * nothing for a normal build, a local server for the round-trip e2e, a staging host,
+       * and eventually production. A constant in the source would mean the send path could
+       * only ever be tested by editing the source, which is the same as not testing it.
+       *
+       * Empty is the default, so a plain `npm run build` produces an extension that sends
+       * nothing and the zero-egress tests keep meaning what they say.
+       */
+      __TELEMETRY_ENDPOINT__: JSON.stringify(process.env.TELEMETRY_ENDPOINT ?? ""),
     },
   }),
 
@@ -85,7 +97,20 @@ export default defineConfig({
     //   scripting          - register the detector script AFTER you grant a site
     //   activeTab          - read the current tab's URL in the popup so it can offer that site
     //   declarativeContent - light up the toolbar icon on shopping URLs WITHOUT reading pages
-    permissions: ["storage", "scripting", "activeTab", "declarativeContent"],
+    /**
+     * `alarms` was missing, and `chrome.alarms?.` hid it completely.
+     *
+     * Two alarms have been registered since the day housekeeping was written — the 30-day
+     * event prune and the offer-store eviction — and neither has ever fired, because without
+     * this permission `chrome.alarms` is `undefined` and the optional chaining turned the
+     * whole call into a silent no-op. Retention was a promise in PRIVACY.md with nothing
+     * behind it, and the telemetry round-trip test is what finally surfaced it.
+     *
+     * Optional chaining on a browser API is how a missing permission becomes invisible. It
+     * stays here because the worker also runs in contexts where the API genuinely is absent,
+     * but the permission being declared is what makes it a fallback rather than the norm.
+     */
+    permissions: ["storage", "scripting", "activeTab", "declarativeContent", "alarms"],
 
     /**
      * Two tiers, per plan §14.2 (curated) and §14.3 Tier B (everything else).

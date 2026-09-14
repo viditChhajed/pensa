@@ -166,6 +166,13 @@ Lets the popup read the current tab's address so it can offer to enable that spe
 Used only while the popup is open.
 ```
 
+**`alarms`**
+```
+Runs two scheduled jobs: deleting locally stored detections older than 30 days, and sending
+the optional anonymous counts on a timer rather than at the moment something is found. This
+permission shows no warning at install and grants no access to pages or data.
+```
+
 **`declarativeContent`**
 ```
 Highlights the toolbar icon on URLs that look like shopping pages. This is evaluated by the

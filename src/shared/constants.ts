@@ -33,8 +33,34 @@ export const BUILD_STAMP: string =
  * so that "which addresses may this extension contact" is answerable by reading one line
  * rather than by tracing a call graph.
  *
- * Empty is the shipped default until an endpoint is actually deployed. `flush()` treats it
- * as "hold everything", so switching consent on against an unset endpoint accumulates
- * locally and sends nothing, rather than failing quietly against a dead URL.
+ * Injected at build time from `TELEMETRY_ENDPOINT` (see wxt.config.ts), and EMPTY unless the
+ * build sets it. `flush()` treats empty as "hold everything", so consent switched on against
+ * an unset endpoint accumulates locally and sends nothing, rather than failing quietly
+ * against a dead URL.
  */
-export const TELEMETRY_ENDPOINT = "";
+declare const __TELEMETRY_ENDPOINT__: string;
+export const TELEMETRY_ENDPOINT: string =
+  typeof __TELEMETRY_ENDPOINT__ === "string" ? __TELEMETRY_ENDPOINT__ : "";
+
+/**
+ * Telemetry batching and anonymity limits.
+ *
+ * Here rather than in `background/telemetry.ts` for the same reason as the endpoint: this is
+ * the one module with no imports, so a test — or a reviewer — can read the numbers that
+ * govern what leaves the device without pulling in the allowlist JSON behind `urlScore`.
+ * A limit nobody can cite is a limit nobody can check.
+ */
+
+/** Hold a batch until it is this big, so no record is the only one of its kind in flight. */
+export const MIN_BATCH = 25;
+/** …but not forever. A slow week should still report. */
+export const MAX_BATCH_AGE_MS = 24 * 60 * 60 * 1000;
+/** Never grow without bound if the endpoint is down or unset. */
+export const QUEUE_CAP = 5000;
+/**
+ * §18G: a cohort smaller than this is a fingerprint, not a statistic.
+ *
+ * One report of `decoy.asymmetric_dominance` on `airline` in hour N, from a population of
+ * one, is that person's afternoon — however few fields the record carries.
+ */
+export const K_FLOOR = 20;
