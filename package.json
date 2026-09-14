@@ -15,7 +15,10 @@
     "fixtures:scan": "tsx scripts/scan-fixtures.ts",
     "fixtures:normalize": "tsx scripts/normalize-fixture.ts",
     "test:e2e": "playwright test",
-    "measure:perf": "node scripts/measure-perf.mjs"
+    "measure:perf": "node scripts/measure-perf.mjs",
+    "corpus:collect": "node scripts/collect-corpus.mjs",
+    "label": "node scripts/label.mjs",
+    "corpus:train": "tsx scripts/train-classifier.ts"
   },
   "author": "",
   "license": "ISC",

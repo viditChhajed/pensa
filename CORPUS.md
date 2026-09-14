@@ -1,0 +1,127 @@
+# Building the §18D training corpus
+
+## Why this exists
+
+Every recall miss recorded in [EVAL.md](EVAL.md) run 1 was a phrasing I invented that no real
+site uses — *"only 3 left AT THIS PRICE"*, *"add $2.77 more TO CART FOR"*. The lexicons and
+the fixtures came out of the same imagination, so the unit tests agreed with themselves and
+the field did not.
+
+That cannot be fixed by guessing harder. §18D replaces the fixed phrase lists with a model
+trained on real sentences: it scores overlapping 3–5 character fragments, so it does not
+depend on exact words and survives misspellings, emoji, missing spaces and British spelling.
+`src/shared/classifier.ts` already has the featuriser, the training and the evaluation. The
+only missing ingredient is labelled examples.
+
+## The three commands
+
+```bash
+npm run corpus:collect    # gather real page text        (~40 min, unattended)
+npm run label             # you label it                 (~1 hour, the only manual step)
+npm run corpus:train      # fit and gate the models      (seconds)
+```
+
+## 1. Collect
+
+Visits ~50 shops, follows product links two levels deep, scrolls each page so lazy-loaded
+badges render, and runs **the shipped harvest** — esbuild-bundled from `src/content/harvest.ts`
+at collect time, so the model trains on exactly the text distribution it will see in
+production. A separate "good enough" extractor here would be a silent and very hard bug.
+
+```bash
+npm run corpus:collect                              # the default site list
+npm run corpus:collect -- --sites shein.com,temu.com --pages 12
+```
+
+The site list is weighted toward travel, ticketing and fast fashion on purpose. The first
+run used twenty tame retailers and produced **six** snippets matching any scarcity vocabulary
+out of 1093 — REI does not run countdown timers, and a corpus drawn from shops that do not
+use a technique cannot teach a model to recognise it. The tame shops stay in the list,
+because a model trained only on shops that shout will call an ordinary product page a dark
+pattern.
+
+Text is scrubbed before it is written (email, phone, address, postcode, card-shaped digit
+runs, JWTs, order numbers) and deduplicated across the whole corpus — retail markup repeats
+one string dozens of times, and labelling the same sentence thirteen times is thirteen times
+the work for one example's worth of signal.
+
+Expect a third of travel sites to return ~1 snippet. They bot-block aggressively; that is
+the crawl being refused, not the collector failing. It fails loudly if the harvest bundle
+itself is broken, because "0 snippets from every site" and "every site blocked us" look
+identical otherwise.
+
+## 2. Label
+
+```bash
+npm run label     # opens http://localhost:5173
+```
+
+| key | means |
+|---|---|
+| <kbd>F</kbd> | yes, this is the pattern |
+| <kbd>J</kbd> | no |
+| <kbd>Space</kbd> | skip |
+| <kbd>U</kbd> | undo the last answer |
+
+One item, one keystroke, advances itself. Answers are written to disk immediately — close the
+tab whenever, reopen and it resumes at the next unlabelled item.
+
+**Six patterns, ~300 items each.** Only the ones driven by *wording*: scarcity, countdown,
+live activity, confirmshaming, spend thresholds and instalments. Reference prices, charm
+pricing and preselected options are structural — a strikethrough, a price ending, a ticked
+box — so a text model adds nothing to them and they are not worth your time.
+
+**Not everything is shown to you.** The raw corpus is ~95% navigation chrome ("Camp Chairs",
+"All Tops"). Items are recruited into three tiers and interleaved:
+
+- **A** — the current lexicon already matches. Fast to confirm, and the only place the
+  existing detectors' *false positives* can be found.
+- **B** — shares vocabulary with the pattern but does not match. **The valuable tier**: this
+  is exactly where recall is being lost.
+- **C** — superficially resembles the pattern and almost certainly is not one. Teaches the
+  boundary; without these a model trained on A and B calls everything positive.
+
+Interleaved rather than grouped, because forty consecutive obvious noes trains a reflex, and
+a reflex mislabels the one that is not obvious.
+
+## 3. Train
+
+```bash
+npm run corpus:train
+```
+
+Fits one model per pattern and **refuses to emit weights for one that has not earned them**:
+
+- fewer than 40 positives → skipped; a 4096-dimension model with less than that memorises
+- held-out precision < 0.80 or recall < 0.50 → rejected
+
+Plan §10 governs over §8 — a detector that cries wolf gets raised or disabled — and there is
+no reason a model should be exempt from the rule the hand-written detectors live under.
+
+The held-out split is **by site, not by row**. Splitting rows at random lets the same sentence
+land on both sides (retail markup repeats), and the model then scores beautifully on text it
+has effectively memorised. A site-wise split asks the only question that matters: does this
+work on a shop it has never seen?
+
+Output is `corpus/models.json`. **Nothing is wired into the extension by this step**, and
+that is deliberate — see below.
+
+## What is deliberately NOT automatic
+
+**The models do not ship until someone decides they should.** The card's whole promise is
+*here is the sentence that triggered this*. A lexicon match points at exact words. A model
+score does not — it can say 0.83 and not say why. When these are wired in, they should raise
+confidence in findings the lexicons already made rather than surface findings on their own,
+or the card ends up asserting something it cannot show you.
+
+`tests/unit/scope.test.ts` asserts no classifier code is in the built bundles today, and that
+test should only change when the wiring is a decision rather than an accident.
+
+## Privacy
+
+`corpus/` is gitignored, and should stay that way even after the repo goes public: it holds
+real text from real pages, scrubbed but not audited line by line.
+
+`corpus/labels.jsonl` is the expensive artifact — an hour of human judgement that cannot be
+regenerated. `candidates.jsonl` can be re-collected any time. **Back the labels up somewhere
+outside the repo.**
