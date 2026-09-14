@@ -52,11 +52,23 @@ export const TRAINABLE = [
     mechanism: "A visible deadline shortens deliberation and pushes a decision toward now.",
     yes: ["Sale ends in 02:14:33", "Offer expires tonight", "Ends Sunday — 2 days left"],
     no: ["Delivered in 2-3 days", "Open until 9pm", "30-day returns"],
+    /**
+     * A bare clock time is NOT a countdown. Treating it as one recruited 75 Ticketmaster and
+     * SeatGeek showtimes — "Sat, Oct 17 - 6:00 PM" — straight into the tier reserved for
+     * likely positives. Seventy-five trivially-no items dressed up as probable yeses is the
+     * fastest way to teach someone to stop reading before answering.
+     *
+     * So: an H:MM:SS duration (clocks are not written that way), or a clock sitting beside
+     * language about running out.
+     */
     strict: [
-      /\d{1,2}:\d{2}(?::\d{2})?/,
+      /\b\d{1,3}:\d{2}:\d{2}\b/,
+      /\b(?:ends?|expires?|closes?|left|remaining)\b[^.]{0,24}\b\d{1,2}:\d{2}\b/i,
+      /\b\d{1,2}:\d{2}\b[^.]{0,24}\b(?:left|remaining|to go)\b/i,
       /\bends? (?:in|today|tonight|soon)\b/i,
       /\bexpires? (?:in|today|tonight|soon)\b/i,
-      /\bhurry\b/i,
+      /\b(?:hurry|last chance|today only|ending soon)\b/i,
+      /\bonly \d+ (?:hours?|minutes?|days?) (?:left|remaining)\b/i,
     ],
     loose: [
       /\bends?\b/i,
@@ -165,6 +177,15 @@ export const TRAINABLE = [
   },
 ];
 
+/**
+ * Listing-shaped text that no recruiter should treat as a positive signal.
+ *
+ * Ticketing sites are made of dates, and a date is not a deadline: "Sat, Oct 17 2026 - 6:00
+ * PM" is when the concert starts, not when the offer ends.
+ */
+const LOOKS_LIKE_A_DATE =
+  /\b(?:mon|tue|wed|thu|fri|sat|sun|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b[,.]?\s*\d/i;
+
 /** Sentence-shaped and plausibly promotional — the pool tier C draws its hard negatives from. */
 function plausible(text) {
   if (text.length < 8 || text.length > 180) return false;
@@ -193,7 +214,10 @@ export function buildQueue(rows, { perPattern = 300 } = {}) {
 
     for (const r of rows) {
       const t = r.text;
-      if (p.strict.some((re) => re.test(t))) a.push(r);
+      // A date-shaped string can still be a genuine negative worth labelling; it just must
+      // never be promoted into the tier reserved for likely positives.
+      const dated = LOOKS_LIKE_A_DATE.test(t);
+      if (!dated && p.strict.some((re) => re.test(t))) a.push(r);
       else if (p.loose.some((re) => re.test(t))) b.push(r);
       else if (plausible(t)) c.push(r);
     }
