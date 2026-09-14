@@ -120,7 +120,7 @@ export default defineUnlistedScript(() => {
     const explained = explainStage(url, meta);
     if (explained.stage !== stage) {
       stage = explained.stage;
-      console.info(`[patterns] stage -> ${stage} :: ${explained.reasons.join(" | ")}`);
+      console.info(`[vero] stage -> ${stage} :: ${explained.reasons.join(" | ")}`);
       triggers.noteStageChange(stage);
     }
     return {
@@ -212,7 +212,7 @@ export default defineUnlistedScript(() => {
         })
         .join(" | ");
       console.info(
-        `[patterns] ${stage}: ${collected.length} detection(s)` +
+        `[vero] ${stage}: ${collected.length} detection(s)` +
           (duplicates > 0 ? ` (+${duplicates} repeat(s) of the same copy)` : "") +
           ` — ${summary}`,
       );
@@ -253,7 +253,7 @@ export default defineUnlistedScript(() => {
       const money = (m?: { amount: bigint; currency: string }): string =>
         m ? `${m.currency} ${(Number(m.amount) / 100).toFixed(2)}` : "-";
       console.info(
-        `[patterns] snapshot @${stage}: price ${money(snap.displayedPrice)}, ` +
+        `[vero] snapshot @${stage}: price ${money(snap.displayedPrice)}, ` +
           `subtotal ${money(snap.subtotal)}, total ${money(snap.total)}, ` +
           `shipping ${money(snap.shipping)}, ${snap.fees.length} fee(s)` +
           (snap.fees.length > 0
@@ -280,7 +280,7 @@ export default defineUnlistedScript(() => {
       // Naming the phase matters: "the pass is slow" has three possible causes with three
       // different fixes, and the previous message did not distinguish them.
       console.warn(
-        `[patterns] pass used ${elapsed.toFixed(0)}ms CPU of ${wallMs.toFixed(0)}ms wall ` +
+        `[vero] pass used ${elapsed.toFixed(0)}ms CPU of ${wallMs.toFixed(0)}ms wall ` +
           `(budget ${PERF_BUDGET_MS}ms) — ` +
           `meta ${phase.meta.toFixed(0)}ms, harvest ${phase.harvest.toFixed(0)}ms, ` +
           `detectors ${phase.detectors.toFixed(0)}ms, ${ctx.candidates.length} candidates — ` +
@@ -412,7 +412,7 @@ export default defineUnlistedScript(() => {
     // symptom is "nothing happened", which is indistinguishable from every other failure in
     // the chain — and that cost a full manual test round.
     console.info(
-      `[patterns] trigger ${kind} @${stage}: ${items.length} candidate(s) — ` +
+      `[vero] trigger ${kind} @${stage}: ${items.length} candidate(s) — ` +
         items
           .map(
             (i) =>
@@ -439,11 +439,11 @@ export default defineUnlistedScript(() => {
     const cap = capacity;
     if (reply?.items && reply.items.length > 0 && reply.mode !== "suppressed") {
       const rendered = card.show(reply.items);
-      console.info(`[patterns] digest ${reply.mode} -> rendered ${rendered}`);
+      console.info(`[vero] digest ${reply.mode} -> rendered ${rendered}`);
     } else {
       const why = (reply as { issues?: string[]; error?: string } | null)?.issues;
       console.info(
-        `[patterns] no digest: mode=${reply?.mode ?? "none"} items=${reply?.items?.length ?? 0} ` +
+        `[vero] no digest: mode=${reply?.mode ?? "none"} items=${reply?.items?.length ?? 0} ` +
           `capacity=card:${cap.maxCardItems}/pill:${cap.pillFits}` +
           (why ? ` REJECTED -> ${why.join("; ")}` : ""),
       );
@@ -475,7 +475,7 @@ export default defineUnlistedScript(() => {
   // inferring it from chrome.storage.session, which is cleared on every extension reload —
   // so "no ledger key" was ambiguous between "not injected" and "you reloaded the extension
   // and have not revisited the page yet". One line removes the ambiguity.
-  console.info(`[patterns] active on ${pageOrigin} — build ${BUILD_STAMP}`);
+  console.info(`[vero] active on ${pageOrigin} — build ${BUILD_STAMP}`);
 
   observer.start();
   triggers.attach();

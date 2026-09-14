@@ -86,8 +86,8 @@ export default defineConfig({
 
   manifest: {
     manifest_version: 3,
-    name: "Persuasion Patterns",
-    short_name: "Patterns",
+    name: "Vero",
+    short_name: "Vero",
     description:
       "Notices persuasion techniques on shopping pages and asks a question about them. Runs on-device; nothing leaves your browser.",
     version: "0.1.0",
@@ -135,7 +135,7 @@ export default defineConfig({
     },
 
     action: {
-      default_title: "Persuasion Patterns",
+      default_title: "Vero",
       default_popup: "popup.html",
       default_icon: {
         16: "icon/16.png",

@@ -1,4 +1,4 @@
-# Privacy Policy — Persuasion Patterns
+# Privacy Policy — Vero
 
 **Last updated: 2026-09-06**
 
@@ -107,6 +107,10 @@ Material changes will be reflected here with an updated date, and in the extensi
 
 The authoritative copy is served at
 <https://viditchhajed.github.io/persuasion-patterns-docs/privacy.html>.
+
+That URL predates the product being renamed to Vero. It is live and correct; renaming the
+docs repo would change it, which is a decision about a published address rather than a
+rename, so it is left alone deliberately.
 
 ## Contact
 

@@ -10,7 +10,7 @@ reviewer checks.
 ## Item name (45 char limit)
 
 ```
-Persuasion Patterns
+Vero
 ```
 
 ## Short description (132 char limit)
@@ -34,7 +34,7 @@ English (United States).
 ## Detailed description
 
 ```
-Persuasion Patterns notices the techniques a shopping page is using — countdown timers,
+Vero notices the techniques a shopping page is using — countdown timers,
 "only 3 left" messages, crossed-out reference prices, pre-ticked add-ons, fees that appear
 only at checkout — and, when you add something to your cart, asks you one question about
 what was actually on your screen.
@@ -127,7 +127,7 @@ public.
 
 > **ORDERING DEPENDENCY — the repo must be public BEFORE this listing is submitted.**
 >
-> `viditChhajed/persuasion-patterns` is private today, deliberately: the decision is to stay
+> `viditChhajed/vero` is private today, deliberately: the decision is to stay
 > private while the detectors are still being refined, and to flip public immediately before
 > launch. That is a sound order — refine in private, ship in public — but it makes the
 > paragraph above **false until the flip happens**, in the one direction a reviewer can check
@@ -242,6 +242,15 @@ https://viditchhajed.github.io/persuasion-patterns-docs/privacy.html
 
 Live and returning 200, served from a separate docs repo so the extension repo can stay
 private. Paste it into the listing's Privacy policy field.
+
+> **The URL still says `persuasion-patterns-docs`.** That is a real address on GitHub Pages
+> and renaming it is your call, not a find-and-replace: renaming the repo changes the URL and
+> breaks the old one, which matters if it has been shared anywhere.
+>
+> Nothing is wrong with submitting as-is — a policy URL does not have to match the product
+> name, and a live URL beats a tidy dead one. But it will look like a leftover to anyone who
+> notices, so either rename the docs repo and update both files, or leave it deliberately.
+> GitHub keeps a redirect from the old name, so renaming is safe if you do it.
 
 Keep it in step with [PRIVACY.md](PRIVACY.md): that file is the source and the page is a
 copy, so a change to one that does not reach the other means the published policy and the

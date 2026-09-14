@@ -151,7 +151,7 @@ export async function send<T = unknown>(msg: Message): Promise<T | null> {
   // ledger silently never received a price snapshot.
   const problem = findUnserializable(msg);
   if (problem) {
-    console.error(`[patterns] unsendable ${msg.type} message: ${problem}`);
+    console.error(`[vero] unsendable ${msg.type} message: ${problem}`);
     return null;
   }
 
@@ -168,7 +168,7 @@ export async function send<T = unknown>(msg: Message): Promise<T | null> {
     // NOT in that list: "message port closed before a response was received". That is the
     // signature of a handler that threw before replying, which is a real fault and was
     // briefly silenced here while chasing exactly that bug.
-    if (!expected) console.error(`[patterns] send(${msg.type}) failed: ${text}`);
+    if (!expected) console.error(`[vero] send(${msg.type}) failed: ${text}`);
     return null;
   }
 }

@@ -67,7 +67,7 @@ async function ensureSchema(page: Page): Promise<void> {
         page.evaluate(
           () =>
             new Promise<boolean>((res) => {
-              const r = indexedDB.open("persuasion-patterns");
+              const r = indexedDB.open("vero");
               r.onsuccess = () => res(r.result.objectStoreNames.contains("events"));
               r.onerror = () => res(false);
             }),
@@ -81,7 +81,7 @@ async function ensureSchema(page: Page): Promise<void> {
 async function seed(page: Page, ages: number[]): Promise<void> {
   await page.evaluate(async (dayOffsets) => {
     const db: IDBDatabase = await new Promise((res, rej) => {
-      const r = indexedDB.open("persuasion-patterns");
+      const r = indexedDB.open("vero");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });
@@ -126,7 +126,7 @@ async function seed(page: Page, ages: number[]): Promise<void> {
 async function countEvents(page: Page): Promise<number> {
   return page.evaluate(async () => {
     const db: IDBDatabase = await new Promise((res, rej) => {
-      const r = indexedDB.open("persuasion-patterns");
+      const r = indexedDB.open("vero");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });

@@ -122,7 +122,7 @@ export function invalidateStyles(roots: Iterable<Element>): void {
       // page that simply never repeats a node look identical from the outside, and the
       // first version of this fired on every batch without anything saying so.
       console.warn(
-        `[patterns] style cache flushed entirely — ${rootCount} dirty root(s) covering more ` +
+        `[vero] style cache flushed entirely — ${rootCount} dirty root(s) covering more ` +
           "than 50k elements between them",
       );
       styleEpoch++;
@@ -542,7 +542,7 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
     // Loud, because the consequence is that the page was only partly seen. A quiet
     // truncation looks exactly like a page that simply had fewer candidates.
     console.warn(
-      `[patterns] harvest budget (${HARVEST_BUDGET_MS}ms) hit at ${stoppedAt} of ` +
+      `[vero] harvest budget (${HARVEST_BUDGET_MS}ms) hit at ${stoppedAt} of ` +
         `${stoppedAt + dropped.length} candidates — ${dropped.length - rescued} not read` +
         (rescued > 0 ? `, ${rescued} ephemeral node(s) read anyway` : "") +
         // Whether this page is converging matters more than the truncation itself: a rising

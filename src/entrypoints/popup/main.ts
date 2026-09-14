@@ -116,7 +116,7 @@ async function init(): Promise<void> {
   if (scored.score >= DEFAULT_PROMPT_THRESHOLD) {
     statusEl.textContent = `${parsed.hostname} looks like a shopping site.`;
   } else {
-    statusEl.textContent = `Turn on Persuasion Patterns for ${domain}?`;
+    statusEl.textContent = `Turn on Vero for ${domain}?`;
   }
 
   detailEl.textContent =

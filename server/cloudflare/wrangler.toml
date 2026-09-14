@@ -1,4 +1,4 @@
-name = "persuasion-patterns-counts"
+name = "vero-counts"
 main = "worker.ts"
 compatibility_date = "2026-01-01"
 
@@ -9,7 +9,7 @@ compatibility_date = "2026-01-01"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "persuasion-patterns-counts"
+database_name = "vero-counts"
 database_id = "PUT-YOUR-D1-DATABASE-ID-HERE"
 
 [observability]

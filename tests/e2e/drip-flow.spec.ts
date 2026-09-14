@@ -51,7 +51,7 @@ async function openJourney(): Promise<{ page: Page; logs: string[] }> {
   const page = await context.newPage();
   const logs: string[] = [];
   page.on("console", (m) => {
-    if (m.text().includes("[patterns]")) logs.push(m.text());
+    if (m.text().includes("[vero]")) logs.push(m.text());
   });
   await page.route("**/*", async (route) => {
     const name = new URL(route.request().url()).pathname.replace(/^\//, "");
@@ -74,7 +74,7 @@ async function events(): Promise<{ patternId: string; stage: string; surfaced: b
   if (!sw) return [];
   return (await sw.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((res, rej) => {
-      const r = indexedDB.open("persuasion-patterns");
+      const r = indexedDB.open("vero");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });

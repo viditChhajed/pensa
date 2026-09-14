@@ -39,7 +39,7 @@ covering a control. Do **not** rely on the card alone — read the full log:
 - Extension **Settings → What was noticed today** lists everything detected, including
   suppressed items, with a Noticed / Shown split.
 - The service worker console (`chrome://extensions` → **Inspect views: service worker`)
-  logs `[patterns] digest` lines.
+  logs `[vero] digest` lines.
 
 ---
 

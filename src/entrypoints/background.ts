@@ -76,7 +76,7 @@ export default defineBackground(() => {
       .catch((err: unknown) => {
         const detail = err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : String(err);
         console.error(
-          `[patterns] handler threw for ${(raw as { type?: string })?.type ?? "unknown"}:`,
+          `[vero] handler threw for ${(raw as { type?: string })?.type ?? "unknown"}:`,
           detail,
         );
         sendResponse({ ok: false, error: "handler threw", issues: [detail.slice(0, 400)] });
@@ -112,12 +112,10 @@ async function flushTelemetry(): Promise<void> {
     // have six different fixes — an unset endpoint is not the same as a failed request, and
     // neither is the same as a batch correctly held back for being too identifying.
     if (result.reason !== "no_consent" || result.sent > 0) {
-      console.info(
-        `[patterns] telemetry: ${result.reason}, ${result.sent} sent, ${result.held} held`,
-      );
+      console.info(`[vero] telemetry: ${result.reason}, ${result.sent} sent, ${result.held} held`);
     }
   } catch (err) {
-    console.error("[patterns] telemetry flush failed", err);
+    console.error("[vero] telemetry flush failed", err);
   }
 }
 
@@ -199,7 +197,7 @@ async function reconcileRegistrations(): Promise<void> {
   } catch (err) {
     // Most likely a match pattern the scripting API rejects. Surface it — a silent no-op
     // here looks identical to "the detector found nothing".
-    console.error("[patterns] content script registration failed", err, origins);
+    console.error("[vero] content script registration failed", err, origins);
   }
 }
 
@@ -209,7 +207,7 @@ async function housekeeping(): Promise<void> {
     await pruneEvents(settings.retentionDays);
     await evictOffers();
   } catch (err) {
-    console.error("[patterns] housekeeping failed", err);
+    console.error("[vero] housekeeping failed", err);
   }
 }
 
@@ -222,7 +220,7 @@ async function handleMessage(raw: unknown): Promise<unknown> {
     // the caller. That is the same failure shape as the BigInt bug: a real error dressed up
     // as an ordinary empty answer. It cost two manual test rounds to localise.
     console.error(
-      `[patterns] REJECTED ${(raw as { type?: string })?.type ?? "unknown"} message:`,
+      `[vero] REJECTED ${(raw as { type?: string })?.type ?? "unknown"} message:`,
       JSON.stringify(parsed.error.issues.slice(0, 6), null, 1),
     );
     // Returned, not just logged. The service worker console is not reachable from every

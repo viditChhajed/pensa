@@ -16,7 +16,7 @@
 /**
  * The shadow root protects what is INSIDE the card. It does nothing for the host element,
  * which lives in the page's own DOM and is fully styleable by the page. A real fixture with
- * `#persuasion-patterns-host { display: none !important }` and
+ * `#vero-host { display: none !important }` and
  * `[id^="persuasion"] { visibility: hidden !important }` hid the card completely.
  *
  * Two defences: a per-injection random id, so there is no stable selector to target, and

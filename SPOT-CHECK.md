@@ -40,7 +40,7 @@ grant chain that has never been verified.
 5. Click **Allow**, then reload the Etsy page.
 6. Open `chrome://extensions` → **Inspect views: service worker**.
 
-   ### ✅ PASS — no `[patterns] content script registration failed`
+   ### ✅ PASS — no `[vero] content script registration failed`
    ### ❌ FAIL — that error appears
 
 7. In that same inspector: **Application → Storage → Extension storage → Session**.

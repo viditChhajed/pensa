@@ -177,7 +177,7 @@ export async function flush(
     await db.telemetry.orderBy("queuedAt").toArray(),
   );
   if (corruptIds.length > 0) {
-    console.warn(`[patterns] dropped ${corruptIds.length} unparseable telemetry row(s)`);
+    console.warn(`[vero] dropped ${corruptIds.length} unparseable telemetry row(s)`);
     await db.telemetry.bulkDelete(corruptIds);
   }
   if (queued.length === 0) return { sent: 0, held: 0, reason: "too_small" };

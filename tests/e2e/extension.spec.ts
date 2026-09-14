@@ -86,7 +86,7 @@ test.describe("extension runtime", () => {
   test("popup renders and offers enablement", async () => {
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/popup.html`);
-    await expect(page.locator("h1")).toContainText("Persuasion Patterns");
+    await expect(page.locator("h1")).toContainText("Vero");
     await expect(page.locator("#enable")).toBeAttached();
     await page.close();
   });

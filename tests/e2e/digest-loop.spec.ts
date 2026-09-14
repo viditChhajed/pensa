@@ -55,7 +55,7 @@ async function openFixture(name: string): Promise<{ page: Page; logs: string[] }
   const page = await context.newPage();
   const logs: string[] = [];
   page.on("console", (m) => {
-    if (m.text().includes("[patterns]")) logs.push(m.text());
+    if (m.text().includes("[vero]")) logs.push(m.text());
   });
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());

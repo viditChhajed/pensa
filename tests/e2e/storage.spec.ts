@@ -19,7 +19,7 @@ let context: BrowserContext;
 let extensionId: string;
 
 test.beforeAll(async () => {
-  const build = mkdtempSync(join(tmpdir(), "patterns-store-"));
+  const build = mkdtempSync(join(tmpdir(), "vero-store-"));
   cpSync(resolve(".output/chrome-mv3"), build, { recursive: true });
   const mp = join(build, "manifest.json");
   const m = JSON.parse(readFileSync(mp, "utf8"));
@@ -124,7 +124,7 @@ test("the offers store accumulates across visits and yields a temporal claim", a
 
   const stored = await page.evaluate(async () => {
     const db: IDBDatabase = await new Promise((res, rej) => {
-      const r = indexedDB.open("persuasion-patterns");
+      const r = indexedDB.open("vero");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });
@@ -206,7 +206,7 @@ test("delete all my data — CLICKED FROM THE OPTIONS UI — empties IndexedDB",
 async function countOffers(page: import("@playwright/test").Page): Promise<number> {
   return page.evaluate(async () => {
     const db: IDBDatabase = await new Promise((res, rej) => {
-      const r = indexedDB.open("persuasion-patterns");
+      const r = indexedDB.open("vero");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });
@@ -279,7 +279,7 @@ test("an accumulated history produces a temporal claim in the digest", async () 
 
   const events = await page.evaluate(async () => {
     const db: IDBDatabase = await new Promise((res, rej) => {
-      const r = indexedDB.open("persuasion-patterns");
+      const r = indexedDB.open("vero");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });

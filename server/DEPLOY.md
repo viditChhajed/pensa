@@ -8,7 +8,7 @@ extension you have built right now sends nothing at all.
 ```bash
 npm i -g wrangler
 wrangler login
-wrangler d1 create persuasion-patterns-counts
+wrangler d1 create vero-counts
 ```
 
 Copy the `database_id` it prints into `server/cloudflare/wrangler.toml`.
@@ -17,7 +17,7 @@ Copy the `database_id` it prints into `server/cloudflare/wrangler.toml`.
 
 ```bash
 cd server/cloudflare
-wrangler d1 execute persuasion-patterns-counts --remote --file=./schema.sql
+wrangler d1 execute vero-counts --remote --file=./schema.sql
 ```
 
 Two objects: a `counts` table whose primary key **is** the cohort — so no row finer-grained
@@ -51,7 +51,7 @@ identifier introduced for "abuse prevention" is still an identifier.
 wrangler deploy
 ```
 
-Note the URL it prints, e.g. `https://persuasion-patterns-counts.<you>.workers.dev`.
+Note the URL it prints, e.g. `https://vero-counts.<you>.workers.dev`.
 
 ## 5. Check it before pointing anything at it
 
@@ -97,7 +97,7 @@ written in [STORE-LISTING.md](../STORE-LISTING.md):
 ## Reading the data
 
 ```bash
-wrangler d1 execute persuasion-patterns-counts --remote \
+wrangler d1 execute vero-counts --remote \
   --command "select pattern_id, origin_category, sum(n) as seen
              from counts_public group by 1, 2 order by seen desc limit 20"
 ```

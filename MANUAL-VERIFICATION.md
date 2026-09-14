@@ -25,7 +25,7 @@ synchronous — check `src/entrypoints/popup/main.ts`.
 
 5. Grant, then reload the page. Open the service worker console from `chrome://extensions`.
 
-**PASS:** no `[patterns] content script registration failed`, and browsing the site produces
+**PASS:** no `[vero] content script registration failed`, and browsing the site produces
 a `ledger:<origin>` key under Application → Storage → Extension storage → Session.
 **FAIL (silent):** registration succeeded but nothing injected. Registration and injection
 are different facts — see plan §1.3.

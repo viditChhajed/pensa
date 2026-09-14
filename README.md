@@ -1,4 +1,4 @@
-# Persuasion Patterns
+# Vero
 
 A Manifest V3 extension that passively notices the persuasion architecture on shopping pages
 and, at add-to-cart or checkout, asks a question about what was actually on screen.
