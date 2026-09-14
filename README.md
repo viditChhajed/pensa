@@ -74,7 +74,12 @@ scoring real pages would be worse than no classifier.
   highest-value signals. Bounding boxes are re-read every pass and deliberately never cached
   — they are viewport-relative, so a scroll would make a cached one wrong with no mutation to
   notice.
-- **Telemetry has a client but no destination.** The queue, the consent gate, the
+- **Telemetry has a client and a written server, but no deployment.** `server/handler.ts` is
+  a host-agnostic `(Request) => Response` with 11 tests asserting it disbelieves its client —
+  it re-checks every limit the extension already applies, because a public URL has to hold
+  against a modified extension or a curl command. It reads no header but `content-type`, and
+  a test enforces that: an IP plus an hour bucket plus a site category re-identifies a person.
+- **The client holds everything locally.** The queue, the consent gate, the
   k-anonymity floor (k=20) and the six-hourly sender are built and tested;
   `TELEMETRY_ENDPOINT` in `src/shared/constants.ts` is empty, so `flush()` holds everything
   locally and sends nothing. Deploying a server is the remaining step, and it is a decision
