@@ -227,6 +227,26 @@ const TRIGGER_WORDS = [
   "instalment",
   "interest free",
   "per month",
+  /**
+   * Deadline copy stated in words. "ends" was here; "ending" was not, and `includes("ends")`
+   * does not match "ending" — so "Summer sale ending soon" was rejected by the prefilter and
+   * no detector ever saw it.
+   *
+   * That is the third time this list has been wrong in the same way, each time found by
+   * probing a phrase by hand. `tests/unit/prefilter.test.ts` now asserts every piece of
+   * canonical positive copy survives this function, so the next omission fails a test
+   * instead of waiting to be noticed.
+   */
+  "ending",
+  "expiring",
+  "closes",
+  "sale",
+  "offer",
+  "tonight",
+  "final hours",
+  "don't miss",
+  "act now",
+  "back in stock",
 ];
 
 export function classifyText(text: string): number {

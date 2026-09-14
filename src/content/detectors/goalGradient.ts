@@ -52,6 +52,22 @@ const REMAINDER_PATTERNS: readonly RegExp[] = [
 const THRESHOLD_COPY =
   /\bfree (?:shipping|delivery)\b|\bunlock (?:free|a )\b|\bqualif(?:y|ies) for\b|\bto reach\b/;
 
+/**
+ * A bare policy: "free shipping on orders over $50". No progress, no personalised remainder.
+ *
+ * This is NOT something to show a shopper — practically every shop has one, and a card about
+ * it would be noise that teaches people to dismiss cards. But it was scoring zero, which
+ * meant it was not RECORDED either, and the two are different claims: §5 makes `surfaced`
+ * first-class precisely so a thing can be counted without being shown.
+ *
+ * It matters for the measurement half of the product. "How many shops set a free-shipping
+ * threshold, and at what amount" is a real question about choice architecture, and a store
+ * that logs nothing can never answer it. Weighted to land in the log band and to be unable
+ * to reach the surface band on its own.
+ */
+const THRESHOLD_POLICY =
+  /\b(?:free (?:shipping|delivery)|ships? free)\b[^.]{0,30}?\b(?:over|above|on orders? (?:over|above)|when you spend|with \$?[\d.,]+)\b|\b(?:orders?|spend)\b[^.]{0,20}?\b(?:over|above|of)\s*[$£€]?\s*[\d.,]+[^.]{0,24}?\bfree (?:shipping|delivery)\b|\bspend\s*[$£€]?[\d.,]+\s*(?:for|and get)\s+free\b|\borders?\s+(?:over|above)\s*[$£€]?[\d.,]+\s+ships?\s+free\b/;
+
 const LEXEMES = [
   "away from",
   "add",
@@ -69,6 +85,13 @@ const WEIGHTS: Record<string, number> = {
   progressBar: 0.3,
   thresholdCopy: 0.2,
   hasAmount: 0.15,
+  /**
+   * 0.45 is chosen against the two thresholds, not picked for feel: above LOG_THRESHOLD
+   * (0.35) so a bare policy is counted, and below the 0.75 surface threshold by enough that
+   * `hasAmount` — which a policy always has — cannot push it over. A policy can therefore be
+   * measured and can never interrupt anyone.
+   */
+  thresholdPolicy: 0.45,
 };
 
 function hasProgressChild(n: CandidateNode): boolean {
@@ -94,9 +117,12 @@ export const goalGradientDetector: Detector = {
       const remainder = REMAINDER_PATTERNS.some((re) => re.test(t)) ? 1 : 0;
       const threshold = THRESHOLD_COPY.test(t) ? 1 : 0;
       const progress = hasProgressChild(n) ? 1 : 0;
+      // Counted, never shown. See THRESHOLD_POLICY.
+      const policy = remainder === 0 && THRESHOLD_POLICY.test(t) ? 1 : 0;
 
-      // Policy statements ("free shipping over $50") are not goal gradients on their own.
-      if (remainder === 0 && !(threshold === 1 && progress === 1)) continue;
+      // A policy statement is not a goal gradient — but it is worth recording that the shop
+      // set a threshold at all, so it no longer drops out here.
+      if (remainder === 0 && policy === 0 && !(threshold === 1 && progress === 1)) continue;
 
       seen.add(n.selectorPath);
       const prices = parsePrices(n.text);
@@ -109,7 +135,10 @@ export const goalGradientDetector: Detector = {
           {
             personalisedRemainder: remainder,
             progressBar: progress,
-            thresholdCopy: threshold,
+            // A bare policy must not also collect `thresholdCopy`, or the two together
+            // reach 0.65 and a third signal would surface it.
+            thresholdCopy: policy === 1 ? 0 : threshold,
+            thresholdPolicy: policy,
             hasAmount: prices.length > 0 ? 1 : 0,
           },
           WEIGHTS,

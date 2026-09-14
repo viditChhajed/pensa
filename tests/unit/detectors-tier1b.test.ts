@@ -89,10 +89,32 @@ describe("goal_gradient.threshold", () => {
     expect(goalGradientDetector.run(ctx)).toHaveLength(1);
   });
 
-  it("does NOT fire on a bare shipping policy statement", () => {
-    // "Free shipping over $50" is a policy, not a goal gradient: no progress, no remainder.
+  it("COUNTS a bare shipping policy, but can never surface one", () => {
+    /**
+     * "Free shipping over $50" is a policy, not a goal gradient: no progress, no remainder,
+     * and practically every shop has one. Showing a card about it would be noise that
+     * teaches people to dismiss cards.
+     *
+     * This used to assert no candidate at all, which threw away a real measurement. §5 makes
+     * `surfaced` first-class precisely so a thing can be COUNTED without being SHOWN, and
+     * "how many shops set a free-shipping threshold, and at what amount" is exactly the sort
+     * of question the prevalence store exists to answer. A detector that emits nothing can
+     * never answer it.
+     *
+     * So the assertion is now the one that actually matters: it is recorded, and it cannot
+     * reach the surface threshold even with every other signal a policy could plausibly
+     * collect.
+     */
     const ctx = contextFrom(`<p>Free shipping on orders over $50</p>`, { stage: "cart" });
-    expect(goalGradientDetector.run(ctx)).toHaveLength(0);
+    const hits = goalGradientDetector.run(ctx);
+    expect(hits, "a policy statement is worth counting").toHaveLength(1);
+
+    const score = hits[0]?.rawScore ?? 0;
+    expect(score, "below the log threshold — it would not be recorded at all").toBeGreaterThan(
+      0.35,
+    );
+    expect(score, "a shipping policy must never interrupt anyone").toBeLessThan(0.75);
+    expect(hits[0]?.subSignals.personalisedRemainder, "there is no remainder here").toBe(0);
   });
 
   it("fires on threshold copy WITH a progress bar", () => {
