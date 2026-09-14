@@ -60,8 +60,26 @@ npm run label     # opens http://localhost:5173
 |---|---|
 | <kbd>F</kbd> | yes, this is the pattern |
 | <kbd>J</kbd> | no |
+| <kbd>D</kbd> | no — but it IS a different technique |
 | <kbd>Space</kbd> | skip |
 | <kbd>U</kbd> | undo the last answer |
+
+<kbd>D</kbd> opens a short list: press a digit to name one of the six, or just type a name for
+something not on the list and press Enter.
+
+**This is where most of the value comes from.** Yes/no throws away the most informative thing
+a person notices — that a snippet is a countdown while they were being asked about stock.
+That is a positive example for another pattern, spotted for free, and with nowhere to put it
+the answer becomes "no" and the observation is lost. A <kbd>D</kbd> answer is recorded once
+and used twice: a negative for the pattern asked about, a positive for the one named.
+
+The free-text box is the other half. It is how a technique the taxonomy does not have — a
+checkout donation prompt, a decoy tier, anything nobody wrote down — gets recorded instead of
+discarded. `npm run corpus:train` reports what was typed and how often. Every recall failure
+this project has had came from a list written in advance; this is the one place you can write
+outside it.
+
+Starting over: `npm run label -- --reset` discards every answer and says how many it dropped.
 
 One item, one keystroke, advances itself. Answers are written to disk immediately — close the
 tab whenever, reopen and it resumes at the next unlabelled item.

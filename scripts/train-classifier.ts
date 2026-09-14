@@ -36,6 +36,10 @@ interface LabelRow {
   site?: string;
   tier?: string;
   undo?: boolean;
+  /** "no to the one I was asked, but it IS this one". See the labeller's D key. */
+  alsoPattern?: string;
+  /** Free text, when `alsoPattern` is "other" — a technique the taxonomy does not have. */
+  alsoText?: string;
 }
 
 if (!existsSync(LABELS)) {
@@ -58,11 +62,39 @@ for (const line of readFileSync(LABELS, "utf8").trim().split("\n")) {
 }
 
 const byPattern = new Map<string, LabelRow[]>();
+const unnamed = new Map<string, { count: number; examples: string[] }>();
+
 for (const r of byKey.values()) {
   if (r.label !== 0 && r.label !== 1) continue;
   const list = byPattern.get(r.patternId) ?? [];
   list.push(r);
   byPattern.set(r.patternId, list);
+
+  /**
+   * A "no, but it is X" is recorded once and used twice: a NEGATIVE for the pattern that was
+   * asked about, and a POSITIVE for the one that was named.
+   *
+   * This is where most of the yield comes from. Someone labelling scarcity notices a
+   * countdown in passing; without somewhere to put that, they answer "no" and the
+   * observation — a free positive for another pattern, spotted by a human — is thrown away.
+   */
+  if (!r.alsoPattern) continue;
+
+  if (r.alsoPattern === "other") {
+    // Not trainable: the taxonomy has no such pattern yet. Counted and reported, because a
+    // technique named repeatedly by a person looking at real pages is the best evidence
+    // there is that the taxonomy is missing something.
+    const name = (r.alsoText ?? "unnamed").trim().toLowerCase();
+    const entry = unnamed.get(name) ?? { count: 0, examples: [] };
+    entry.count++;
+    if (entry.examples.length < 3) entry.examples.push(r.text.slice(0, 70));
+    unnamed.set(name, entry);
+    continue;
+  }
+
+  const other = byPattern.get(r.alsoPattern) ?? [];
+  other.push({ ...r, patternId: r.alsoPattern, label: 1 });
+  byPattern.set(r.alsoPattern, other);
 }
 
 const models: Record<string, ClassifierModel> = {};
@@ -124,6 +156,20 @@ for (const [patternId, rows] of [...byPattern.entries()].sort()) {
 console.log(`\n  pattern                       pos  neg   verdict    detail`);
 console.log(`  ${"-".repeat(92)}`);
 console.log(report.join("\n"));
+
+if (unnamed.size > 0) {
+  console.log(`\n  Techniques named that the taxonomy does not have:`);
+  for (const [name, { count, examples }] of [...unnamed.entries()].sort(
+    (a, b) => b[1].count - a[1].count,
+  )) {
+    console.log(`    ${String(count).padStart(3)}x  ${name}`);
+    for (const e of examples) console.log(`          ${JSON.stringify(e)}`);
+  }
+  console.log(
+    `\n  These are not trained — there is no detector to train. They are the argument for\n` +
+      `  adding one, which is a deliberate decision rather than something this script makes.`,
+  );
+}
 
 const kept = Object.keys(models).length;
 if (kept === 0) {

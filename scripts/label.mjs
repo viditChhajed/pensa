@@ -19,6 +19,13 @@
  *
  *   Undo is one key, because the real failure mode of fast labelling is a misfire you notice
  *   half a second later and cannot correct without stopping.
+ *
+ *   A fourth answer: "no to THIS, but it is something". Asking only yes/no throws away the
+ *   most informative thing a person notices — that a snippet is a countdown while they were
+ *   being asked about stock. That is a positive example for another pattern, seen for free,
+ *   and without somewhere to put it the labeller answers "no" and the observation is lost.
+ *   It also doubles as a way to name a technique the taxonomy does not have yet: the free
+ *   text box is how a pattern nobody anticipated gets recorded instead of discarded.
  */
 
 import { execFile } from "node:child_process";
@@ -38,6 +45,16 @@ if (!existsSync(CORPUS)) {
 }
 
 mkdirSync(resolve("corpus"), { recursive: true });
+
+// `--reset` starts the labelling over. Explicit and loud, because an hour of judgement is
+// not something to discard on a flag typo.
+if (process.argv.includes("--reset")) {
+  const had = existsSync(LABELS)
+    ? readFileSync(LABELS, "utf8").trim().split("\n").filter(Boolean).length
+    : 0;
+  writeFileSync(LABELS, "");
+  console.log(`\n  Reset: discarded ${had} previous answer(s).`);
+}
 if (!existsSync(LABELS)) writeFileSync(LABELS, "");
 
 const rows = readFileSync(CORPUS, "utf8")
@@ -102,6 +119,16 @@ const page = /* html */ `
   .done { text-align:center; padding:80px 0; }
   .done h2 { font-size:22px; } .done p { color:var(--muted); }
   .rate { margin-left:auto; font-variant-numeric:tabular-nums; }
+  .picker { border:1px solid var(--accent); border-radius:12px; padding:18px 20px; margin-top:14px; }
+  .picker h4 { margin:0 0 4px; font-size:14px; }
+  .picker .hint { color:var(--muted); font-size:12.5px; margin:0 0 12px; }
+  .picker ol { list-style:none; margin:0; padding:0; display:grid;
+               grid-template-columns:1fr 1fr; gap:6px 18px; }
+  .picker li { font-size:13.5px; display:flex; gap:9px; align-items:baseline; }
+  .picker input { font:inherit; width:100%; margin-top:12px; padding:9px 11px;
+                  border:1px solid var(--line); border-radius:7px;
+                  background:transparent; color:var(--fg); }
+  .askedabout { opacity:.42; }
 </style>
 <div class="wrap">
   <header>
@@ -114,6 +141,7 @@ const page = /* html */ `
 <div class="keys"><div>
   <span><kbd>F</kbd> yes</span>
   <span><kbd>J</kbd> no</span>
+  <span><kbd>D</kbd> no, but it&rsquo;s a different one</span>
   <span><kbd>Space</kbd> skip</span>
   <span><kbd>U</kbd> undo</span>
   <span class="rate" id="rate"></span>
@@ -129,6 +157,9 @@ let done = 0;
 const el = (id) => document.getElementById(id);
 
 function current() { return items[i]; }
+
+/** Non-null while the "it is a different one" picker is open. */
+let picking = null;
 
 function render() {
   const it = current();
@@ -161,7 +192,15 @@ function render() {
     '<div class="card flash"><div class="text">' + esc(it.text) + '</div>' +
     // Just the shop. The selector tail was rendering as "ulta.com · a", which tells the
     // reader nothing and reads like a bug.
-    '<div class="meta">seen on ' + esc(it.site) + '</div></div>';
+    '<div class="meta">seen on ' + esc(it.site) + '</div></div>' +
+    (picking ? pickerHtml(it) : "");
+
+  if (picking) {
+    // Focused, so naming something just works without a click. The digit keys are taken
+    // back from it in the handler WHILE IT IS EMPTY — the first attempt left it unfocused to
+    // protect the digits, and then typing did nothing at all, which is worse.
+    document.getElementById("otherText")?.focus();
+  }
 
   const mins = (Date.now() - t0) / 60000;
   el("rate").textContent = done > 0
@@ -170,13 +209,53 @@ function render() {
     : "";
 }
 
+/**
+ * "No to the one I asked about, but it IS something."
+ *
+ * Numbered so the whole answer is two keystrokes: D, then a digit. The pattern currently
+ * being asked about is listed but dimmed and unselectable — choosing it would mean "no, but
+ * yes", and offering a contradiction as a button invites a misclick rather than preventing
+ * one.
+ *
+ * The free text box is the important half. It is how a technique the taxonomy does not have
+ * — a checkout donation prompt, a decoy tier, anything nobody anticipated — gets RECORDED
+ * rather than discarded as a "no". Every recall failure this project has had came from a
+ * list written in advance; this is the one place a person can write outside it.
+ */
+function pickerHtml(it) {
+  const rows = state.order
+    .map((id, n) => {
+      const asked = id === it.patternId;
+      return (
+        '<li class="' + (asked ? "askedabout" : "") + '">' +
+        '<kbd>' + (n + 1) + '</kbd> ' + esc(patterns[id].label) +
+        (asked ? " (the one asked about)" : "") +
+        "</li>"
+      );
+    })
+    .join("");
+
+  return (
+    '<div class="picker">' +
+    "<h4>Which one is it?</h4>" +
+    '<p class="hint">Press a number. Or type a name for something not on the list — ' +
+    "that is how a technique nobody has written down yet gets recorded. " +
+    "<kbd>Esc</kbd> to go back.</p>" +
+    "<ol>" + rows + "</ol>" +
+    '<input id="otherText" placeholder="something else — name it, then Enter" ' +
+    'autocomplete="off" spellcheck="false" />' +
+    "</div>"
+  );
+}
+
 function esc(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 }
 
-async function answer(label) {
+async function answer(label, also) {
   const it = current();
   if (!it) return;
+  picking = null;
   i++;
   done++;
   render();
@@ -186,7 +265,17 @@ async function answer(label) {
   fetch("/api/label", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ patternId: it.patternId, key: it.key, text: it.text, label, tier: it.tier, site: it.site }),
+    body: JSON.stringify({
+      patternId: it.patternId,
+      key: it.key,
+      text: it.text,
+      label,
+      tier: it.tier,
+      site: it.site,
+      // A "no" that names another pattern is ALSO a positive for that one, recorded once and
+      // used twice. See the trainer.
+      ...(also ? { alsoPattern: also.id, ...(also.text ? { alsoText: also.text } : {}) } : {}),
+    }),
   });
 }
 
@@ -206,8 +295,45 @@ async function undo() {
 addEventListener("keydown", (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.toLowerCase();
+
+  // While the picker is open it owns the keyboard. Otherwise typing "something else" into
+  // the free text box would fire F and J as answers, which would be both wrong and silent.
+  if (picking) {
+    if (k === "escape") { e.preventDefault(); picking = null; render(); return; }
+    const box = document.getElementById("otherText");
+
+    if (k === "enter") {
+      const value = (box?.value ?? "").trim();
+      if (value.length > 0) { e.preventDefault(); answer(0, { id: "other", text: value.slice(0, 80) }); }
+      return;
+    }
+
+    /**
+     * A digit picks — but only while nothing has been typed.
+     *
+     * Once someone is part way through naming something, a digit belongs to what they are
+     * writing: "buy 2 get 1 free" is a perfectly good name for a technique, and swallowing
+     * its digits as menu selections would make the box quietly unusable for exactly the
+     * inputs most worth capturing.
+     */
+    const n = Number.parseInt(k, 10);
+    const empty = (box?.value ?? "").length === 0;
+    if (empty && Number.isInteger(n) && n >= 1 && n <= state.order.length) {
+      e.preventDefault();
+      const id = state.order[n - 1];
+      // The one being asked about is not a valid answer here: "no, but yes" is a
+      // contradiction, and accepting it would quietly corrupt both labels.
+      if (id !== current()?.patternId) answer(0, { id });
+      return;
+    }
+
+    // Everything else is typing. Let it through.
+    return;
+  }
+
   if (k === "f" || k === "arrowright") { e.preventDefault(); answer(1); }
   else if (k === "j" || k === "arrowleft") { e.preventDefault(); answer(0); }
+  else if (k === "d") { e.preventDefault(); picking = true; render(); }
   else if (k === " ") { e.preventDefault(); i++; render(); }
   else if (k === "u") { e.preventDefault(); undo(); }
 });
@@ -271,7 +397,7 @@ server.listen(PORT, () => {
   console.log(`\n  Labelling ${queue.length} items across ${TRAINABLE.length} patterns.`);
   console.log(`  ${queue.length - remaining} already done, ${remaining} to go.\n`);
   console.log(`  ->  http://localhost:${PORT}\n`);
-  console.log(`  F = yes   J = no   Space = skip   U = undo`);
+  console.log(`  F = yes   J = no   D = no, but it's a different one   Space = skip   U = undo`);
   console.log(`  Answers are saved as you go; close the tab any time and reopen to resume.\n`);
 
   // Open it. One less step between deciding to label and labelling, and the whole design of
