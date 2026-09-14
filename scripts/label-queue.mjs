@@ -186,6 +186,46 @@ export const TRAINABLE = [
 const LOOKS_LIKE_A_DATE =
   /\b(?:mon|tue|wed|thu|fri|sat|sun|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b[,.]?\s*\d/i;
 
+/**
+ * Does this read like something SAID TO THE SHOPPER, rather than a name or a label?
+ *
+ * Added after looking at what the queue actually served, which is the only way to find this
+ * kind of thing. The first twelve items were: a perfume name, Instagram alt text, "Year:
+ * 2023", "Little Kid (4-7 yrs)", "Invisible Shield SPF50". A person asked "is this telling
+ * you the item is running out?" about a perfume name learns that the task is arbitrary, and
+ * a task that feels arbitrary gets answered arbitrarily — which poisons the labels that
+ * matter.
+ *
+ * Not applied to tier A. Those are the lexicon's own matches, and the whole reason to show
+ * them is to catch the ones it got wrong.
+ */
+function looksLikeAMessage(text) {
+  // Alt text for user photos. Enormous on REI and Sephora, and never a message.
+  if (/'s (?:instagram|tiktok) (?:image|photo|video)/i.test(text)) return false;
+  // "Year: 2023", "Colour: Black" — a field, not a sentence.
+  if (/^[A-Z][a-z]+:\s/.test(text) && text.length < 32) return false;
+
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length < 3) return false;
+
+  /**
+   * Product names are Title Case and contain no statement.
+   *
+   * "Valentino Born in Roma Vanilla Bliss Limited Edition Hair & Body Mist" recruited itself
+   * on the word "Limited" and was the very first thing the labeller ever showed anyone.
+   */
+  const capitalised = words.filter((w) => /^[A-Z]/.test(w)).length;
+  const titleish = capitalised / words.length > 0.6;
+  const saysSomething =
+    /[.!?]/.test(text) ||
+    /\b(?:is|are|was|were|has|have|get|save|only|left|ends?|now|you|your|we|our|hurry|shop|add|spend|pay|join|sold|order|ship|free|off)\b/i.test(
+      text,
+    );
+  if (titleish && !saysSomething) return false;
+
+  return true;
+}
+
 /** Sentence-shaped and plausibly promotional — the pool tier C draws its hard negatives from. */
 function plausible(text) {
   if (text.length < 8 || text.length > 180) return false;
@@ -217,16 +257,36 @@ export function buildQueue(rows, { perPattern = 300 } = {}) {
       // A date-shaped string can still be a genuine negative worth labelling; it just must
       // never be promoted into the tier reserved for likely positives.
       const dated = LOOKS_LIKE_A_DATE.test(t);
-      if (!dated && p.strict.some((re) => re.test(t))) a.push(r);
-      else if (p.loose.some((re) => re.test(t))) b.push(r);
-      else if (plausible(t)) c.push(r);
+      if (!dated && p.strict.some((re) => re.test(t))) {
+        // Tier A is exempt from the message filter — a lexicon match on a product name is
+        // precisely the false positive worth finding.
+        a.push(r);
+      } else if (!looksLikeAMessage(t)) {
+        // Neither a positive nor a useful negative. Showing it costs attention and teaches
+        // the model nothing.
+      } else if (p.loose.some((re) => re.test(t))) {
+        b.push(r);
+      } else if (plausible(t)) {
+        c.push(r);
+      }
     }
 
-    // Tier B is the reason this exists, so it gets the largest share. Tier A is capped
-    // because confirming the same shape forty times teaches a model very little.
-    const wantA = Math.min(a.length, Math.round(perPattern * 0.25));
-    const wantB = Math.min(b.length, Math.round(perPattern * 0.5));
-    const wantC = Math.min(c.length, perPattern - wantA - wantB);
+    /**
+     * Take what exists, then BALANCE — do not backfill to hit a quota.
+     *
+     * The first version wanted 300 per pattern and filled whatever A and B could not supply
+     * with tier C. Since A and B are naturally scarce, scarcity.stock came out as 6 + 52 +
+     * 242: eighty percent obvious noes, three hundred items, about an hour for one pattern.
+     * That is the "forty consecutive noes trains a reflex" failure I wrote a comment about
+     * and then built anyway.
+     *
+     * Negatives now match positives roughly one-for-one, which is both a better labelling
+     * experience and better training data — a wildly imbalanced set teaches a classifier
+     * that "no" is always the safe answer.
+     */
+    const wantA = Math.min(a.length, Math.round(perPattern * 0.35));
+    const wantB = Math.min(b.length, Math.round(perPattern * 0.65));
+    const wantC = Math.min(c.length, wantA + wantB, perPattern - wantA - wantB);
 
     const picked = [
       ...a.slice(0, wantA).map((r) => ({ ...r, tier: "A" })),

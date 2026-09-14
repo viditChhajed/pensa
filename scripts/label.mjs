@@ -159,7 +159,9 @@ function render() {
       p.no.map((x) => '<li>' + esc(x) + '</li>').join("") +
     '</ul></div></div>' +
     '<div class="card flash"><div class="text">' + esc(it.text) + '</div>' +
-    '<div class="meta">' + esc(it.site) + ' · ' + esc(it.tag.split(">").pop() || "") + '</div></div>';
+    // Just the shop. The selector tail was rendering as "ulta.com · a", which tells the
+    // reader nothing and reads like a bug.
+    '<div class="meta">seen on ' + esc(it.site) + '</div></div>';
 
   const mins = (Date.now() - t0) / 60000;
   el("rate").textContent = done > 0
