@@ -20,6 +20,8 @@ const frequencyEl = document.getElementById("frequency") as HTMLDivElement;
 const telemetryEl = document.getElementById("telemetry") as HTMLInputElement;
 const summaryEl = document.getElementById("summary") as HTMLTableElement;
 const patternsEl = document.getElementById("patterns") as HTMLDivElement;
+const pendingEl = document.getElementById("pending") as HTMLDivElement;
+const pendingWrap = document.getElementById("pendingWrap") as HTMLDetailsElement;
 
 const FREQUENCY_CHOICES: { value: DigestFrequency; label: string }[] = [
   { value: "every_checkout", label: "Every time I reach checkout" },
@@ -192,10 +194,59 @@ async function renderSummary(): Promise<void> {
   }
 }
 
+/**
+ * The queue, rendered verbatim.
+ *
+ * Consent to "anonymous statistics" means nothing if the person consenting cannot see the
+ * rows. This renders the actual records that would be POSTed — the same objects, no
+ * summary — so the claim in the paragraph above is checkable rather than merely stated.
+ */
+async function renderPending(): Promise<void> {
+  const reply = await send<{ records: Record<string, unknown>[]; endpoint: string }>({
+    type: "get-pending-telemetry",
+  });
+  const records = reply?.records ?? [];
+  pendingEl.replaceChildren();
+
+  const where = document.createElement("p");
+  where.textContent =
+    reply?.endpoint && reply.endpoint.length > 0
+      ? `Destination: ${reply.endpoint}`
+      : "No destination is configured, so nothing is being sent anywhere right now.";
+  pendingEl.append(where);
+
+  if (records.length === 0) {
+    const none = document.createElement("p");
+    none.textContent = telemetryEl.checked
+      ? "Nothing queued. Counts appear here as patterns are found on sites you have enabled."
+      : "Nothing queued, because sharing is switched off. Nothing is recorded while it is off.";
+    pendingEl.append(none);
+    return;
+  }
+
+  const count = document.createElement("p");
+  count.textContent = `${records.length} count(s) queued. Newest first:`;
+  pendingEl.append(count);
+
+  const pre = document.createElement("pre");
+  pre.style.cssText =
+    "overflow-x:auto;font-size:11.5px;line-height:1.5;white-space:pre;margin:8px 0 0";
+  pre.textContent = records.map((r) => JSON.stringify(r)).join("\n");
+  pendingEl.append(pre);
+}
+
+pendingWrap.addEventListener("toggle", () => {
+  if (pendingWrap.open) void renderPending();
+});
+
 telemetryEl.addEventListener("change", () => {
   void send({
     type: "set-settings",
     patch: { telemetryConsent: telemetryEl.checked, telemetryConsentAskedAt: Date.now() },
+  }).then(() => {
+    // Switching it off clears the queue on the worker side; reflect that immediately rather
+    // than leaving a stale list on screen implying data is still pending.
+    if (pendingWrap.open) void renderPending();
   });
 });
 

@@ -1,9 +1,15 @@
 /**
- * Zero network egress, asserted (plan §7 Day 3, §11).
+ * Network egress, asserted (plan §7 Day 3, §11).
  *
  * The load-bearing privacy claim in PRIVACY.md is that the extension makes no outbound
  * request, ever, with telemetry declined. "Unverified by eye" is not good enough for a claim
  * a store reviewer and a user are both entitled to check, so this counts requests.
+ *
+ * That claim narrowed when telemetry was built, and these tests narrowed with it rather than
+ * being quietly left to pass for the wrong reason. Two separate things are now asserted:
+ * with consent OFF — the shipped default — egress is still exactly zero; and with consent ON
+ * the only address the extension can contact is the one declared in TELEMETRY_ENDPOINT.
+ * A test called "has no transmit path" would now be a test whose name is false.
  *
  * Method: every fixture page's own requests are stubbed by a catch-all route, so the page
  * itself can generate no traffic. Anything Playwright then reports at the context level —
@@ -13,6 +19,7 @@ import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, test } from "@playwright/test";
+import { TELEMETRY_ENDPOINT } from "@/shared/constants";
 
 const PAGES = resolve("tests/e2e/pages");
 
@@ -147,12 +154,35 @@ test("the built bundles contain no network-calling code at all", async () => {
   ]) {
     expect(js.includes(forbidden), `bundle references ${forbidden}`).toBe(false);
   }
-  // `fetch(` may appear inside vendored helpers; assert no absolute URL is ever fetched.
-  const absoluteFetch = /fetch\(\s*["'`]https?:\/\//.test(js);
-  expect(absoluteFetch, "bundle fetches an absolute URL").toBe(false);
+  /**
+   * What static analysis can honestly establish here, and what it cannot.
+   *
+   * The first attempt collected every http(s) URL in the bundle and demanded each be the
+   * telemetry endpoint. It failed on ~160 strings that are DATA and never fetched: the
+   * allowlist origins, Zod's json-schema ids, and the tinyurl/bit.ly links Dexie puts in its
+   * error messages. A regex cannot tell a string constant from a request target.
+   *
+   * The previous version had the opposite flaw — it asserted no `fetch("https://…")` literal
+   * appears, which stopped meaning anything the moment the sender became
+   * `fetch(TELEMETRY_ENDPOINT, …)`. A variable is invisible to it.
+   *
+   * So this asserts the two things that survive minification and mean what they say: no URL
+   * is fetched as a literal, and there is at most one fetch call site in the whole build.
+   * ONE call site is what makes the runtime test below decisive — that test observes every
+   * address actually contacted, which is the real guarantee, and a single sender is what
+   * stops a second, untested path existing beside it.
+   */
+  expect(/fetch\(\s*["'`]https?:\/\//.test(js), "bundle fetches a hardcoded URL").toBe(false);
+
+  const fetchSites = [...js.matchAll(/\bfetch\s*\(/g)].length;
+  expect(
+    fetchSites,
+    `${fetchSites} fetch call sites in the build; exactly one sender is what makes the ` +
+      "runtime egress test decisive rather than merely suggestive",
+  ).toBeLessThanOrEqual(1);
 });
 
-test("telemetry consent, even if enabled, has no transmit path in v1", async () => {
+test("with consent ON, the only address that can be contacted is the declared endpoint", async () => {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
   await page.locator("#telemetry").check();
@@ -168,9 +198,48 @@ test("telemetry consent, even if enabled, has no transmit path in v1", async () 
       !r.url.startsWith("data:") &&
       !r.url.startsWith("about:"),
   );
-  // v1 ships the consent control but no sink. Enabling it must still send nothing.
-  expect(egress, `enabled telemetry sent: ${egress.map((e) => e.url).join(", ")}`).toEqual([]);
+
+  // Two different correct outcomes, and the test says which one it is rather than passing
+  // silently on either. With no endpoint deployed the answer is still zero — but zero
+  // BECAUSE nothing is configured, not because no code path exists.
+  const offEndpoint = egress.filter((r) => !r.url.startsWith(TELEMETRY_ENDPOINT || "\u0000"));
+  expect(
+    offEndpoint,
+    `telemetry contacted ${offEndpoint.length} address(es) other than the declared endpoint: ` +
+      offEndpoint.map((e) => e.url).join(", "),
+  ).toEqual([]);
+
+  if (TELEMETRY_ENDPOINT.length === 0) {
+    expect(egress, "no endpoint is configured, so nothing should have been sent").toEqual([]);
+  }
 
   await page.locator("#telemetry").uncheck();
+  await page.close();
+});
+
+test("switching consent off empties the queue rather than holding it", async () => {
+  // Data gathered under a permission that has been revoked must not sit on disk waiting for
+  // the person to change their mind. Turning it off is a decision, not a pause.
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/options.html`);
+
+  await page.locator("#telemetry").check();
+  await page.waitForTimeout(200);
+  await browseSession();
+
+  await page.locator("#telemetry").uncheck();
+  await page.waitForTimeout(500);
+
+  const pending = await page.evaluate(
+    () =>
+      new Promise((res) =>
+        chrome.runtime.sendMessage({ type: "get-pending-telemetry" }, (r) => res(r)),
+      ),
+  );
+  expect(
+    (pending as { records: unknown[] }).records,
+    "counts survived the consent being withdrawn",
+  ).toEqual([]);
+
   await page.close();
 });

@@ -102,7 +102,16 @@ describe("style memo across harvest passes", () => {
     expect(el).not.toBeNull();
     if (el) {
       el.getBoundingClientRect = () =>
-        ({ x: 0, y: top, width: 200, height: 24, top, left: 0, right: 200, bottom: top + 24 }) as DOMRect;
+        ({
+          x: 0,
+          y: top,
+          width: 200,
+          height: 24,
+          top,
+          left: 0,
+          right: 200,
+          bottom: top + 24,
+        }) as DOMRect;
     }
 
     const first = harvest(document).find((n) => n.selectorPath.includes("a"));

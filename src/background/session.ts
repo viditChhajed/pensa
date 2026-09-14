@@ -22,6 +22,7 @@ import { putEvents, readOffer, readSettings } from "./db";
 import { buildDigest, type RankInput, shouldShowDigest } from "./digest";
 import { detectDrip, detectSneak, dripCandidate } from "./dripPricing";
 import { loadLedger, noteDigest, noteEvents, saveLedger } from "./sessionLedger";
+import { enqueue } from "./telemetry";
 import { temporalCandidates } from "./temporal";
 
 const SESSION_KEY = "session";
@@ -264,6 +265,22 @@ export async function decideDigest(
 
   ledger = noteEvents(ledger, events);
   await putEvents(events);
+
+  /**
+   * Queue anonymous counts, if and only if consent is on. `enqueue` is a no-op otherwise —
+   * not queue-then-discard, because a queue that fills while consent is off is a queue that
+   * leaks the moment someone turns it on, and switching it on consents to future sharing,
+   * not to everything that happened before.
+   *
+   * Sending is on a clock elsewhere, deliberately: a request timed to a detection reveals
+   * when this person was shopping even though the payload cannot say where.
+   */
+  try {
+    await enqueue(events, settings);
+  } catch (err) {
+    // Prevalence counting must never be able to break a digest.
+    console.error("[patterns] telemetry enqueue failed", err);
+  }
 
   if (!gate.show || result.items.length === 0 || mode === "suppressed") {
     await saveLedger(ledger);

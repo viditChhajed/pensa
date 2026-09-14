@@ -89,12 +89,21 @@ on the purchase path; it may sit over an ordinary link, which one click uncovers
 
 PRIVACY
 
-There is no server. There are no analytics. There is no account. The extension makes no
-network requests at all, and you can check that yourself: open DevTools, go to the Network
-tab, and browse.
+There is no account, and no advertising or analytics company is involved at any point.
+
+Out of the box the extension makes no network requests whatsoever, and you can check that
+yourself: open DevTools, go to the Network tab, and browse.
+
+There is one optional setting, off by default and not pre-ticked, that shares anonymous
+counts of which techniques appear where. If you turn it on, a count says "someone saw a
+countdown, on a travel site, in this hour" — no web address, no page content, no prices, no
+identifiers, no precise time. Counts are held back until at least 20 other reports share the
+same shape, because a count only you could have produced is not anonymous. You can read the
+exact records waiting to be sent, before any of them are, in Settings.
 
 Everything it notices stays on your device and is deleted after 30 days. You can erase it
-all at any time from Settings.
+all at any time from Settings, and that includes any anonymous counts still waiting to be
+sent.
 
 It asks for no site access when you install it. You grant one site at a time, from the
 toolbar, and you can revoke any of them whenever you like. It will never offer to run on
@@ -194,9 +203,27 @@ Identify persuasion techniques displayed on shopping pages and present the user 
 question about them.
 ```
 
-**Data usage disclosures** — tick nothing. The extension collects no user data and transmits
-none. Certify: does not sell data, does not use it for unrelated purposes, does not use it
-for creditworthiness.
+**Data usage disclosures** — depends on whether a telemetry endpoint is deployed. Read this
+before ticking anything; a listing that says "collects nothing" while the extension posts
+counts is the kind of mismatch that fails review.
+
+*If `TELEMETRY_ENDPOINT` in `src/shared/constants.ts` is empty* (the shipped default): tick
+nothing. Nothing is transmitted, and four e2e tests assert it.
+
+*If an endpoint is configured*: the extension collects an optional, off-by-default anonymous
+count. Disclose it, and use this wording:
+
+```
+Optional and off by default. If a user turns it on, the extension sends a count of which
+persuasion technique was seen, at which stage of a checkout, in which CATEGORY of shop, in
+which hour. It sends no web address, no page content, no prices, no identifiers and no
+precise time, and it sends nothing at all for sites outside the bundled list. Counts are
+batched and withheld until at least 20 reports share the same shape. The user can view the
+exact records awaiting transmission in the extension's settings before any are sent.
+```
+
+Certify in both cases: does not sell data, does not use it for unrelated purposes, does not
+use it for creditworthiness.
 
 ---
 

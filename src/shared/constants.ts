@@ -24,3 +24,17 @@ export const IDLE_SLICE_MS = 8;
 declare const __BUILD_STAMP__: string;
 export const BUILD_STAMP: string =
   typeof __BUILD_STAMP__ === "string" ? __BUILD_STAMP__ : "unknown";
+
+/**
+ * Where anonymous prevalence counts are POSTed. Empty means nowhere.
+ *
+ * It lives here, in the one module with no imports of its own, so the egress tests can read
+ * the single source of truth without pulling in the allowlist JSON behind `urlScore` — and
+ * so that "which addresses may this extension contact" is answerable by reading one line
+ * rather than by tracing a call graph.
+ *
+ * Empty is the shipped default until an endpoint is actually deployed. `flush()` treats it
+ * as "hold everything", so switching consent on against an unset endpoint accumulates
+ * locally and sends nothing, rather than failing quietly against a dead URL.
+ */
+export const TELEMETRY_ENDPOINT = "";

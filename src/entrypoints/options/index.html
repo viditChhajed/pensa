@@ -61,11 +61,24 @@
             Share anonymous counts of which patterns appear where.
             <span class="muted">
               Off by default, and not pre-ticked — a tool that flags preselected checkboxes
-              should not use one. No server is connected yet, so nothing is sent even if this
-              is on.
+              should not use one.
             </span>
           </span>
         </label>
+
+        <p class="muted small">
+          A count says <em>“someone saw a countdown, on a travel site, in this hour.”</em> It
+          carries no web address, no page text, no prices, no account, and no exact time.
+          Counts are sent on a six-hour timer rather than when something is found, so the
+          timing says nothing either — and a batch is held back until at least 20 other
+          reports share its shape, because a count that only you could have produced is not
+          anonymous however few fields it has.
+        </p>
+
+        <details id="pendingWrap">
+          <summary>Show me exactly what would be sent</summary>
+          <div id="pending" class="muted small">Loading…</div>
+        </details>
       </section>
 
       <section>

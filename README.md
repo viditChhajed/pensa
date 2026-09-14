@@ -20,7 +20,7 @@ taken through a native permission dialog no automation can accept.
 | Real-browser e2e | 38 passing, 3 skipped (sites unreachable from this network) |
 | Bundle | 116 KB gzipped across all bundles; 27 KB is the content script, which is the number that matters on every page load |
 | `host_permissions` | empty — the build throws otherwise, asserted on the built manifest |
-| Network requests | **zero, asserted** — including with telemetry switched on |
+| Network requests | **zero with telemetry off** (the shipped default), asserted; with it on, the only reachable address is the declared endpoint, also asserted |
 | Card placement | 12/12 samples across 4 live retailers × 3 scroll depths |
 | Precision | 0 confirmed false positives in ~44 firings across 6 retailers — see the caveat below |
 
@@ -74,9 +74,13 @@ scoring real pages would be worse than no classifier.
   highest-value signals. Bounding boxes are re-read every pass and deliberately never cached
   — they are viewport-relative, so a scroll would make a cached one wrong with no mutation to
   notice.
-- **No telemetry backend**, by design. The consent checkbox and the local record shape exist;
-  nothing transmits, and four e2e tests assert that. Wiring a real endpoint is a decision that
-  has not been made, and would invalidate the zero-network claim above.
+- **Telemetry has a client but no destination.** The queue, the consent gate, the
+  k-anonymity floor (k=20) and the six-hourly sender are built and tested;
+  `TELEMETRY_ENDPOINT` in `src/shared/constants.ts` is empty, so `flush()` holds everything
+  locally and sends nothing. Deploying a server is the remaining step, and it is a decision
+  with consequences beyond the code: the Chrome listing's data disclosure changes, and the
+  "makes no network requests" line in the store copy becomes conditional. Both are already
+  written for either case.
 - **Plan §14.4's post-first-digest consent screen is deliberately not built.** §14.4 asks for
   a one-screen telemetry ask after the first digest. Interrupting someone to request consent
   to send data to a server that does not exist is a worse thing to do than not asking — in a

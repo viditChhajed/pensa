@@ -122,6 +122,7 @@ export const SetSettings = z.object({
   type: z.literal("set-settings"),
   patch: Settings.partial(),
 });
+export const GetPendingTelemetry = z.object({ type: z.literal("get-pending-telemetry") });
 export const ClearData = z.object({ type: z.literal("clear-data") });
 export const Ping = z.object({ type: z.literal("ping") });
 
@@ -135,6 +136,7 @@ export const Message = z.discriminatedUnion("type", [
   DiagnoseRegistration,
   GetSettings,
   SetSettings,
+  GetPendingTelemetry,
   ClearData,
   Ping,
 ]);

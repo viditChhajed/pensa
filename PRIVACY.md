@@ -54,10 +54,41 @@ similar sites, regardless of what those pages contain.
 ## Optional telemetry
 
 There is a setting for anonymous, aggregate telemetry. **It is off by default and there is no
-pre-checked box.** As of this version it is not wired to any server, so nothing is transmitted
-even if enabled. Should that change, this policy will be updated first, and the data would be
-limited to: pattern type, a confidence quartile, funnel stage, a site *category* (not the
-site), and the hour. Never URLs, text, prices, or identifiers.
+pre-checked box.** While it is off, nothing is transmitted and nothing is even recorded for
+transmission — the queue is not filled and then withheld, because a queue that accumulates
+while you have said no is one that would empty the moment you said yes.
+
+If you switch it on, each count carries exactly seven fields and no others:
+
+| | |
+|---|---|
+| pattern type | e.g. `scarcity.stock` |
+| detector id | which rule matched |
+| confidence quartile | 1–4, never the score |
+| funnel stage | browse / product / cart / checkout / payment |
+| site **category** | e.g. `ota_travel` — never the site |
+| rule pack version | |
+| hour | epoch hours, never a timestamp |
+
+A count says *"someone saw a countdown, on a travel site, in this hour."* Absent by
+construction: the web address, the page path, the session id, any page text, any price, any
+precise time, anything identifying you. The record type is declared `.strict()`, so an
+accidentally added field throws rather than being sent.
+
+Four further limits, each enforced in code rather than promised here:
+
+- **Counts are sent on a six-hour timer, never when something is found.** A request timed to
+  a detection would reveal when you were shopping even though the payload cannot say where.
+- **A batch is held until at least 20 reports share its shape.** A count only you could have
+  produced is not anonymous however few fields it carries.
+- **Nothing is sent for a site outside the bundled list.** The category tag is what makes a
+  count anonymous, and an unlisted site has no category.
+- **Switching the setting off deletes the queue immediately.** Not at the next send — data
+  gathered under a permission you have withdrawn is not held pending a change of mind.
+
+You can see the exact rows that would be sent, verbatim, in **Settings → Anonymous statistics
+→ Show me exactly what would be sent**. Asking you to consent to a sentence about your data
+is not the same as showing you the data.
 
 ## Third parties
 

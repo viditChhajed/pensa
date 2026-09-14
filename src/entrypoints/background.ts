@@ -16,7 +16,8 @@ import {
   noteUserAdd,
   saveLedger,
 } from "@/background/sessionLedger";
-import { CONTENT_SCRIPT_FILE, DETECTOR_SCRIPT_ID } from "@/shared/constants";
+import { discardQueue, flush, pendingRecords } from "@/background/telemetry";
+import { CONTENT_SCRIPT_FILE, DETECTOR_SCRIPT_ID, TELEMETRY_ENDPOINT } from "@/shared/constants";
 import { domainMatchPattern, matchesPattern } from "@/shared/domain";
 import type { ShowDigest } from "@/shared/messages";
 import { Message } from "@/shared/messages.schema";
@@ -84,10 +85,41 @@ export default defineBackground(() => {
   });
 
   chrome.alarms?.create("housekeeping", { periodInMinutes: 720 });
+
+  /**
+   * Telemetry flushes on a CLOCK, never on a detection.
+   *
+   * A request timed to the moment something was found tells an observer when this person was
+   * shopping, and how often, even though the payload itself says neither. Decoupling the
+   * send from the event is the difference between an anonymous count and a timestamped one.
+   *
+   * Six hours rather than the housekeeping twelve: long enough that the timing carries
+   * nothing, short enough that a batch is not sitting on disk for days.
+   */
+  chrome.alarms?.create("telemetry", { periodInMinutes: 360 });
+
   chrome.alarms?.onAlarm.addListener((a) => {
     if (a.name === "housekeeping") void housekeeping();
+    if (a.name === "telemetry") void flushTelemetry();
   });
 });
+
+/** Send whatever is both consented to and past the k-anonymity floor. Logs its own outcome. */
+async function flushTelemetry(): Promise<void> {
+  try {
+    const result = await flush(await readSettings());
+    // Every branch is worth seeing. "Nothing was sent" has six different causes and they
+    // have six different fixes — an unset endpoint is not the same as a failed request, and
+    // neither is the same as a batch correctly held back for being too identifying.
+    if (result.reason !== "no_consent" || result.sent > 0) {
+      console.info(
+        `[patterns] telemetry: ${result.reason}, ${result.sent} sent, ${result.held} held`,
+      );
+    }
+  } catch (err) {
+    console.error("[patterns] telemetry flush failed", err);
+  }
+}
 
 /**
  * declarativeContent rules from the allowlist plus generic commerce path tokens.
@@ -315,8 +347,22 @@ async function handleMessage(raw: unknown): Promise<unknown> {
     case "get-settings":
       return await readSettings();
 
-    case "set-settings":
-      return await writeSettings(msg.patch);
+    case "get-pending-telemetry":
+      // The settings page shows these verbatim. Asking someone to consent to "anonymous
+      // statistics" without showing the rows is asking them to trust a sentence, and this
+      // product's whole argument is that a claim you cannot check is worth less than one
+      // you can.
+      return { records: await pendingRecords(), endpoint: TELEMETRY_ENDPOINT };
+
+    case "set-settings": {
+      const updated = await writeSettings(msg.patch);
+      // Withdrawing consent empties the queue NOW, not at the next six-hourly flush.
+      // Anything already gathered was gathered under a permission that has been revoked, and
+      // holding it for six hours in case they change their mind is not the user's decision
+      // to have made for them.
+      if (msg.patch.telemetryConsent === false) await discardQueue();
+      return updated;
+    }
 
     case "clear-data":
       await clearAllData();

@@ -104,6 +104,10 @@ export interface SetSettings {
   type: "set-settings";
   patch: Partial<Settings>;
 }
+/** Exactly what telemetry would send right now, for the settings page to display. */
+export interface GetPendingTelemetry {
+  type: "get-pending-telemetry";
+}
 export interface ClearData {
   type: "clear-data";
 }
@@ -121,6 +125,7 @@ export type Message =
   | DiagnoseRegistration
   | GetSettings
   | SetSettings
+  | GetPendingTelemetry
   | ClearData
   | Ping;
 
