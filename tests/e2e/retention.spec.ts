@@ -45,6 +45,38 @@ test.afterAll(async () => {
   await context?.close();
 });
 
+/**
+ * Make the worker create the Dexie schema before the page tries to write to it.
+ *
+ * Dexie only runs its upgrade when something actually opens the database, so in a fresh
+ * profile the `events` store does not exist yet and `indexedDB.open()` from the page returns
+ * a version-less database with no stores. Seeding then fails with NotFoundError.
+ *
+ * This passed in isolation and failed in the full suite, which is the signature of a test
+ * that depends on timing rather than on state: alone, something had already warmed the
+ * database. `get-summary` reaches `readEvents` -> `getDb()`, so one call is enough, and this
+ * polls rather than sleeping because "long enough" is how the same bug comes back.
+ */
+async function ensureSchema(page: Page): Promise<void> {
+  await page.evaluate(
+    () => new Promise((res) => chrome.runtime.sendMessage({ type: "get-summary" }, res)),
+  );
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            new Promise<boolean>((res) => {
+              const r = indexedDB.open("persuasion-patterns");
+              r.onsuccess = () => res(r.result.objectStoreNames.contains("events"));
+              r.onerror = () => res(false);
+            }),
+        ),
+      { timeout: 10_000, message: "the worker never created the events store" },
+    )
+    .toBe(true);
+}
+
 /** Write events straight into the store, with ages a real session could never produce. */
 async function seed(page: Page, ages: number[]): Promise<void> {
   await page.evaluate(async (dayOffsets) => {
@@ -110,6 +142,14 @@ async function countEvents(page: Page): Promise<number> {
 test("the summary counts detections, and splits noticed from shown", async () => {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
+  await ensureSchema(page);
+  // Clear first. `detected` is an exact count, so anything already in the store — including
+  // rows the extension itself recorded while another spec ran — would make this flaky in one
+  // direction only, which is the worst kind.
+  await page.evaluate(
+    () => new Promise((res) => chrome.runtime.sendMessage({ type: "clear-data" }, res)),
+  );
+  await page.waitForTimeout(400);
   await seed(page, [0, 0, 0, 1, 1, 2]);
 
   const summary = (await page.evaluate(
@@ -132,6 +172,7 @@ test("the summary counts detections, and splits noticed from shown", async () =>
 test("events past the retention window are deleted BY THE REAL ALARM", async () => {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
+  await ensureSchema(page);
 
   // Clear first, so this cannot pass on a store that was empty to begin with.
   await page.evaluate(
@@ -158,6 +199,7 @@ test("events past the retention window are deleted BY THE REAL ALARM", async () 
 test("the retention setting is honoured, not just the default", async () => {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
+  await ensureSchema(page);
   await page.evaluate(
     () => new Promise((res) => chrome.runtime.sendMessage({ type: "clear-data" }, res)),
   );
