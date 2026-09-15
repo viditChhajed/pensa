@@ -301,17 +301,22 @@ be judged. Flipping to Public later is one setting.
 
 ## Pre-submission checklist
 
-- [ ] `npm run build` clean; `npm test` and `npm run test:e2e` green
-- [ ] `host_permissions` empty in the built manifest (CI-enforced, but look anyway)
+- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green — 469 unit + eval, 43 e2e
+- [x] `host_permissions` empty in the built manifest (CI-enforced, checked: `[]`)
 - [x] Icons present at all four sizes
 - [x] Privacy policy URL live and reachable
-- [ ] **[EVAL.md](EVAL.md) filled in, and any detector over ~4 false positives raised or disabled**
+- [ ] **Re-run the §10 spot-check against THIS build.** The one in [EVAL.md](EVAL.md) found
+      zero false positives — but it was run against a build whose detectors have since been
+      substantially rewritten, with recall up seven- to eighteen-fold on four of them. Every
+      new rule is a new chance to fire on something it should not, and the corpus precision
+      figures cannot settle it: those labels were produced by a model, and a detector
+      agreeing with a model is not the same as a detector being right. **This is the gate.**
 - [ ] Screenshots captured
 - [ ] **Repo flipped to public** — the listing claims the source is public, and it is
       private until this is done. Audit the commit history first (EVAL.md holds real
       browsing sessions).
-- [ ] Version bumped in `wxt.config.ts`
-- [ ] `npm run zip`
+- [x] Version bumped in `wxt.config.ts` — 1.0.0
+- [x] `npm run zip` — `.output/vero-1.0.0-chrome.zip`, 131 KB
 
 The EVAL.md line is the real gate. Everything else is paperwork; that one is the difference
 between a tool that helps and one that interrupts people with wrong claims.

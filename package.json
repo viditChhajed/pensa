@@ -1,6 +1,6 @@
 {
   "name": "vero",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "MV3 extension that detects e-commerce persuasion patterns and asks Socratic questions about them.",
   "scripts": {
     "dev": "wxt",

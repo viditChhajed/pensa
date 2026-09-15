@@ -90,7 +90,7 @@ export default defineConfig({
     short_name: "Vero",
     description:
       "Notices persuasion techniques on shopping pages and asks a question about them. Runs on-device; nothing leaves your browser.",
-    version: "0.1.0",
+    version: "1.0.0",
 
     // Justification for each, for the store listing (plan §1.4):
     //   storage            - remember per-site choices and the local event log
