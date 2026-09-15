@@ -22,7 +22,8 @@
     "corpus:ingest": "node scripts/ingest-auto-labels.mjs",
     "corpus:export": "node scripts/export-for-labelling.mjs",
     "eval:detectors": "vitest run tests/eval/detector-recall.test.ts",
-    "corpus:merge": "node scripts/merge-corpus.mjs"
+    "corpus:merge": "node scripts/merge-corpus.mjs",
+    "spot:check": "node scripts/spot-check.mjs"
   },
   "author": "",
   "license": "ISC",
