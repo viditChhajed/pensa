@@ -31,6 +31,8 @@ const STOCK_PATTERNS: readonly RegExp[] = [
    */
   /\bwhile (?:stocks?|supplies) last\b/,
   /\bwhile they last\b/,
+  /** "will fill up fast", "selling out fast" — supply pressure with no stock vocabulary. */
+  /\b(?:fill(?:s|ing)? up|selling out|going) fast\b/,
   /\bback in stock soon\b/,
   /\bbefore (?:these |they |it )?(?:items? )?(?:are |is )?(?:sold ?out|gone)\b/,
   /\ba limited (?:number|quantity|amount)\b/,

@@ -15,7 +15,7 @@
  * Stratified by site, because ebay alone contributes 554 and a model trained on it would
  * learn eBay's house style rather than the technique.
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const args = Object.fromEntries(
@@ -28,6 +28,25 @@ const PER_SITE = Number(args["per-site"] ?? 120);
 
 const CORPUS = resolve("corpus/candidates.jsonl");
 const OUT_DIR = resolve("corpus/batches");
+const LABELS = resolve("corpus/labels.jsonl");
+
+/**
+ * Keys already labelled, so a re-export after a bigger crawl asks only about what is new.
+ *
+ * Without this, growing the corpus from 36 sites to 48 would mean re-labelling the 2,639
+ * snippets already done — the same judgements, at the same cost, for no extra information.
+ */
+const alreadyLabelled = new Set();
+if (existsSync(LABELS)) {
+  for (const line of readFileSync(LABELS, "utf8").split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      alreadyLabelled.add(JSON.parse(line).key);
+    } catch {
+      /* a truncated last line is not worth losing the file over */
+    }
+  }
+}
 
 /**
  * Does this read like something said to the shopper, rather than a name or a label?
@@ -56,7 +75,7 @@ const rows = readFileSync(CORPUS, "utf8")
   .split("\n")
   .filter(Boolean)
   .map((l) => JSON.parse(l))
-  .filter((r) => r.text.length <= 180 && looksLikeAMessage(r.text));
+  .filter((r) => r.text.length <= 180 && looksLikeAMessage(r.text) && !alreadyLabelled.has(r.key));
 
 // Cap per site. eBay contributes 554 of 4291 on its own, and a model trained on that learns
 // eBay's house style rather than the technique.

@@ -26,7 +26,16 @@ export const TRAINABLE = [
     label: "Limited stock message",
     question: "Is this telling you the item is running out?",
     mechanism: "Things that seem rare are valued more than the same thing in plentiful supply.",
-    yes: ["Only 3 left in stock", "Almost sold out", "Low stock — order soon"],
+    yes: [
+      "Only 3 left in stock",
+      "Almost sold out",
+      "Low stock — order soon",
+      "While supplies last",
+      "Back in stock soon",
+      // Supply pressure with no stock vocabulary at all. Both were invisible to the
+      // prefilter until they were added here, which is what this list is for.
+      "These will fill up fast",
+    ],
     no: ["3 sizes available", "In stock", "Ships in 3 days"],
     strict: [
       /\bonly\s+\d+\s+(?:left|remaining)/i,
@@ -157,7 +166,15 @@ export const TRAINABLE = [
     label: "Pay in instalments",
     question: "Is this offering to split the price into smaller payments?",
     mechanism: "Splitting a price into small future payments reduces how much paying now hurts.",
-    yes: ["4 interest-free payments of $24.99", "Pay in 4 with Klarna", "From $12/mo with Affirm"],
+    yes: [
+      "4 interest-free payments of $24.99",
+      "Pay in 4 with Klarna",
+      "From $12/mo with Affirm",
+      "starting at $38/mo.",
+      // The category's own name, and it carries no digit — so every pattern that required
+      // one missed it, and the prefilter dropped it before that even mattered.
+      "Buy now, pay later",
+    ],
     no: ["Total: $99.96", "Pay now", "Monthly newsletter"],
     strict: [
       /\b\d\s*(?:interest[- ]free\s+)?(?:payments?|instal?lments?)\s+of\b/i,

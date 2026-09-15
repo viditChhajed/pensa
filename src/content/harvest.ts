@@ -247,6 +247,20 @@ const TRIGGER_WORDS = [
   "don't miss",
   "act now",
   "back in stock",
+  /**
+   * "Buy now, pay later" and "will fill up fast" both scored ZERO, and neither was a
+   * detector bug — the prefilter dropped the node before any detector was offered it.
+   * Neither phrase has a digit, a currency glyph or any word above. "buy now, pay later" is
+   * the category's own name.
+   *
+   * Fourth occurrence of this exact failure. `tests/unit/prefilter.test.ts` guards the
+   * canonical examples, so these are now in that list too — a lexeme added to a detector
+   * without a matching example here is a lexeme that can still never fire.
+   */
+  "pay later",
+  "pay over time",
+  "fill up fast",
+  "selling out",
 ];
 
 export function classifyText(text: string): number {

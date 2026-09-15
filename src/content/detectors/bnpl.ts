@@ -33,6 +33,15 @@ const PROVIDER_HOSTS =
 const INSTALLMENT_PATTERNS: readonly RegExp[] = [
   /\b(\d)\s*(?:interest[- ]free\s+)?(?:payments?|installments?|instalments?)\s+of\b/,
   /\bpay in (\d)\b/,
+  /**
+   * "Buy now, pay later" — the category's own name, and it scored ZERO.
+   *
+   * Every pattern here required a digit: a count of payments, an amount, or a monthly
+   * figure. The plainest possible statement of the technique has none of those, which is the
+   * shape of blind spot a lexicon written from examples reliably produces.
+   */
+  /\bbuy now,?\s*pay later\b/,
+  /\bpay (?:over time|later|in instal?ments)\b/,
   /\bor\s+\d\s*x\s*[$£€]/,
   /\bas low as\s*[$£€]?\s*[\d.,]+\s*\/\s*(?:mo|month)\b/,
   /\bfrom\s*[$£€]\s*[\d.,]+\s*\/\s*(?:mo|month)\b/,
