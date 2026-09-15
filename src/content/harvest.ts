@@ -261,6 +261,8 @@ const TRIGGER_WORDS = [
   "pay over time",
   "fill up fast",
   "selling out",
+  /** "Success! Free Shipping Unlocked" — the threshold-met message carries no amount. */
+  "unlocked",
 ];
 
 export function classifyText(text: string): number {

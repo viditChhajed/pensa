@@ -114,8 +114,20 @@ function looksLikeAListingBlob(text: string): boolean {
   return !/\b(?:you|your|spend|orders?|minimum|min\.)\b/i.test(text);
 }
 
+/**
+ * The threshold MET, not just offered: "Success! Free Shipping Unlocked".
+ *
+ * Reported from the corpus and scored zero, because every rule here needs an amount and the
+ * completion message has none — the number has served its purpose and been dropped. It is
+ * still the same mechanism, and arguably the most interesting moment of it: the goal
+ * gradient paid off, which is what makes the next threshold work.
+ */
+const THRESHOLD_MET =
+  /\bfree (?:shipping|delivery)\s+unlocked\b|\bunlocked\s+free (?:shipping|delivery)\b|\byou(?:'ve| have)\s+(?:earned|unlocked|qualified for)\b/i;
+
 function looksLikeAPolicy(text: string): boolean {
   if (looksLikeAListingBlob(text)) return false;
+  if (THRESHOLD_MET.test(text)) return true;
   if (!MONEY_ISH.test(text)) return false;
   if (!REWARD.test(text)) return false;
   return THRESHOLD_PREP.test(text);

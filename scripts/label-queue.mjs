@@ -144,6 +144,9 @@ export const TRAINABLE = [
       "You're $12 away from free shipping",
       "Add $2.77 more for free delivery",
       "Spend $50, get 20% off",
+      "Free standard shipping on orders $40+",
+      // The threshold MET. No amount at all, because the number has done its job.
+      "Success! Free Shipping Unlocked",
     ],
     no: ["Free shipping on all orders", "Shipping: $5.99", "Free returns"],
     strict: [
