@@ -21,7 +21,7 @@ import { candidate, visibleCandidates } from "./util";
 
 /** First-person constructions that put words in the user's mouth. */
 const FIRST_PERSON =
-  /\bi\s+(?:don'?t|do not|hate|prefer|would rather|'?d rather|am not|like|enjoy|want|understand|acknowledge|accept|agree)\b|\bi'?m not\b|\bno,? i\b/;
+  /\bi\s+(?:don'?t|do not|hate|prefer|would rather|'?d rather|am not|like|enjoy|want|understand|acknowledge|accept|agree|will|shall)\b|\bi'?(?:m not|ll)\b|\bno,? i\b/;
 
 /** What the sentence disparages the user for wanting. */
 const SELF_DEPRECATION: readonly RegExp[] = [
@@ -35,6 +35,22 @@ const SELF_DEPRECATION: readonly RegExp[] = [
   /\bno thanks,? i\b/,
   /\bi enjoy (?:paying|missing out|overpaying)\b/,
   /\bi don'?t (?:want|need) (?:free|better|good)\b/,
+  /**
+   * Every rule above encodes one exact phrasing of the sentiment, and the corpus contained
+   * three real instances, all scoring zero:
+   *
+   *   "I Will Pay Full Price!"          — "rather pay full" and "prefer full price" are
+   *   "I will pay full price"             here; the plain declaration is not
+   *   "I don't want my mystery offer"   — "don't want" was required to be followed
+   *                                        immediately by the noun, so a possessive broke it
+   *
+   * Confirmshaming is the one Tier-1 detector that was still at 0.00 recall, which is what
+   * writing rules from imagined copy produces: the sentiment was right and the sentences
+   * were invented.
+   */
+  /\bi\s*(?:will|'?ll|am going to)\s+pay\s+(?:the\s+)?(?:full|more|retail|extra)\b/,
+  /\b(?:don'?t|do not)\s+(?:want|like|need)\s+(?:my|the|this|your|any)\s+\w+/,
+  /\bi'?ll (?:risk it|take my chances|pass on)\b/,
   /\bmiss(?:ing)? out\b/,
   // A second shape of the same mechanism, found on flyfrontier: declining the upsell
   // requires TICKING A BOX that asserts something costly about your own choice —

@@ -462,7 +462,15 @@ async function collectFrom(page, _url, site) {
         out.push({
           text,
           role: n.role ?? null,
-          tag: n.selectorPath.split(" > ").pop() ?? "",
+          /**
+           * The element's own tag, from the DOM.
+           *
+           * This used to be `selectorPath.split(" > ").pop()`, and `selectorPath` joins with
+           * ">" and no spaces — so the split never fired and the field held a path fragment
+           * like "html>body>div", or nothing at all, for 80% of rows. Nobody noticed until a
+           * detector that needs to know whether a node is a BUTTON could not be evaluated.
+           */
+          tag: n.tagName ?? "",
           fontWeight: n.style?.fontWeight ?? 400,
           fontSizePx: n.style?.fontSizePx ?? 16,
           strike: (n.style?.textDecorationLine ?? "").includes("line-through"),

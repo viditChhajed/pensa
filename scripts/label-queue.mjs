@@ -135,7 +135,15 @@ export const TRAINABLE = [
     label: "Loaded way of saying no",
     question: "Does refusing here mean agreeing with something unflattering about yourself?",
     mechanism: "The decline option is written so choosing it means admitting something bad.",
-    yes: ["No thanks, I don't want to save money", "I'd rather pay full price", "No, I hate deals"],
+    yes: [
+      "No thanks, I don't want to save money",
+      "I'd rather pay full price",
+      "No, I hate deals",
+      // All three real instances the corpus contained. Every one scored zero.
+      "I Will Pay Full Price!",
+      "I don't want my mystery offer",
+      "NO THANKS, I'LL RISK IT",
+    ],
     no: ["No thanks", "Close", "Maybe later", "Decline"],
     strict: [
       /\bno,? (?:thanks,? )?i(?:'m| am)? ?(?:don'?t|hate|prefer|would rather|'d rather)\b/i,

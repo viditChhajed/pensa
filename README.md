@@ -62,11 +62,24 @@ same imagination — they agreed with each other and with nothing else.
 | pattern | recall | precision | |
 |---|---|---|---|
 | `bnpl.installments` | 1.00 | 1.00 | |
-| `urgency.countdown` | 0.79 | 0.93 | |
-| `scarcity.stock` | 0.64 | 1.00 | |
-| `goal_gradient.threshold` | 0.60 | 0.98 | |
-| `social_proof.live_activity` | 0.05 | 1.00 | 40 of its 42 positives are product-title blobs the detector is right to decline |
-| `confirmshaming.decline_copy` | — | — | only 3 instances in the corpus; not measurable |
+| `goal_gradient.threshold` | 0.72 | 0.98 | |
+| `urgency.countdown` | 0.71 | 0.92 | |
+| `social_proof.live_activity` | 0.58 | 1.00 | |
+| `scarcity.stock` | 0.54 | 1.00 | |
+| `confirmshaming.decline_copy` | — | — | not measurable by this harness; see below |
+
+Against the first measurement, before any of this was rewritten:
+
+| pattern | was | now |
+|---|---|---|
+| `goal_gradient.threshold` | 0.04 | **0.72** |
+| `urgency.countdown` | 0.11 | **0.71** |
+| `social_proof.live_activity` | 0.00 | **0.58** |
+| `bnpl.installments` | 0.29 | **1.00** |
+| `scarcity.stock` | 0.43 | **0.54** |
+
+Precision was not traded for it — it sits between 0.92 and 1.00, and every one of those
+rewrites was driven by real copy the corpus produced rather than by phrasings anyone imagined.
 
 Those are at the LOG threshold — what gets counted. The surface threshold, which is what
 interrupts anyone, is far stricter and its precision is 1.00 across the board.
@@ -76,8 +89,15 @@ person, so a detector agreeing with them is not the same as being right. They su
 change made it worse", which is the property worth having while lexicons are rewritten —
 `tests/eval/baseline.json` is a ratchet and a regression past 0.02 fails.
 
+**`confirmshaming` cannot be measured here, and that is the harness, not the detector.**
+Every snippet is rendered as a plain `<div>`, and confirmshaming requires its node to be a
+decline CONTROL — it correctly declines to fire on a div. Checked separately: all three of
+the corpus's instances ("I Will Pay Full Price!", "I don't want my mystery offer", "NO
+THANKS, I'LL RISK IT") score 1.00 wrapped in a `<button>`. Reporting it as 0.00 would send
+the next reader to fix something that already works.
+
 The structural detectors — `anchoring`, `charm`, `defaults`, `interference`, `decoy` — are
-NOT covered by this, and that is now measured rather than assumed. The labelling flagged
+NOT covered by this either, and that is now measured rather than assumed. The labelling flagged
 **163** snippets as reference-price anchoring, which is more evidence than any of the six
 text patterns had. **Zero** of them carry a strikethrough in the corpus.
 

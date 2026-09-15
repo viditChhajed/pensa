@@ -270,6 +270,9 @@ const TRIGGER_WORDS = [
   "spaces are limited",
   "price increases",
   "prices go up",
+  /** Confirmshaming declarations that carry none of the words above. */
+  "pay full price",
+  "risk it",
 ];
 
 export function classifyText(text: string): number {
