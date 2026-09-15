@@ -36,10 +36,30 @@ export const framingDetector: Detector = {
     const out: DetectionCandidate[] = [];
     const seen = new Set<string>();
 
+    /**
+     * One claim per CONTAINER, quoting the container.
+     *
+     * This scores `containerText` but used to attribute to — and quote — the node's own
+     * text. On a Zappos product grid that meant one real was/now price pair produced five
+     * separate firings, evidenced as "370", "237v1", "WL574V2", "603" and "V5 Runner": New
+     * Balance model numbers, which is what the sibling spans inside the tile happen to
+     * contain.
+     *
+     * Both halves were wrong. The claim was counted five times, and the card would have
+     * quoted a model number as its evidence — the same riddle the scarcity fallback was
+     * fixed for: name the pattern, show something unrelated, ask the reader to trust you.
+     */
+    const claimedContainers = new Set<string>();
+
     for (const n of visibleCandidates(ctx)) {
       const t = n.containerText || n.normalizedText;
       if (t.length === 0 || t.length > 240) continue;
       if (seen.has(n.selectorPath)) continue;
+
+      const container = n.containerPath;
+      if (n.containerText.length > 0) {
+        if (container === null || claimedContainers.has(container)) continue;
+      }
 
       const prices = parsePrices(t);
       if (prices.length < 2) continue;
@@ -65,6 +85,7 @@ export const framingDetector: Detector = {
       if (percentChosenAndFlatters === 0 && absoluteChosenAndFlatters === 0) continue;
 
       seen.add(n.selectorPath);
+      if (n.containerText.length > 0 && container !== null) claimedContainers.add(container);
 
       out.push(
         candidate(
@@ -84,6 +105,8 @@ export const framingDetector: Detector = {
           },
           WEIGHTS,
           [showsPercent ? "percent-framing" : "absolute-framing"],
+          // Quote what was SCORED — the container — not the span it happened to attach to.
+          n.containerText.length > 0 ? n.containerText : undefined,
         ),
       );
     }

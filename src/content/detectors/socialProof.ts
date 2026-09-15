@@ -32,9 +32,19 @@ const COUNTER_PATTERNS: readonly RegExp[] = [
   /\b(\d{1,4})\s+(?:people|shoppers|customers|others)\s+(?:have\s+)?(?:bought|purchased|ordered|grabbed|claimed)\b/,
   /**
    * "LIVE • 279" — a bare viewer count on a live-shopping card, with no verb and no noun.
-   * Requires the LIVE marker: a naked number is not a claim about anybody.
+   *
+   * Written for that one observed string, and the live audit caught it over-firing within
+   * the day: `\blive\b[^a-z0-9]{0,4}(\d{2,6})\b` also matched "From Day One - Los Angeles
+   * Live 2026" and "Pace Live 768 followers" on Eventbrite. A year is not a viewer count and
+   * neither is a follower total.
+   *
+   * So the separator has to be the bullet or pipe a live-shopping widget actually uses — a
+   * space is what prose uses — years are excluded outright, and a following "followers" or
+   * "subscribers" disqualifies it. A rule generalised from a single example deserves the
+   * narrowest form that still covers the example.
    */
-  /\blive\b[^a-z0-9]{0,4}(\d{2,6})\b/i,
+  /\blive\b\s*[•·|‧∙]\s*(\d{2,6})\b(?!\s*(?:followers?|subscribers?|likes?))/i,
+  /\blive\b[^a-z0-9]{0,4}(\d{2,6})\s*(?:watching|viewers?|viewing)\b/i,
   /\bbooked\s+\d+\s+times? in (?:the )?last\b/,
   /**
    * Past tense, and a recency window without the definite article. All three scored zero:
