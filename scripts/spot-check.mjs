@@ -176,15 +176,37 @@ for (const site of sites) {
     }
   }
 
-  if (found.length > 0) {
-    writeFileSync(OUT, found.map((f) => JSON.stringify({ site, ...f })).join("\n") + "\n", {
-      flag: "a",
-    });
+  /**
+   * One row per DISTINCT claim, not per log line.
+   *
+   * The detector logs its findings once per pass and a page left open runs many, so glossier
+   * produced 37 identical rows for one "Regular price $84" badge. §10 counts false positives
+   * out of a detector's FIRINGS, and a wrong claim repeated by the logger is one wrong claim
+   * — counting it 37 times would make a single mistake look like a catastrophe and a single
+   * correct detection look like a triumph.
+   *
+   * The event store is unaffected: events are written at digest time, not per pass. This is
+   * a property of the audit harness, not of the product.
+   */
+  const distinct = new Map();
+  for (const f of found) {
+    const key = `${f.patternId}|${f.evidence}|${new URL(f.url).pathname}`;
+    const prev = distinct.get(key);
+    if (prev) prev.loggedTimes++;
+    else distinct.set(key, { site, ...f, loggedTimes: 1 });
   }
-  firings += found.length;
-  console.log(`  ${site.padEnd(22)} ${String(found.length).padStart(4)} firing(s)`);
+  const rows = [...distinct.values()];
+
+  if (rows.length > 0) {
+    writeFileSync(OUT, `${rows.map((f) => JSON.stringify(f)).join("\n")}\n`, { flag: "a" });
+  }
+  firings += rows.length;
+  console.log(
+    `  ${site.padEnd(22)} ${String(rows.length).padStart(4)} distinct claim(s) from ` +
+      `${found.length} log line(s)`,
+  );
   await page.close();
 }
 
 await ctx.close();
-console.log(`\n${firings} firing(s) across ${pagesVisited} page(s) -> ${OUT}`);
+console.log(`\n${firings} distinct claim(s) across ${pagesVisited} page(s) -> ${OUT}`);

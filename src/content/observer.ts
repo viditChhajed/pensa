@@ -141,12 +141,35 @@ export class PageObserver {
    * the viewport. Read here in the observer, where reading layout is already happening.
    */
   private looksModal(el: Element): boolean {
+    /**
+     * A modal has to be SHOWING. This check did not require that, and the cost was measured:
+     * `nagging.repeat_interstitial` fired 22 times on a single Glossier session, reporting
+     * "7 interstitials" on a page that showed none.
+     *
+     * Two faults, both the same shape — treating presence in the DOM as presence on screen:
+     *
+     *   `querySelector('dialog')` matched any element CONTAINING a dialog anywhere in its
+     *   subtree, and sites keep closed dialogs mounted permanently. Every wrapper inserted
+     *   above one therefore counted as an interstitial appearing.
+     *
+     *   Nothing was checked for visibility at all, so a `display:none` overlay, an unopened
+     *   `<dialog>`, and a real interstitial were indistinguishable.
+     *
+     * Nagging is a claim that a person was interrupted repeatedly. Counting things they were
+     * never shown does not weaken the claim, it fabricates it.
+     */
+    if (!this.isShowing(el)) return false;
+
     const role = el.getAttribute("role");
     if (role === "dialog" || role === "alertdialog") return true;
-    if (el.tagName === "DIALOG") return true;
+    if (el.tagName === "DIALOG") return (el as HTMLDialogElement).open === true;
     if (el.getAttribute("aria-modal") === "true") return true;
 
-    if (el.querySelector('[role="dialog"], [role="alertdialog"], dialog')) return true;
+    // A dialog inside this element counts only if THAT dialog is itself open and showing.
+    for (const inner of el.querySelectorAll('[role="dialog"], [role="alertdialog"], dialog')) {
+      if (inner.tagName === "DIALOG" && (inner as HTMLDialogElement).open !== true) continue;
+      if (this.isShowing(inner)) return true;
+    }
 
     try {
       const cs = getComputedStyle(el);
@@ -154,6 +177,19 @@ export class PageObserver {
       const r = el.getBoundingClientRect();
       const coverage = (r.width * r.height) / Math.max(1, window.innerWidth * window.innerHeight);
       return coverage > 0.25 && Number.parseInt(cs.zIndex || "0", 10) > 100;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Rendered and not hidden. Cheap, and the thing `looksModal` was missing entirely. */
+  private isShowing(el: Element): boolean {
+    try {
+      const cs = getComputedStyle(el);
+      if (cs.display === "none" || cs.visibility === "hidden") return false;
+      if (Number.parseFloat(cs.opacity || "1") < 0.05) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 8 && r.height > 8;
     } catch {
       return false;
     }
