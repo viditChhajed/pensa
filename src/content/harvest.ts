@@ -263,6 +263,13 @@ const TRIGGER_WORDS = [
   "selling out",
   /** "Success! Free Shipping Unlocked" — the threshold-met message carries no amount. */
   "unlocked",
+  /** Past-tense, consequence-shaped and capacity copy, none of which had a trigger word. */
+  "viewed",
+  "want this",
+  "space limited",
+  "spaces are limited",
+  "price increases",
+  "prices go up",
 ];
 
 export function classifyText(text: string): number {

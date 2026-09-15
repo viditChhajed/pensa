@@ -41,7 +41,11 @@ const INSTALLMENT_PATTERNS: readonly RegExp[] = [
    * shape of blind spot a lexicon written from examples reliably produces.
    */
   /\bbuy now,?\s*pay later\b/,
-  /\bpay (?:over time|later|in instal?ments)\b/,
+  /\bpay (?:over time|later)\b/,
+  /** "Pay in full or in installments" — the choice framed, with no count and no amount. */
+  // `instal?ments` matches "instalments" but NOT "installments" — the l is doubled, not
+  // optional. My own typo, and it silently made the rule unreachable on the US spelling.
+  /\bin instal{1,2}ments\b/,
   /\bor\s+\d\s*x\s*[$£€]/,
   /\bas low as\s*[$£€]?\s*[\d.,]+\s*\/\s*(?:mo|month)\b/,
   /\bfrom\s*[$£€]\s*[\d.,]+\s*\/\s*(?:mo|month)\b/,

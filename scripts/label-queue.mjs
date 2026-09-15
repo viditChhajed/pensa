@@ -35,6 +35,7 @@ export const TRAINABLE = [
       // Supply pressure with no stock vocabulary at all. Both were invisible to the
       // prefilter until they were added here, which is what this list is for.
       "These will fill up fast",
+      "Space Limited",
     ],
     no: ["3 sizes available", "In stock", "Ships in 3 days"],
     strict: [
@@ -59,7 +60,14 @@ export const TRAINABLE = [
     label: "Countdown or deadline",
     question: "Does this put a deadline on the decision?",
     mechanism: "A visible deadline shortens deliberation and pushes a decision toward now.",
-    yes: ["Sale ends in 02:14:33", "Offer expires tonight", "Ends Sunday — 2 days left"],
+    yes: [
+      "Sale ends in 02:14:33",
+      "Offer expires tonight",
+      "Ends Sunday — 2 days left",
+      "thru Sep 17",
+      // A deadline stated as a consequence rather than an ending.
+      "Price increases after 9/24",
+    ],
     no: ["Delivered in 2-3 days", "Open until 9pm", "30-day returns"],
     /**
      * A bare clock time is NOT a countdown. Treating it as one recruited 75 Ticketmaster and
@@ -95,7 +103,16 @@ export const TRAINABLE = [
     label: "What other people are doing",
     question: "Is this telling you about other shoppers' behaviour?",
     mechanism: "Seeing what others do is used as evidence about what is correct to do.",
-    yes: ["23 people are viewing this", "14 sold in the last hour", "Trending — 200 bought today"],
+    yes: [
+      "23 people are viewing this",
+      "14 sold in the last hour",
+      "Trending — 200 bought today",
+      // Past tense, a recency window with no definite article, and a claim with no number
+      // at all. All three scored zero; none carried a prefilter trigger word.
+      "181 people have viewed this in the last 3 hours",
+      "Booked 22 times in last 24 hr",
+      "People want this.",
+    ],
     no: ["4.5 stars, 230 reviews", "Customer favourite", "Staff pick"],
     strict: [
       /\b\d+\s+(?:people|shoppers|others)\b/i,
@@ -174,6 +191,7 @@ export const TRAINABLE = [
       "Pay in 4 with Klarna",
       "From $12/mo with Affirm",
       "starting at $38/mo.",
+      "Pay in full or in installments",
       // The category's own name, and it carries no digit — so every pattern that required
       // one missed it, and the prefilter dropped it before that even mattered.
       "Buy now, pay later",

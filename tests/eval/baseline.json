@@ -1,8 +1,18 @@
 {
-  "scarcity.stock": 0.643,
-  "urgency.countdown": 0.794,
-  "social_proof.live_activity": 0.048,
-  "confirmshaming.decline_copy": 0,
-  "goal_gradient.threshold": 0.597,
-  "bnpl.installments": 1
+  "recall": {
+    "scarcity.stock": 0.444,
+    "urgency.countdown": 0.478,
+    "social_proof.live_activity": 1,
+    "confirmshaming.decline_copy": 0,
+    "goal_gradient.threshold": 0.833,
+    "bnpl.installments": 1
+  },
+  "positives": {
+    "scarcity.stock": 9,
+    "urgency.countdown": 23,
+    "social_proof.live_activity": 5,
+    "confirmshaming.decline_copy": 0,
+    "goal_gradient.threshold": 18,
+    "bnpl.installments": 4
+  }
 }

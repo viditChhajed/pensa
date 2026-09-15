@@ -155,11 +155,14 @@ describe.skipIf(!available)("detectors against real labelled copy", () => {
      * A 0.02 tolerance absorbs the jitter from re-labelling; anything larger is a regression
      * and should be argued for rather than absorbed.
      */
-    const current: Record<string, number> = {};
+    const recall: Record<string, number> = {};
+    const positives: Record<string, number> = {};
     for (const pattern of TRAINABLE) {
       const s = results.get(pattern.id) as Scores;
-      current[pattern.id] = Number(rate(s.truePosLog, s.positives).toFixed(3));
+      recall[pattern.id] = Number(rate(s.truePosLog, s.positives).toFixed(3));
+      positives[pattern.id] = s.positives;
     }
+    const current = { recall, positives };
 
     if (!existsSync(BASELINE)) {
       writeFileSync(BASELINE, `${JSON.stringify(current, null, 2)}\n`);
@@ -167,10 +170,36 @@ describe.skipIf(!available)("detectors against real labelled copy", () => {
       return;
     }
 
-    const baseline = JSON.parse(readFileSync(BASELINE, "utf8")) as Record<string, number>;
+    const baseline = JSON.parse(readFileSync(BASELINE, "utf8")) as typeof current;
+
+    /**
+     * A recall rate is only comparable against the SAME labelled set.
+     *
+     * The corpus grew and the label file was rebuilt underneath a recorded baseline, and the
+     * ratchet duly reported "recall fell: scarcity 0.64 -> 0.44, urgency 0.79 -> 0.48". No
+     * detector had changed. The denominators had: fewer positives in the file meant a
+     * different question was being asked, and the guard could not tell the difference
+     * between a worse detector and a different corpus.
+     *
+     * A guard that cries regression when nothing regressed gets ignored, and then it is not
+     * a guard. So the baseline records its positive counts, and a mismatch says re-baseline
+     * rather than blaming the detectors.
+     */
+    const shifted = Object.entries(baseline.positives ?? {})
+      .filter(([id, was]) => (positives[id] ?? 0) !== was)
+      .map(([id, was]) => `${id}: ${was} -> ${positives[id] ?? 0} positives`);
+
+    expect(
+      shifted,
+      "the LABEL SET changed, so these recall rates are not comparable:\n    " +
+        `${shifted.join("\n    ")}\n` +
+        "  This is not a detector regression. Re-record tests/eval/baseline.json against the " +
+        "new labels, then compare.",
+    ).toEqual([]);
+
     const regressions: string[] = [];
-    for (const [id, was] of Object.entries(baseline)) {
-      const now = current[id] ?? 0;
+    for (const [id, was] of Object.entries(baseline.recall ?? {})) {
+      const now = recall[id] ?? 0;
       if (now < was - 0.02) regressions.push(`${id}: ${was.toFixed(2)} -> ${now.toFixed(2)}`);
     }
 

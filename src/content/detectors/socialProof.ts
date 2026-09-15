@@ -35,7 +35,25 @@ const COUNTER_PATTERNS: readonly RegExp[] = [
    * Requires the LIVE marker: a naked number is not a claim about anybody.
    */
   /\blive\b[^a-z0-9]{0,4}(\d{2,6})\b/i,
-  /\bbooked\s+\d+\s+times? in the last\b/,
+  /\bbooked\s+\d+\s+times? in (?:the )?last\b/,
+  /**
+   * Past tense, and a recency window without the definite article. All three scored zero:
+   *
+   *   "181 people have viewed this in the last 3 hours"  — the rule wanted "are viewing"
+   *   "Booked 22 times in last 24 hr"                    — the rule wanted "in THE last"
+   *   "31 sold today"                                    — no rule covered a bare day window
+   *
+   * A definite article is not a mechanism, and neither is a tense.
+   */
+  /\b(\d{1,5})\s+(?:other\s+)?(?:people|shoppers|customers|users|others)\s+(?:have\s+)?(?:viewed|looked at|watched|browsed)\b/,
+  /\b(\d{1,5})\s+(?:sold|bought|purchased|booked|ordered)\s+(?:today|this (?:hour|week)|in the past)\b/,
+  /**
+   * "People want this." — eBay's badge, with no number at all.
+   *
+   * Kept narrow deliberately: this exact claim about other shoppers' desire, not a general
+   * rule about the word "people", which appears in half the copy on the web.
+   */
+  /\bpeople want this\b/,
   /\bin high demand\b/,
   /\b(\d{1,4})\s+others? (?:are )?(?:looking|interested)\b/,
 ];

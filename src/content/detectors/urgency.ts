@@ -43,6 +43,12 @@ const DEADLINE_COPY = new RegExp(
     /\blast (?:chance|day|call|hours?)\b/,
     /\b(?:today|tonight) only\b/,
     /\bhurry\b/,
+    /**
+     * A deadline expressed as a consequence rather than an ending: "Price increases
+     * after 9/24". Nothing ends — the cost of waiting simply goes up, which is the same
+     * pressure stated the other way round.
+     */
+    /\bprices?\s+(?:go(?:es)? up|increases?|rises?)\s+(?:after|on|at)\b/,
   ]
     .map((r) => r.source)
     .join("|"),
