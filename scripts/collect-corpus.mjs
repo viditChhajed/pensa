@@ -140,7 +140,16 @@ const sites = typeof args.sites === "string" ? args.sites.split(",") : DEFAULT_S
 const pagesPerSite = Number(args.pages ?? 5);
 const delayMs = Number(args.delay ?? 1500);
 const OUT_DIR = resolve("corpus");
-const OUT = join(OUT_DIR, "candidates.jsonl");
+/**
+ * `--out` lets several crawlers run at once, each owning its own file.
+ *
+ * Sharding is by SITE, so no individual shop sees more traffic than a single-process run
+ * gave it — the parallelism is across shops, never within one. Separate files because the
+ * dedup set lives in memory per process: two processes appending to one file would each
+ * think they had seen only their own lines. `corpus:merge` folds them together and dedupes
+ * properly afterwards.
+ */
+const OUT = join(OUT_DIR, typeof args.out === "string" ? args.out : "candidates.jsonl");
 
 // ---------------------------------------------------------------- scrub
 

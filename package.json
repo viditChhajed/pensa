@@ -21,7 +21,8 @@
     "corpus:train": "tsx scripts/train-classifier.ts",
     "corpus:ingest": "node scripts/ingest-auto-labels.mjs",
     "corpus:export": "node scripts/export-for-labelling.mjs",
-    "eval:detectors": "vitest run tests/eval/detector-recall.test.ts"
+    "eval:detectors": "vitest run tests/eval/detector-recall.test.ts",
+    "corpus:merge": "node scripts/merge-corpus.mjs"
   },
   "author": "",
   "license": "ISC",
