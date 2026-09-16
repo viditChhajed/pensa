@@ -17,13 +17,13 @@ dialog no automation can accept. (The privacy-policy URL is live — see
 | | |
 |---|---|
 | Patterns shipped | **20** — 14 on-page + 2 cross-stage + 4 derived from visit history |
-| Unit tests | 431 |
+| Unit tests | 478 |
 | Real-browser e2e | 43 passing, 3 skipped (sites unreachable from this network) |
 | Bundle | 119 KB gzipped across all bundles; 28 KB is the content script, which is the number that matters on every page load |
 | `host_permissions` | empty — the build throws otherwise, asserted on the built manifest |
 | Network requests | **zero with telemetry off** (the shipped default), asserted; with it on, the only reachable address is the declared endpoint, also asserted |
 | Card placement | 12/12 samples across 4 live retailers × 3 scroll depths |
-| Detector recall | measured against 2,639 labelled snippets from 36 shops — `npm run eval:detectors` |
+| Detector recall | measured against 29,742 label rows over 4,957 distinct snippets from 44 shops — `npm run eval:detectors`. The corpus itself is **not distributed** (it is real retailer page text); see [CORPUS.md](CORPUS.md) to rebuild it, and `tests/eval/baseline.json` for the committed numbers |
 | Manual precision | 0 confirmed false positives in ~44 firings across 6 retailers — see the caveat below |
 
 **On the page (14):** `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
@@ -54,8 +54,8 @@ scoring real pages would be worse than no classifier.
 
 ### Measured on real copy
 
-`npm run eval:detectors` runs the shipped detectors over 2,639 labelled snippets collected
-from 36 shops and reports precision and recall per pattern. Before that instrument existed,
+`npm run eval:detectors` runs the shipped detectors over 4,957 labelled snippets collected
+from 44 shops and reports precision and recall per pattern. Before that instrument existed,
 every number this project had came from fixtures written against lexicons written from the
 same imagination — they agreed with each other and with nothing else.
 

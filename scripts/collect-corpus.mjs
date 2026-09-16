@@ -353,8 +353,6 @@ async function provokeModals(page) {
   }
 }
 
-const ATC_NAME = /add to (?:cart|bag|basket)|^add$|^buy now$/i;
-
 /**
  * Click add-to-cart, selecting a variant first if the button will not engage without one.
  *

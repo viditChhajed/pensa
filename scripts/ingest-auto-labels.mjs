@@ -148,10 +148,12 @@ if (missing.length > 0) {
  */
 for (const row of out) existing.set(`${row.patternId}|${row.key}`, row);
 const merged = [...existing.values()];
-writeFileSync(
-  LABELS,
-  merged.map((r) => JSON.stringify(r)).join("\n") + (merged.length ? "\n" : ""),
-);
+// The rename is the point. The previous version wrote straight to LABELS, and the comment
+// above claimed a temp file that the code never created — so the protection this paragraph
+// describes did not exist until now.
+const tmp = `${LABELS}.tmp`;
+writeFileSync(tmp, merged.map((r) => JSON.stringify(r)).join("\n") + (merged.length ? "\n" : ""));
+renameSync(tmp, LABELS);
 
 console.log(`\n  ${items} items labelled, ${unsure} marked unsure and skipped.`);
 console.log(`  ${positives} positive labels across ${VALID.size} patterns.`);

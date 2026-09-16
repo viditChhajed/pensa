@@ -4,9 +4,16 @@
 
 ## The short version
 
-This extension sends nothing anywhere. It has no server, no analytics, no account, and no
-network requests of any kind. Everything it notices about a page is processed on your device
-and stays on your device.
+This extension sends nothing anywhere. It has no analytics, no account, and makes no network
+requests of any kind. Everything it notices about a page is processed on your device and
+stays on your device.
+
+There is no server behind the build you install: the telemetry endpoint is a build-time
+constant and it is empty, which is what the "zero outbound requests" test asserts against the
+compiled bundles. The public repository does contain a `server/` directory — a sink that
+would accept anonymous, k-anonymised counts if telemetry were ever switched on and an
+endpoint compiled in. Nothing is deployed there, and no shipped build can reach it. It is in
+the open so the shape of what *would* be sent can be read rather than trusted.
 
 You can verify this rather than take our word for it: open DevTools, go to the Network tab,
 and browse with the extension enabled. There will be no requests from it.

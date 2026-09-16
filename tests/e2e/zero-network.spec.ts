@@ -21,8 +21,6 @@ import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, test } from "@playwright/test";
 import { TELEMETRY_ENDPOINT } from "@/shared/constants";
 
-const PAGES = resolve("tests/e2e/pages");
-
 let context: BrowserContext;
 let extensionId: string;
 
@@ -91,7 +89,9 @@ async function browseSession(): Promise<void> {
     await page.waitForTimeout(1200);
     // Drive a real add-to-cart and a checkout click, the two digest triggers.
     await page.evaluate(() => {
-      document.querySelectorAll("button").forEach((b) => b.click());
+      document.querySelectorAll("button").forEach((b) => {
+        b.click();
+      });
       window.scrollTo(0, document.body.scrollHeight);
     });
     await page.waitForTimeout(800);

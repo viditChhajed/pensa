@@ -21,8 +21,6 @@ import { type BrowserContext, chromium, expect, type Page, test } from "@playwri
 let context: BrowserContext;
 let extensionId: string;
 
-const DAY = 24 * 60 * 60 * 1000;
-
 test.beforeAll(async () => {
   const build = mkdtempSync(join(tmpdir(), "patterns-retain-"));
   cpSync(resolve(".output/chrome-mv3"), build, { recursive: true });

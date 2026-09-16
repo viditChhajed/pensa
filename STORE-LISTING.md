@@ -301,7 +301,7 @@ be judged. Flipping to Public later is one setting.
 
 ## Pre-submission checklist
 
-- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green — 469 unit + eval, 43 e2e
+- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green — 478 unit + eval, 43 e2e
 - [x] `host_permissions` empty in the built manifest (CI-enforced, checked: `[]`)
 - [x] Icons present at all four sizes
 - [x] Privacy policy URL live and reachable

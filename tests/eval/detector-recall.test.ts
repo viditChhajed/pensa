@@ -55,12 +55,39 @@ interface Scores {
 
 const available = existsSync(LABELS);
 
+/**
+ * A missing corpus must be LOUD, not silent.
+ *
+ * `corpus/` is gitignored on purpose — see CORPUS.md — so on a fresh clone this file is
+ * absent and every case below used to skip. vitest then exited 0 having asserted nothing,
+ * and the run read as green. That matters more once the repo is public than it did while it
+ * was mine: the recall table in the README cites this command by name, so the one number a
+ * sceptical reader would want to reproduce was the one that quietly measured nothing.
+ *
+ * So: one failing test that says what to run, instead of a suite that skips.
+ */
+describe.skipIf(available)("detector recall corpus", () => {
+  it("is present — run `npm run corpus:collect` then `npm run label` to build it", () => {
+    expect(
+      available,
+      `corpus/labels.jsonl is missing, so recall was not measured. The corpus is not ` +
+        `distributed (it holds real retailer page text); see CORPUS.md to rebuild it. ` +
+        `tests/eval/baseline.json records the numbers from the last run that had it.`,
+    ).toBe(true);
+  });
+});
+
 describe.skipIf(!available)("detectors against real labelled copy", () => {
-  const rows: Row[] = readFileSync(LABELS, "utf8")
-    .split("\n")
-    .filter(Boolean)
-    .map((l) => JSON.parse(l) as Row)
-    .filter((r) => r.label === 0 || r.label === 1);
+  // Guarded, not just skipped. A describe body runs at COLLECTION time, before skipIf is
+  // consulted, so an unguarded read here throws ENOENT on a fresh clone and buries the
+  // explanatory failure above under a stack trace about a missing file.
+  const rows: Row[] = available
+    ? readFileSync(LABELS, "utf8")
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => JSON.parse(l) as Row)
+        .filter((r) => r.label === 0 || r.label === 1)
+    : [];
 
   /**
    * Score every distinct snippet ONCE against every detector, rather than once per label row.

@@ -25,7 +25,7 @@
     "corpus:merge": "node scripts/merge-corpus.mjs",
     "spot:check": "node scripts/spot-check.mjs"
   },
-  "author": "",
+  "author": "Vidit Chhajed",
   "license": "ISC",
   "type": "module",
   "private": true,

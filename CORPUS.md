@@ -60,7 +60,7 @@ npm run corpus:ingest     # merge into corpus/labels.jsonl
 
 Hand-labelling 500 items was the original plan and it was the wrong ask: most snippets are
 obvious, and a person clicking "no" four hundred times is expensive attention spent where it
-adds nothing. The automated pass reads **every message-shaped snippet** — 2,639 of them,
+adds nothing. The automated pass reads **every message-shaped snippet** — 4,957 of them,
 capped at 120 per site so eBay does not teach the model its house style — and asks which of
 the six patterns each one is, if any.
 

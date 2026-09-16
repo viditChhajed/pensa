@@ -38,15 +38,28 @@ are different facts — see plan §1.3.
 - On `https://www.etsy.com` it should be **colour**.
 - On `https://www.chase.com` it should be **grey and never offer enablement** (denylist).
 
-## 3. Real-retailer spot-check (plan §10) — NOT YET RUN
+## 3. Real-retailer spot-check (plan §10) — AUTOMATED PASS DONE, HUMAN PASS NOT RUN
 
 30–40 pages across ≥6 retailers, hand-tallying each detector's firings as correct or
 incorrect. Any detector with more than ~4 false positives gets its threshold raised or is
 disabled by default. Record the tally in `EVAL.md`.
 
-Until this runs, **no precision claim may be made about this extension.** Thresholds are
-hand-set guesses, marked `hand_set` in the schema so they cannot be mistaken for calibrated
-values.
+**An automated pass now exists and has run** — `npm run spot:check` drives the real build
+over live retailer pages and records every firing with the text it matched; the tally is in
+[EVAL.md](EVAL.md). It caught real false positives that the labelled corpus could not, and
+it is the reason two detectors were changed before launch.
+
+It is **not** this section. The automated pass reads the detector's own log; a person reads
+the page. It cannot tell you that a claim was technically true and still useless to a shopper
+— the failure that actually drives uninstalls — and it never sees the card, only the firing
+behind it. So what stands:
+
+- A precision claim about *firings*, from the automated pass, is supported and is stated in
+  EVAL.md with that provenance attached.
+- A claim about what the extension is like to *use* is not, until a human does this pass.
+
+Thresholds remain hand-set guesses either way, marked `hand_set` in the schema so they cannot
+be mistaken for calibrated values.
 
 ## 4. Zero-egress confirmation
 

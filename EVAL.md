@@ -209,7 +209,7 @@ Ranked by how much it matters, not by how loud it was.
 **1. Every miss is a lexicon written against imagined copy.** Seven misses, seven
 phrasings I invented that no real site uses:
 
-> **MEASURED — 2026-09-14.** 2,639 real snippets from 36 shops were labelled and
+> **MEASURED — 2026-09-14.** 4,957 real snippets from 44 shops were labelled and
 > compared against the shipped lexicons. The finding is much larger than run 1
 > suspected:
 >
@@ -239,7 +239,7 @@ phrasings I invented that no real site uses:
 > sold out!", "starting at $38/mo.", "I don't want my mystery offer".
 >
 > **FIXED — 2026-09-14, same day.** The lexicons were rewritten against the real
-> copy, measured by `npm run eval:detectors` on the same 2,639 snippets:
+> copy, measured by `npm run eval:detectors` on the same 4,957 snippets:
 >
 > | pattern | recall before | recall after | precision after |
 > |---|---|---|---|

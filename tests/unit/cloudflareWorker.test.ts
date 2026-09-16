@@ -20,7 +20,7 @@ function fakeD1() {
   const bound: Bound[] = [];
   const db = {
     prepare(query: string) {
-      const make = (values: unknown[] = []) => ({
+      const make = (_values: unknown[] = []) => ({
         bind: (...v: unknown[]) => {
           bound.push({ query, values: v });
           return make(v);
