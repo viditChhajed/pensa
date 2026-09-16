@@ -217,17 +217,25 @@ counts is the kind of mismatch that fails review.
 *If `TELEMETRY_ENDPOINT` in `src/shared/constants.ts` is empty* (the shipped default): tick
 nothing. Nothing is transmitted, and four e2e tests assert it.
 
-*If an endpoint is configured*: the extension collects an optional, off-by-default anonymous
-count. Disclose it, and use this wording:
+*If an endpoint is configured* (the build you upload once the sink is deployed): tick
+**Web history**. The shop's domain is browsing activity, and the listing must say so. Use this
+wording:
 
 ```
-Optional and off by default. If a user turns it on, the extension sends a count of which
-persuasion technique was seen, at which stage of a checkout, in which CATEGORY of shop, in
-which hour. It sends no web address, no page content, no prices, no identifiers and no
-precise time, and it sends nothing at all for sites outside the bundled list. Counts are
-batched and withheld until at least 20 reports share the same shape. The user can view the
-exact records awaiting transmission in the extension's settings before any are sent.
+Optional and off by default; the user must switch it on in Settings. When on, the extension
+reports which persuasion technique was seen on which shop (the shop's main domain only, e.g.
+shein.com), at which stage of checkout, and on which day. It never sends the page address,
+product, search, page text, prices, account details, any identifier for the user, or any time
+more precise than the day. Only pages the extension has judged to be shops can be reported.
+Reports are batched on a six-hour timer and stored only as aggregate counts. Users can view
+the exact reports awaiting transmission before any are sent, and switching the setting off
+deletes anything unsent. The data is used to measure how common these techniques are.
 ```
+
+Chrome Web Store user-data policy also requires the in-product consent to be prominent and
+affirmative before collection starts. Settings → "Help measure these techniques" is that
+consent: unticked by default, and it names the shop-level collection in plain words rather
+than calling it anonymous statistics.
 
 Certify in both cases: does not sell data, does not use it for unrelated purposes, does not
 use it for creditworthiness.

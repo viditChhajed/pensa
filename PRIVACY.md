@@ -4,19 +4,20 @@
 
 ## The short version
 
-This extension sends nothing anywhere. It has no analytics, no account, and makes no network
-requests of any kind. Everything it notices about a page is processed on your device and
-stays on your device.
+By default this extension sends nothing anywhere. It has no analytics and no account, and with
+the default settings it makes no network requests of any kind. Everything it notices about a
+page is processed on your device and stays on your device.
 
-There is no server behind the build you install: the telemetry endpoint is a build-time
-constant and it is empty, which is what the "zero outbound requests" test asserts against the
-compiled bundles. The public repository does contain a `server/` directory — a sink that
-would accept anonymous, k-anonymised counts if telemetry were ever switched on and an
-endpoint compiled in. Nothing is deployed there, and no shipped build can reach it. It is in
-the open so the shape of what *would* be sent can be read rather than trusted.
+The one exception is a setting you have to switch on yourself: sharing which shops use which
+techniques, described in full below. It is off unless you turn it on.
+
+With sharing off, nothing reaches any server — that is what the "zero outbound requests" test
+asserts against the compiled extension. With sharing on, reports go to exactly one address, a
+counting service run by this project whose source is in the public repository's `server/`
+directory, so what it accepts and stores can be read rather than trusted.
 
 You can verify this rather than take our word for it: open DevTools, go to the Network tab,
-and browse with the extension enabled. There will be no requests from it.
+and browse with the extension enabled and sharing off. There will be no requests from it.
 
 ## What the extension does
 
@@ -75,9 +76,9 @@ does with it, and that is public and testable:
   any denied host before it reads anything. The list is in `src/shared/urlScore.ts` and the
   build fails if it is empty.
 - **Only `https` sites.** Plain `http` pages are outside the requested permission entirely.
-- **It still sends nothing anywhere.** Broad read access and zero network access are separate
-  questions, and the second answer has not changed. That is asserted against the compiled
-  bundles by an automated test, not merely stated here.
+- **It sends nothing anywhere unless you switch sharing on.** Broad read access and network
+  access are separate questions. With the default settings there are zero outbound requests,
+  asserted against the compiled bundles by an automated test, not merely stated here.
 - **It records nothing about a page where it found nothing.** Access to read a page is not a
   record of having read it.
 
@@ -85,14 +86,18 @@ You can turn Vero off for any individual site, or entirely, from its Settings pa
 also remove the permission wholesale by uninstalling, and Chrome lets you restrict any
 extension's site access from its own extension settings, independently of anything Vero says.
 
-## Optional telemetry
+## Optional: helping measure these techniques
 
-There is a setting for anonymous, aggregate telemetry. **It is off by default and there is no
-pre-checked box.** While it is off, nothing is transmitted and nothing is even recorded for
-transmission — the queue is not filled and then withheld, because a queue that accumulates
+There is a setting to share which shops use which techniques. **It is off by default and there
+is no pre-checked box.** While it is off, nothing is transmitted and nothing is even recorded
+for transmission — the queue is not filled and then withheld, because a queue that accumulates
 while you have said no is one that would empty the moment you said yes.
 
-If you switch it on, each count carries exactly seven fields and no others:
+**If you switch it on, it names the shop.** That is its purpose: to build a picture, shop by
+shop, of how often these techniques are used. A report says *"someone saw a countdown on
+shein.com today."* It is sent to a server run by this project and stored there.
+
+Each report carries exactly eight fields and no others:
 
 | | |
 |---|---|
@@ -100,34 +105,57 @@ If you switch it on, each count carries exactly seven fields and no others:
 | detector id | which rule matched |
 | confidence quartile | 1–4, never the score |
 | funnel stage | browse / product / cart / checkout / payment |
-| site **category** | e.g. `ota_travel` — never the site |
+| **shop** | the main domain only, e.g. `shein.com` — never `us.shein.com/products/123` |
+| shop category | e.g. `fast_fashion`, or `other` |
 | rule pack version | |
-| hour | epoch hours, never a timestamp |
+| **day** | the date, never a time |
 
-A count says *"someone saw a countdown, on a travel site, in this hour."* Absent by
-construction: the web address, the page path, the session id, any page text, any price, any
-precise time, anything identifying you. The record type is declared `.strict()`, so an
-accidentally added field throws rather than being sent.
+Never included: the page, the product, the search, the path or the full web address; any page
+text or prices; your account, name, email, or any identifier for you or your browser; and any
+time more precise than the day. The record type is declared `.strict()` in the extension and
+the server independently rejects any report with a field outside that list, so an accidentally
+added field is refused at both ends rather than stored.
 
-Four further limits, each enforced in code rather than promised here:
+The limits, each enforced in code rather than promised here:
 
-- **Counts are sent on a six-hour timer, never when something is found.** A request timed to
-  a detection would reveal when you were shopping even though the payload cannot say where.
-- **A batch is held until at least 20 reports share its shape.** A count only you could have
-  produced is not anonymous however few fields it carries.
-- **Nothing is sent for a site outside the bundled list.** The category tag is what makes a
-  count anonymous, and an unlisted site has no category.
+- **Only shops can be reported.** Vero reads each page and decides whether it is selling
+  something before it does anything else. A detection — and therefore a report — can only
+  exist on a page that passed that check. A site you visit that is not a shop is never
+  reported, whatever it is.
+- **The day, not the time.** A shop plus an exact time is far easier to tie to one person's
+  browsing than a shop plus a date, and measuring how common a technique is needs no more
+  than the date.
+- **Sent on a timer, never at the moment something is found.** Reports go out in batches every
+  six hours, so the timing of a request does not reveal when you were shopping.
+- **The server stores counts, not reports.** Incoming reports are added into running totals
+  keyed by shop, technique and day. No individual report is kept, and there is no column that
+  could hold who sent it.
+- **The service does not record who sent anything.** It reads nothing from a request except
+  the report itself, never stores your IP address, and has per-request logging switched off
+  in its deployed configuration. Like any website, the request still passes through the
+  hosting provider's network on its way in; nothing about you is kept once the report has
+  been counted.
 - **Switching the setting off deletes the queue immediately.** Not at the next send — data
   gathered under a permission you have withdrawn is not held pending a change of mind.
 
-You can see the exact rows that would be sent, verbatim, in **Settings → Anonymous statistics
-→ Show me exactly what would be sent**. Asking you to consent to a sentence about your data
-is not the same as showing you the data.
+You can see the exact reports that would be sent, verbatim, in **Settings → Help measure these
+techniques → Show me exactly what would be sent**. Asking you to consent to a sentence about
+your data is not the same as showing you the data.
+
+**What the collected data is used for.** Measuring how common persuasion techniques are, which
+shops use them, where in the checkout they appear, and how that changes over time. Findings
+may be published. Anything published is aggregated so that no single browsing session can be
+picked out: a shop and technique are only included once enough independent batches have
+reported them. The data is not sold, licensed, or used for advertising.
 
 ## Third parties
 
-There are none. No analytics providers, no error reporting services, no advertising networks,
-no data brokers. Nothing is sold, shared, or licensed, because nothing is collected.
+No analytics providers, no error reporting services, no advertising networks, no data brokers.
+Nothing is sold, shared, or licensed.
+
+If you switch sharing on, reports are received and stored on Cloudflare (Workers and D1), which
+hosts the counting service. Cloudflare processes that traffic as a hosting provider; it is not
+given the data for any purpose of its own.
 
 ## Children
 

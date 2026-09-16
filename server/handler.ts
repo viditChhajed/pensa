@@ -1,5 +1,5 @@
 /**
- * The telemetry sink (plan §11, §18G). NOT DEPLOYED — see server/README.md.
+ * The telemetry sink (plan §11, §18G). Per-site prevalence, record version 2.
  *
  * Written as `(Request) => Response` so it drops into Vercel Edge, Cloudflare Workers or
  * Deno Deploy unchanged, and is three lines from a Node server.
@@ -18,30 +18,43 @@ const CATEGORIES = new Set([
 ]);
 
 /**
- * The seven permitted keys, and nothing else.
+ * The eight permitted keys, and nothing else.
  *
  * Deliberately NOT imported from the extension's schema. This runs on a different machine
  * with a different deploy cadence, and the failure that matters is the extension gaining a
  * field and the server accepting it because they share a definition. Two independent lists
  * that must agree will diverge loudly; one shared list diverges silently.
+ *
+ * v2 added `site` and replaced `hourBucket` with `dayBucket`. The version is checked on the
+ * body, so a v1 client — which sends hour resolution and no site — is refused outright
+ * rather than half-accepted into a table whose columns now mean something else.
  */
 const ALLOWED_KEYS = [
   "patternId",
   "detectorId",
   "confidenceQuartile",
   "funnelStage",
+  "site",
   "originCategory",
   "rulepackVersion",
-  "hourBucket",
+  "dayBucket",
 ] as const;
+
+/**
+ * A bare registrable domain: labels of letters, digits and hyphens, at least one dot, no
+ * scheme, no port, no path, no userinfo. Anything else is either a bug or an attempt to put
+ * a URL — and whatever a URL carries — into a column meant to hold only a shop's name.
+ */
+const SITE = /^(?!-)[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+$/;
 
 export interface CountRow {
   patternId: string;
   detectorId: string;
   funnelStage: string;
+  site: string;
   originCategory: string;
   rulepackVersion: string;
-  hourBucket: number;
+  dayBucket: number;
   quartile: number;
 }
 
@@ -52,8 +65,8 @@ export interface Store {
 }
 
 const MAX_RECORDS_PER_BATCH = 500;
-/** An hour bucket outside this window is a clock that is wrong or a body that is invented. */
-const MAX_HOUR_SKEW = 24 * 90;
+/** A day bucket outside this window is a clock that is wrong or a body that is invented. */
+const MAX_DAY_SKEW = 90;
 
 function isValid(record: unknown): record is CountRow & { confidenceQuartile: number } {
   if (typeof record !== "object" || record === null) return false;
@@ -71,13 +84,14 @@ function isValid(record: unknown): record is CountRow & { confidenceQuartile: nu
   if (typeof r.rulepackVersion !== "string" || r.rulepackVersion.length > 32) return false;
   if (typeof r.funnelStage !== "string" || !FUNNEL_STAGES.has(r.funnelStage)) return false;
   if (typeof r.originCategory !== "string" || !CATEGORIES.has(r.originCategory)) return false;
+  if (typeof r.site !== "string" || r.site.length > 253 || !SITE.test(r.site)) return false;
   if (r.confidenceQuartile !== 1 && r.confidenceQuartile !== 2 && r.confidenceQuartile !== 3 && r.confidenceQuartile !== 4) {
     return false;
   }
-  if (typeof r.hourBucket !== "number" || !Number.isInteger(r.hourBucket)) return false;
+  if (typeof r.dayBucket !== "number" || !Number.isInteger(r.dayBucket)) return false;
 
-  const nowHour = Math.floor(Date.now() / 3_600_000);
-  if (Math.abs(nowHour - r.hourBucket) > MAX_HOUR_SKEW) return false;
+  const today = Math.floor(Date.now() / 86_400_000);
+  if (Math.abs(today - r.dayBucket) > MAX_DAY_SKEW) return false;
 
   return true;
 }
@@ -89,7 +103,7 @@ export async function handle(req: Request, store: Store): Promise<Response> {
    * The single most important line in this file: the IP is never read, never logged, never
    * stored, and never used as a key.
    *
-   * An IP plus an hour bucket plus a site category re-identifies a person, and it would
+   * An IP beside a site name and a day re-identifies a person, and it would
    * arrive by default in most hosting platforms' access logs. Turning those off is a DEPLOY
    * step this file cannot perform, and it is in server/README.md because a comment here
    * cannot enforce it either. Nothing in this handler reads `req.headers` for anything but
@@ -108,7 +122,7 @@ export async function handle(req: Request, store: Store): Promise<Response> {
 
   if (typeof body !== "object" || body === null) return new Response(null, { status: 400 });
   const { v, records } = body as { v?: unknown; records?: unknown };
-  if (v !== 1) return new Response(null, { status: 400 });
+  if (v !== 2) return new Response(null, { status: 400 });
   if (!Array.isArray(records)) return new Response(null, { status: 400 });
   if (records.length === 0 || records.length > MAX_RECORDS_PER_BATCH) {
     return new Response(null, { status: 400 });
@@ -124,9 +138,10 @@ export async function handle(req: Request, store: Store): Promise<Response> {
       patternId: record.patternId,
       detectorId: record.detectorId,
       funnelStage: record.funnelStage,
+      site: record.site,
       originCategory: record.originCategory,
       rulepackVersion: record.rulepackVersion,
-      hourBucket: record.hourBucket,
+      dayBucket: record.dayBucket,
       quartile: record.confidenceQuartile,
     });
   }

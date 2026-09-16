@@ -1,107 +1,111 @@
-# Deploying the telemetry sink — Cloudflare Workers + D1
+# Deploying the prevalence sink — Cloudflare Workers + D1
 
-Roughly 20 minutes. Nothing in the extension contacts this until the last step, and the
-extension you have built right now sends nothing at all.
+About ten minutes. Everything runs from the repo root. Nothing in the extension contacts this
+until step 6, and a plain `npm run build` still produces an extension that sends nothing.
 
-## 1. Create the database
-
-```bash
-npm i -g wrangler
-wrangler login
-wrangler d1 create vero-counts
-```
-
-Copy the `database_id` it prints into `server/cloudflare/wrangler.toml`.
-
-## 2. Create the table
+## 1. Log in (once)
 
 ```bash
-cd server/cloudflare
-wrangler d1 execute vero-counts --remote --file=./schema.sql
+npx wrangler login
 ```
 
-Two objects: a `counts` table whose primary key **is** the cohort — so no row finer-grained
-than the anonymity design permits can exist — and a `counts_public` view that hides any
-cohort with fewer than 20 reporters. **Read from the view.** A view that is the obvious thing
-to query is a better control than a rule somebody has to remember.
+This opens a browser for Cloudflare's own sign-in. It is the one step that has to be done by
+the account owner.
 
-## 3. Turn off request logging — do this before deploying, not after
-
-This is the step that matters most, and no code in this repo can do it for you.
-
-Cloudflare records the client IP in its own request logs by default. **An IP beside an hour
-bucket and a site category re-identifies a person**, which would quietly undo the entire
-design — the handler is careful never to read a header other than `content-type`, and a test
-enforces that, but none of it matters if the platform is logging the address anyway.
-
-In the Cloudflare dashboard, for this Worker:
-
-- **Logs → Logpush**: leave disabled.
-- **Workers → Observability**: leave disabled (`wrangler.toml` sets this, confirm it held).
-- **Analytics**: the aggregate request counts are fine. Do not enable anything per-request.
-- Do **not** add an Analytics Engine binding or a tail consumer.
-
-If you later want abuse protection, use Cloudflare's rate limiting rules, which act on a
-request without your Worker seeing or storing an identity. Never add one yourself: an
-identifier introduced for "abuse prevention" is still an identifier.
-
-## 4. Deploy
+## 2. Create the database
 
 ```bash
-wrangler deploy
+npx wrangler d1 create vero-counts
 ```
 
-Note the URL it prints, e.g. `https://vero-counts.<you>.workers.dev`.
+Copy the `database_id` it prints into `server/cloudflare/wrangler.toml`, replacing
+`PUT-YOUR-D1-DATABASE-ID-HERE`.
 
-## 5. Check it before pointing anything at it
+## 3. Create the table and the research views
 
 ```bash
-curl -i -X POST https://<your-worker>/counts \
-  -H 'content-type: application/json' \
-  -d '{"v":1,"records":[{"patternId":"scarcity.stock","detectorId":"scarcity.stock@1","confidenceQuartile":4,"funnelStage":"pdp","originCategory":"ota_travel","rulepackVersion":"1","hourBucket":'"$(( $(date +%s) / 3600 ))"'}]}'
+npm run sink:schema
 ```
 
-`204` means accepted. Then check it rejects what it should:
+This creates `counts` — whose primary key **is** the cohort (site, technique, stage, day…), so
+no row finer than that can exist — plus four views: `site_prevalence`, `pattern_reach`,
+`pattern_by_stage`, and `site_prevalence_public`. **Anything you publish comes from
+`site_prevalence_public`**, which only releases a shop/technique pair once 20 independent
+batches have reported it.
+
+## 4. Confirm request logging is off — before deploying
+
+The service never reads a header other than `content-type` (a unit test enforces it). That is
+worth nothing if the platform logs the address anyway, and **an IP beside a shop name and a
+day re-identifies a person.**
+
+- `server/cloudflare/wrangler.toml` sets `[observability] enabled = false`, which keeps
+  Workers Logs off. After deploying, confirm in the dashboard: **Workers → vero-counts →
+  Observability** shows disabled.
+- **Logpush**: leave disabled.
+- Do **not** add an Analytics Engine binding, a tail consumer, or `wrangler tail` sessions
+  left running.
+- Aggregate request counts in the dashboard are fine; nothing per-request.
+
+PRIVACY.md states that per-request logging is off. If any of the above is on, that sentence is
+false.
+
+## 5. Deploy
 
 ```bash
-# an extra field -> 422
-curl -s -o /dev/null -w '%{http_code}\n' -X POST https://<your-worker>/counts \
-  -H 'content-type: application/json' \
-  -d '{"v":1,"records":[{"patternId":"scarcity.stock","detectorId":"x","confidenceQuartile":4,"funnelStage":"pdp","originCategory":"ota_travel","rulepackVersion":"1","hourBucket":486111,"origin":"booking.com"}]}'
+npm run sink:deploy
 ```
 
-If that returns anything but `422`, stop — the strict check is not running, and the guarantee
-in PRIVACY.md is not being enforced.
+Note the URL, e.g. `https://vero-counts.<you>.workers.dev`.
 
-## 6. Point the extension at it
+## 6. Check it accepts what it should and refuses what it must
 
 ```bash
-TELEMETRY_ENDPOINT=https://<your-worker>/counts npm run build
+W=https://vero-counts.<you>.workers.dev
+DAY=$(( $(date +%s) / 86400 ))
+GOOD='{"patternId":"scarcity.stock","detectorId":"scarcity.stock@1","confidenceQuartile":4,"funnelStage":"pdp","site":"shein.com","originCategory":"fast_fashion","rulepackVersion":"1","dayBucket":'$DAY'}'
 ```
 
-It is a build-time value, so a plain `npm run build` still produces an extension that sends
-nothing — which is what the zero-egress tests rely on.
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST "$W/counts" -H 'content-type: application/json' -d '{"v":2,"records":['"$GOOD"']}'
+```
 
-## 7. Then, and only then, update the listing
+Must print `204`. Then:
 
-Ticking the wrong box here is a review failure, and the wording for both cases is already
-written in [STORE-LISTING.md](../STORE-LISTING.md):
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST "$W/counts" -H 'content-type: application/json' -d '{"v":2,"records":[{"patternId":"scarcity.stock","detectorId":"x","confidenceQuartile":4,"funnelStage":"pdp","site":"shein.com/p/123","originCategory":"fast_fashion","rulepackVersion":"1","dayBucket":'$DAY'}]}'
+```
 
-- [ ] Chrome listing **Data usage disclosures** — switch from "tick nothing" to the collection
-      wording, since the shipped build now transmits
-- [ ] Re-read the PRIVACY section of the listing copy; it is written to be true either way,
-      but read it against what you have actually deployed
-- [ ] `npm run test:e2e` — the egress tests assert the only reachable address is the one in
-      `TELEMETRY_ENDPOINT`
+Must print `422` — a path in `site`. If it prints anything else, **stop**: the strict check is
+not running and PRIVACY.md is not being enforced. Delete the test row afterwards:
+
+```bash
+npx wrangler d1 execute vero-counts --remote --config server/cloudflare/wrangler.toml --command "delete from counts where detector_id in ('scarcity.stock@1','x') and site = 'shein.com' and n <= 1"
+```
+
+## 7. Point the extension at it
+
+```bash
+TELEMETRY_ENDPOINT=https://vero-counts.<you>.workers.dev/counts npm run build && npm run zip
+```
+
+Build-time only. Upload **that** zip — a zip from a plain `npm run build` sends nothing.
+
+## 8. Update the listing to match
+
+In the Chrome Web Store dashboard, **Privacy practices → Data usage**: tick **Web history**
+(the shop's domain is browsing activity) and certify it is used for the product's stated
+purpose, not sold, not used for creditworthiness. The wording is in STORE-LISTING.md.
 
 ## Reading the data
 
 ```bash
-wrangler d1 execute vero-counts --remote \
-  --command "select pattern_id, origin_category, sum(n) as seen
-             from counts_public group by 1, 2 order by seen desc limit 20"
+npm run dataset                              # per-site prevalence -> dataset/
+npm run dataset -- --view pattern_reach      # how many shops use each technique
+npm run dataset -- --view pattern_by_stage   # where in the funnel
+npm run dataset -- --public                  # only the publishable cut
+npm run dataset -- --sql "select * from site_prevalence where site = 'shein.com'"
 ```
 
-`counts_public`, not `counts`. The floor is applied in the client, again in the handler, and
-again here — three times, because each one can be bypassed on its own and the claim in
-PRIVACY.md has to survive all three being tried.
+There is no read endpoint on the worker, deliberately. The only way into the data is through
+the Cloudflare account that owns it.

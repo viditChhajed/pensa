@@ -1,7 +1,7 @@
 {
   "name": "vero",
   "version": "1.0.0",
-  "description": "Vero — MV3 extension that notices e-commerce persuasion patterns and asks Socratic questions about them.",
+  "description": "Vero \u2014 MV3 extension that notices e-commerce persuasion patterns and asks Socratic questions about them.",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",
@@ -24,7 +24,10 @@
     "eval:detectors": "vitest run tests/eval/detector-recall.test.ts",
     "corpus:merge": "node scripts/merge-corpus.mjs",
     "spot:check": "node scripts/spot-check.mjs",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "dataset": "node scripts/dataset.mjs",
+    "sink:deploy": "wrangler deploy --config server/cloudflare/wrangler.toml",
+    "sink:schema": "wrangler d1 execute vero-counts --remote --config server/cloudflare/wrangler.toml --file server/cloudflare/schema.sql"
   },
   "author": "Vidit Chhajed",
   "license": "ISC",

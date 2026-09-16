@@ -33,16 +33,17 @@ function fakeD1() {
   return { bound, env: { DB: db } as unknown as Env };
 }
 
-const hour = Math.floor(Date.now() / 3_600_000);
+const day = Math.floor(Date.now() / 86_400_000);
 
 const record = {
   patternId: "scarcity.stock",
   detectorId: "scarcity.stock@1",
   confidenceQuartile: 4,
   funnelStage: "pdp",
+  site: "shein.com",
   originCategory: "ota_travel",
   rulepackVersion: "42",
-  hourBucket: hour,
+  dayBucket: day,
 };
 
 const post = (body: unknown, path = "/counts") =>
@@ -55,7 +56,7 @@ const post = (body: unknown, path = "/counts") =>
 describe("cloudflare worker", () => {
   it("binds every column in the order the SQL declares", async () => {
     const { bound, env } = fakeD1();
-    const res = await worker.fetch(post({ v: 1, records: [record] }), env);
+    const res = await worker.fetch(post({ v: 2, records: [record] }), env);
     expect(res.status).toBe(204);
     expect(bound).toHaveLength(1);
 
@@ -65,9 +66,10 @@ describe("cloudflare worker", () => {
       "scarcity.stock",
       "scarcity.stock@1",
       "pdp",
+      "shein.com",
       "ota_travel",
       "42",
-      hour,
+      day,
       4,
     ]);
 
@@ -82,9 +84,10 @@ describe("cloudflare worker", () => {
       "pattern_id",
       "detector_id",
       "funnel_stage",
+      "site",
       "origin_category",
       "rulepack_version",
-      "hour_bucket",
+      "day_bucket",
       "quartile",
     ]);
   });
@@ -93,7 +96,7 @@ describe("cloudflare worker", () => {
     // Records would be correlatable later; counters cannot be. The aggregate is the only
     // thing this project ever wanted to hold.
     const { bound, env } = fakeD1();
-    await worker.fetch(post({ v: 1, records: [record] }), env);
+    await worker.fetch(post({ v: 2, records: [record] }), env);
     const q = bound[0]?.query ?? "";
     expect(q).toMatch(/on conflict/i);
     expect(q).toMatch(/n = n \+ 1/);
@@ -102,8 +105,8 @@ describe("cloudflare worker", () => {
 
   it("404s anything that is not /counts", async () => {
     const { env } = fakeD1();
-    expect((await worker.fetch(post({ v: 1, records: [record] }, "/"), env)).status).toBe(404);
-    expect((await worker.fetch(post({ v: 1, records: [record] }, "/admin"), env)).status).toBe(404);
+    expect((await worker.fetch(post({ v: 2, records: [record] }, "/"), env)).status).toBe(404);
+    expect((await worker.fetch(post({ v: 2, records: [record] }, "/admin"), env)).status).toBe(404);
   });
 
   it("answers the CORS preflight, because the extension origin is opaque", async () => {
@@ -122,7 +125,7 @@ describe("cloudflare worker", () => {
   it("still rejects a malformed batch, and writes nothing", async () => {
     // The worker must not become a way around the handler's checks.
     const { bound, env } = fakeD1();
-    const res = await worker.fetch(post({ v: 1, records: [{ ...record, origin: "x.com" }] }), env);
+    const res = await worker.fetch(post({ v: 2, records: [{ ...record, path: "/x" }] }), env);
     expect(res.status).toBe(422);
     expect(bound, "a rejected batch reached the database").toEqual([]);
   });

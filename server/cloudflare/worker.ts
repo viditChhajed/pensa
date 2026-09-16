@@ -27,11 +27,11 @@ function d1Store(env: Env): Store {
   return {
     async increment(rows: CountRow[]): Promise<void> {
       const statement = env.DB.prepare(
-        `insert into counts (pattern_id, detector_id, funnel_stage, origin_category,
-                             rulepack_version, hour_bucket, quartile, n, reporters)
-         values (?, ?, ?, ?, ?, ?, ?, 1, 1)
-         on conflict (pattern_id, detector_id, funnel_stage, origin_category,
-                      rulepack_version, hour_bucket, quartile)
+        `insert into counts (pattern_id, detector_id, funnel_stage, site, origin_category,
+                             rulepack_version, day_bucket, quartile, n, reporters)
+         values (?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
+         on conflict (pattern_id, detector_id, funnel_stage, site, origin_category,
+                      rulepack_version, day_bucket, quartile)
          do update set n = n + 1, reporters = reporters + 1`,
       );
 
@@ -42,9 +42,10 @@ function d1Store(env: Env): Store {
             r.patternId,
             r.detectorId,
             r.funnelStage,
+            r.site,
             r.originCategory,
             r.rulepackVersion,
-            r.hourBucket,
+            r.dayBucket,
             r.quartile,
           ),
         ),

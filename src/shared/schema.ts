@@ -285,13 +285,34 @@ export const TelemetryRecord = z
     detectorId: z.string().max(64),
     confidenceQuartile: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
     funnelStage: FunnelStage,
-    /** The allowlist category tag, NOT the origin. */
+    /**
+     * The registrable domain of the shop — `shein.com`, never `us.shein.com/p/123`.
+     *
+     * v1 sent only an allowlist CATEGORY here and withheld the site entirely, which made the
+     * dataset able to say "countdowns are common on travel sites" and never "this site shows
+     * countdowns". Per-site prevalence is what the owner decided to collect, so the site is
+     * now sent — as the registrable domain only, so subdomains merge and no path, query or
+     * page identity ever travels.
+     *
+     * It can only ever name a SHOP. A detection exists only on a page that passed the
+     * commerce gate in `src/content/commerce.ts`, so a site that is not selling anything
+     * cannot appear in a record however it is visited.
+     */
+    site: z
+      .string()
+      .max(253)
+      .regex(/^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)+$/, "a bare registrable domain"),
+    /** The allowlist category, or `other` for a shop the bundled list does not name. */
     originCategory: z.string().max(32),
     rulepackVersion: z.string().max(32),
-    /** Epoch hours, not milliseconds. */
-    hourBucket: z.number().int(),
-    /** §18G k-anonymity bucket. Nothing surfaces below k=20 distinct reporters. */
-    kCohort: z.string().max(16).optional(),
+    /**
+     * Epoch DAYS. Was epoch hours in v1.
+     *
+     * Coarsened when the site was added, and the two changes belong together: a site plus an
+     * exact hour is far more linkable to one person's afternoon than a site plus a day, and a
+     * prevalence question ("how often does X show Y") loses nothing at daily resolution.
+     */
+    dayBucket: z.number().int(),
   })
   .strict();
 export type TelemetryRecord = z.infer<typeof TelemetryRecord>;

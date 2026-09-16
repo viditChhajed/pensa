@@ -9,8 +9,8 @@
  *
  * What it proves that a unit test cannot: that the batch survives JSON, chrome's alarm
  * plumbing and a real fetch from a service worker, and that what arrives is EXACTLY the
- * seven fields — checked by the same handler that would run in production, which rejects
- * anything else with a 422.
+ * eight version-2 fields — checked by the same handler that would run in production, which
+ * rejects anything else with a 422.
  */
 import { execFileSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -18,7 +18,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, test } from "@playwright/test";
-import { K_FLOOR, MIN_BATCH } from "@/shared/constants";
+import { MIN_BATCH } from "@/shared/constants";
 import { type CountRow, handle } from "../../server/handler";
 import { stageLocalBuild } from "./localBuild";
 
@@ -95,16 +95,14 @@ test.afterAll(async () => {
   });
 });
 
-test("a consented batch reaches the sink, and carries exactly seven fields", async () => {
+test("a consented batch reaches the sink, and carries exactly eight fields", async () => {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
   await page.locator("#telemetry").check();
   await page.waitForTimeout(300);
 
-  // Enough detections in ONE cohort to clear the k-floor. Same pattern, stage and site
-  // category, distinct evidence so nothing dedupes — which is exactly the situation the
-  // floor exists to permit: many reports, no individual identifiable.
-  const needed = Math.max(MIN_BATCH, K_FLOOR) + 5;
+  // Enough detections to clear the minimum batch size. Distinct evidence so nothing dedupes.
+  const needed = MIN_BATCH + 5;
   await page.evaluate(async (n) => {
     const send = (msg: unknown) => new Promise((res) => chrome.runtime.sendMessage(msg, res));
     for (let i = 0; i < n; i++) {
@@ -152,8 +150,8 @@ test("a consented batch reaches the sink, and carries exactly seven fields", asy
   await page.waitForTimeout(500);
 
   const body = bodies[0] as { v: number; records: Record<string, unknown>[] };
-  expect(body.v).toBe(1);
-  expect(body.records.length).toBeGreaterThanOrEqual(K_FLOOR);
+  expect(body.v).toBe(2);
+  expect(body.records.length).toBeGreaterThanOrEqual(MIN_BATCH);
 
   // The sink returns 422 on an extra key, so anything in `stored` already passed the strict
   // check. Assert the shape here too, because a silently-empty store would otherwise read
@@ -162,20 +160,25 @@ test("a consented batch reaches the sink, and carries exactly seven fields", asy
   for (const record of body.records) {
     expect(Object.keys(record).sort()).toEqual([
       "confidenceQuartile",
+      "dayBucket",
       "detectorId",
       "funnelStage",
-      "hourBucket",
       "originCategory",
       "patternId",
       "rulepackVersion",
+      "site",
     ]);
+    // The site travels by design now — as the registrable domain and nothing finer.
+    expect(record.site).toBe("booking.com");
   }
 
-  // The absences, on the wire this time rather than on a constructed object.
+  // The absences, on the wire this time rather than on a constructed object. The site is
+  // expected; the hostname, the path and the evidence are not.
   const wire = JSON.stringify(body);
-  expect(wire).not.toContain("booking.com");
+  expect(wire).not.toContain("www.booking.com");
   expect(wire).not.toContain("/hotel/");
   expect(wire).not.toContain("#n1");
+  expect(wire).not.toContain("hourBucket");
 
   // The queue is emptied by a successful send, or the next flush would send it all again.
   const pending = await page.evaluate(

@@ -57,10 +57,9 @@ export const MIN_BATCH = 25;
 export const MAX_BATCH_AGE_MS = 24 * 60 * 60 * 1000;
 /** Never grow without bound if the endpoint is down or unset. */
 export const QUEUE_CAP = 5000;
-/**
- * §18G: a cohort smaller than this is a fingerprint, not a statistic.
- *
- * One report of `decoy.asymmetric_dominance` on `airline` in hour N, from a population of
- * one, is that person's afternoon — however few fields the record carries.
+/*
+ * K_FLOOR lived here and is gone. It held back any cohort with fewer than 20 records in ONE
+ * person's local queue, which is not k-anonymity — that is about 20 distinct people — and at
+ * per-site granularity it withheld nearly everything. The floor that means something is
+ * server-side: `site_prevalence_public` in server/cloudflare/schema.sql.
  */
-export const K_FLOOR = 20;

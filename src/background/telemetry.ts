@@ -1,47 +1,50 @@
 /**
- * Anonymous prevalence telemetry (plan §11, §16, §18G).
+ * Per-site prevalence telemetry (plan §11, §16, §18G), revised.
  *
  * The product is two things at once: a tool for one shopper, and an instrument for measuring
- * how common these techniques actually are. The second half only exists if counts leave the
- * device, and until now nothing did — the record SHAPE was built and nothing transmitted.
+ * how common these techniques are. v1 of this module measured it by CATEGORY only — it could
+ * say "countdowns are common on travel sites" and never "this site shows countdowns". The
+ * owner decided per-site prevalence is worth collecting, so the record now names the shop.
  *
  * What leaves, and nothing else (`TelemetryRecord` is `.strict()`, so an unknown key throws
  * rather than passing through — that is a privacy control, not a style rule):
  *
  *     pattern id, detector id, a confidence QUARTILE, funnel stage,
- *     the allowlist CATEGORY of the site, rulepack version, the epoch HOUR
+ *     the shop's REGISTRABLE DOMAIN, its category, rulepack version, the epoch DAY
  *
- * Absent by construction: the origin, the path, the session id, any page text, any price,
- * any precise timestamp, anything user-identifying. A record says "someone saw a countdown
- * on a travel site in hour 486,123" and cannot say who, where, or on what.
+ * Absent by construction: the path, the query, the full hostname, the session id, any page
+ * text, any price, any precise time, and anything that identifies the person. A record says
+ * "someone saw a countdown on shein.com on day 20,712" and cannot say who, on which page, or
+ * when within the day.
  *
- * Three rules this module exists to enforce:
+ * The rules this module enforces:
  *
  *   Nothing is even RECORDED without consent. Not queued-then-discarded — a queue that fills
- *   up while consent is off is a queue that leaks the moment someone turns it on, and the
- *   person switching it on is consenting to future sharing, not retroactive.
+ *   while consent is off is a queue that leaks the moment someone turns it on, and switching
+ *   it on consents to future sharing, not retroactive.
  *
- *   Nothing is sent for a site not on the allowlist. The category tag is what makes a record
- *   anonymous; an unrecognised site has no category, and sending `other` for it would make
- *   the rarest sites the most identifiable.
+ *   Only shops can be named. A detection only exists on a page that passed the commerce gate,
+ *   so a record's `site` is always somewhere that was selling something.
  *
- *   Nothing is sent below the k-anonymity floor (§18G). A cohort is (pattern, stage,
- *   category, hour), and a single report from a cohort of one is a fingerprint no matter how
- *   few fields it carries. Batches wait until they are worth sending.
+ *   Sent on a clock, in batches, never on a detection — a request timed to a detection says
+ *   when someone was shopping even when the payload cannot.
+ *
+ * What was REMOVED, and why it is not a weakening: v1 held any cohort with fewer than K
+ * records in the local queue. That looked like k-anonymity and was not one — k-anonymity is
+ * about k distinct PEOPLE sharing a quasi-identifier, and one person repeating a record
+ * twenty times is still one person. It could not protect anybody, and at per-site
+ * granularity it would have withheld essentially every record, leaving the dataset empty.
+ * The floor that means something is the server's: `reporters` counts distinct batches, and
+ * the `counts_public` view refuses cohorts below it.
  */
 import { getDb } from "@/background/db";
-import {
-  K_FLOOR,
-  MAX_BATCH_AGE_MS,
-  MIN_BATCH,
-  QUEUE_CAP,
-  TELEMETRY_ENDPOINT,
-} from "@/shared/constants";
+import { MAX_BATCH_AGE_MS, MIN_BATCH, QUEUE_CAP, TELEMETRY_ENDPOINT } from "@/shared/constants";
+import { registrableDomain } from "@/shared/domain";
 import type { DetectionEvent, Settings } from "@/shared/schema";
 import { TelemetryRecord } from "@/shared/schema";
 import { ALLOWLIST_VERSION, categoryForOrigin } from "@/shared/urlScore";
 
-export { K_FLOOR, MAX_BATCH_AGE_MS, MIN_BATCH, QUEUE_CAP, TELEMETRY_ENDPOINT };
+export { MAX_BATCH_AGE_MS, MIN_BATCH, QUEUE_CAP, TELEMETRY_ENDPOINT };
 
 export interface QueuedRecord {
   /** Autoincrement. Dexie needs a key; it never leaves the device. */
@@ -72,8 +75,8 @@ function parseQueued(rows: { id?: number; queuedAt: number; record: unknown }[])
   return { valid, corruptIds };
 }
 
-function hourBucket(ts: number): number {
-  return Math.floor(ts / 3_600_000);
+function dayBucket(ts: number): number {
+  return Math.floor(ts / 86_400_000);
 }
 
 function quartileOf(confidence: number): 1 | 2 | 3 | 4 {
@@ -81,11 +84,6 @@ function quartileOf(confidence: number): 1 | 2 | 3 | 4 {
   if (confidence < 0.5) return 2;
   if (confidence < 0.75) return 3;
   return 4;
-}
-
-/** The cohort a record belongs to for the k-anonymity floor. Never transmitted as a key. */
-export function cohortOf(r: TelemetryRecord): string {
-  return `${r.patternId}|${r.funnelStage}|${r.originCategory}|${r.hourBucket}`;
 }
 
 /**
@@ -96,17 +94,25 @@ export function cohortOf(r: TelemetryRecord): string {
  * field here deliberately, in a function whose whole subject is what may not be sent.
  */
 export function toRecord(event: DetectionEvent): TelemetryRecord | null {
-  const originCategory = categoryForOrigin(event.origin);
-  if (!originCategory) return null;
+  let host: string;
+  try {
+    host = new URL(event.origin).hostname;
+  } catch {
+    return null;
+  }
+  // https only. The permission Vero holds is https, and a record naming an http origin could
+  // only have come from a test build or a hand-written row.
+  if (!event.origin.startsWith("https://")) return null;
 
   const candidate = {
     patternId: event.patternId,
     detectorId: event.detectorId,
     confidenceQuartile: quartileOf(event.confidence),
     funnelStage: event.funnelStage,
-    originCategory,
+    site: registrableDomain(host),
+    originCategory: categoryForOrigin(event.origin) ?? "other",
     rulepackVersion: ALLOWLIST_VERSION,
-    hourBucket: hourBucket(event.ts),
+    dayBucket: dayBucket(event.ts),
   };
 
   // Parsed, not cast. `.strict()` is the control that keeps an accidentally-added field from
@@ -153,7 +159,7 @@ export async function enqueue(events: DetectionEvent[], settings: Settings): Pro
 export interface FlushResult {
   sent: number;
   held: number;
-  reason: "sent" | "no_consent" | "no_endpoint" | "too_small" | "below_k" | "failed";
+  reason: "sent" | "no_consent" | "no_endpoint" | "too_small" | "failed";
 }
 
 /**
@@ -192,39 +198,18 @@ export async function flush(
     return { sent: 0, held: queued.length, reason: "too_small" };
   }
 
-  /**
-   * The k-anonymity floor, applied before anything leaves rather than trusted to the server.
-   *
-   * A cohort of one is a fingerprint however few fields it carries: one report of
-   * `decoy.asymmetric_dominance` on `airline` in hour N, from a population of one, is that
-   * person's afternoon. Records below the floor stay queued — later visits usually lift them
-   * over it, and if they never do, the cap eventually drops them unsent, which is correct.
-   */
-  const byCohort = new Map<string, QueuedRecord[]>();
-  for (const row of queued) {
-    const key = cohortOf(row.record);
-    const list = byCohort.get(key) ?? [];
-    list.push(row);
-    byCohort.set(key, list);
-  }
-
-  const ready: QueuedRecord[] = [];
-  let held = 0;
-  for (const rows of byCohort.values()) {
-    if (rows.length >= K_FLOOR) ready.push(...rows);
-    else held += rows.length;
-  }
-
-  if (ready.length === 0) return { sent: 0, held, reason: "below_k" };
+  const ready = queued;
 
   try {
     const res = await fetchImpl(TELEMETRY_ENDPOINT, {
       method: "POST",
       headers: { "content-type": "application/json" },
       // No credentials, no cookies, no custom headers. A header is a field, and the point of
-      // this payload is that it has no fields beyond the seven listed at the top.
+      // this payload is that it has no fields beyond the eight listed at the top.
       credentials: "omit",
-      body: JSON.stringify({ v: 1, records: ready.map((r) => r.record) }),
+      // v2: the record names the site and buckets by day. The server rejects v1 bodies, so
+      // an old build cannot keep sending the hour-resolution shape after this ships.
+      body: JSON.stringify({ v: 2, records: ready.map((r) => r.record) }),
     });
     if (!res.ok) return { sent: 0, held: queued.length, reason: "failed" };
   } catch {
@@ -235,7 +220,7 @@ export async function flush(
   await db.telemetry.bulkDelete(
     ready.map((r) => r.id).filter((id): id is number => id !== undefined),
   );
-  return { sent: ready.length, held, reason: "sent" };
+  return { sent: ready.length, held: 0, reason: "sent" };
 }
 
 /**

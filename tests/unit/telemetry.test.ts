@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cohortOf, K_FLOOR, toRecord } from "@/background/telemetry";
+import { toRecord } from "@/background/telemetry";
 import { DEFAULT_SETTINGS, type DetectionEvent } from "@/shared/schema";
 
 /**
@@ -44,39 +44,52 @@ const event = (over: Partial<DetectionEvent> = {}): DetectionEvent =>
   }) as DetectionEvent;
 
 describe("what a telemetry record carries", () => {
-  it("carries exactly seven fields and no more", () => {
+  it("carries exactly eight fields and no more", () => {
     const r = toRecord(event());
     expect(r).not.toBeNull();
     expect(Object.keys(r ?? {}).sort()).toEqual([
       "confidenceQuartile",
+      "dayBucket",
       "detectorId",
       "funnelStage",
-      "hourBucket",
       "originCategory",
       "patternId",
       "rulepackVersion",
+      "site",
     ]);
   });
 
-  it("carries no origin, no path, no session and no page text", () => {
-    // The four things that would turn an anonymous count into a record of someone's
-    // afternoon. Asserted on the serialised form, because that is what would be POSTed.
-    const wire = JSON.stringify(toRecord(event()));
-    expect(wire).not.toContain("booking.com");
+  it("names the shop by registrable domain, and nothing finer", () => {
+    // v2 sends the site on purpose — that is what per-site prevalence is. What it must not
+    // send is anything below the registrable domain: the subdomain can be a tenant name, and
+    // the path is which product somebody looked at.
+    const r = toRecord(event({ origin: "https://secure.checkout.booking.com" }));
+    expect(r?.site).toBe("booking.com");
+  });
+
+  it("carries no path, no session, no page text and no full hostname", () => {
+    // Asserted on the serialised form, because that is what would be POSTed.
+    const wire = JSON.stringify(toRecord(event({ origin: "https://www.booking.com" })));
+    expect(wire).toContain('"site":"booking.com"');
+    expect(wire).not.toContain("www.booking.com");
     expect(wire).not.toContain("/hotel/");
     expect(wire).not.toContain("22222222");
     expect(wire).not.toContain("Only 3 left");
+    expect(wire).not.toContain("https://");
   });
 
-  it("sends an hour, never a timestamp", () => {
-    // Both inside hour 486111 — picked by arithmetic, not by eye. The first draft of this
-    // used timestamps that straddled the boundary and failed, correctly.
-    const r = toRecord(event({ ts: 1_750_000_000_000 }));
-    const r2 = toRecord(event({ ts: 1_750_003_000_000 }));
-    // Fifty minutes apart and indistinguishable. That is the point: a precise time is a
-    // correlation key even when nothing else in the record is.
-    expect(r?.hourBucket).toBe(r2?.hourBucket);
-    expect(String(r?.hourBucket).length).toBeLessThan(String(Date.now()).length);
+  it("sends a day, never an hour or a timestamp", () => {
+    // Coarsened from hours in the same change that added the site, and the two belong
+    // together: a shop plus an exact hour is far more linkable to one person than a shop plus
+    // a day, and a prevalence question loses nothing at daily resolution.
+    const morning = Date.UTC(2026, 8, 16, 1, 0, 0);
+    const night = Date.UTC(2026, 8, 16, 23, 0, 0);
+    expect(toRecord(event({ ts: morning }))?.dayBucket).toBe(
+      toRecord(event({ ts: night }))?.dayBucket,
+    );
+    expect(toRecord(event({ ts: night }))?.dayBucket).not.toBe(
+      toRecord(event({ ts: night + 2 * 3_600_000 }))?.dayBucket,
+    );
   });
 
   it("sends a confidence quartile, never the score", () => {
@@ -85,38 +98,19 @@ describe("what a telemetry record carries", () => {
     expect(toRecord(event({ confidence: 0.1 }))?.confidenceQuartile).toBe(1);
   });
 
-  it("refuses a site that has no allowlist category", () => {
-    // The category is what makes the record anonymous. An unrecognised site has none, and
-    // inventing `other` for it would make the rarest sites the MOST identifiable — the
-    // opposite of what a category is for.
-    expect(toRecord(event({ origin: "https://some-tiny-shop.example" }))).toBeNull();
+  it("includes shops the bundled list does not name, as category `other`", () => {
+    // v1 refused these, because the category WAS the anonymity. The site is now sent
+    // explicitly, so refusing unlisted shops would only drop the long tail of small stores —
+    // which is where a lot of these techniques live.
+    const r = toRecord(event({ origin: "https://some-tiny-shop.com" }));
+    expect(r?.site).toBe("some-tiny-shop.com");
+    expect(r?.originCategory).toBe("other");
   });
 
-  it("reports the site category, not the site", () => {
-    const r = toRecord(event({ origin: "https://www.booking.com" }));
-    expect(r?.originCategory).toBeTruthy();
-    expect(r?.originCategory).not.toContain("booking");
-  });
-});
-
-describe("the k-anonymity floor", () => {
-  it("groups by pattern, stage, category and hour — and nothing finer", () => {
-    // Anything finer would make cohorts smaller, and a smaller cohort is a sharper
-    // fingerprint. The grouping IS the anonymity.
-    const a = toRecord(event({ ts: 1_750_000_000_000 }));
-    const b = toRecord(event({ ts: 1_750_001_000_000, confidence: 0.3 }));
-    expect(a && b && cohortOf(a) === cohortOf(b)).toBe(true);
-  });
-
-  it("separates different patterns into different cohorts", () => {
-    const a = toRecord(event({ patternId: "scarcity.stock" }));
-    const b = toRecord(event({ patternId: "urgency.countdown" }));
-    expect(a && b && cohortOf(a) === cohortOf(b)).toBe(false);
-  });
-
-  it("keeps the floor high enough to be worth calling anonymity", () => {
-    // §18G names k>=20. A floor of 2 or 3 satisfies the letter and none of the point.
-    expect(K_FLOOR).toBeGreaterThanOrEqual(20);
+  it("refuses anything that is not https", () => {
+    // Vero's permission is https. An http origin could only be a test build or a
+    // hand-written row, and neither belongs in a dataset.
+    expect(toRecord(event({ origin: "http://shop.example.com" }))).toBeNull();
   });
 });
 
