@@ -301,7 +301,7 @@ be judged. Flipping to Public later is one setting.
 
 ## Pre-submission checklist
 
-- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green — 549 unit + eval, 43 e2e
+- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green — 559 unit + eval, 43 e2e
 - [x] `host_permissions` empty in the built manifest (CI-enforced, checked: `[]`)
 - [x] Icons present at all four sizes
 - [x] Privacy policy URL live and reachable
@@ -312,8 +312,9 @@ be judged. Flipping to Public later is one setting.
       detector agreeing with a model is not the same as a detector being right — turned out
       to be exactly correct. `npm run spot:check` over 64 pages on 22 live sites found **27
       wrong claims out of 170**, one detector wrong in every single firing, and a bug in the
-      shared money parser underneath it. All fixed and regression-tested; 145 claims on the
-      re-run. Tally and provenance in [EVAL.md](EVAL.md).
+      shared money parser underneath it. A second run over the same 22 sites found 2 more.
+      All 29 are fixed and regression-tested, and 143 claims stand. Tally and provenance in
+      [EVAL.md](EVAL.md).
 - [x] Screenshots captured — `npm run screenshots`, four 1280×800 PNGs in `store/screenshots/`,
       taken from the running build against a live retailer
 - [x] Pre-publication audit of the full history — 89 commits, 496 blobs. No secrets, no
@@ -323,7 +324,7 @@ be judged. Flipping to Public later is one setting.
 - [x] LICENSE added (ISC, matching `package.json`) — a public repo without one grants nobody
       any rights
 - [x] Version bumped in `wxt.config.ts` — 1.0.0
-- [x] `npm run zip` — `.output/vero-1.0.0-chrome.zip`
+- [x] `npm run zip` — `.output/vero-1.0.0-chrome.zip`, 133 KB
 
 ### Still yours to do
 

@@ -12,7 +12,8 @@ prevent. What is true now:
 
 **Measured automatically** — see [Automated precision audit](#automated-precision-audit--2026-09-16)
 at the foot of this file: 170 distinct claims across 22 sites, of which **27 were wrong**;
-after the fixes those 27 forced, 145 claims remain. The automated pass reads the detector's
+after the fixes those 27 forced, 145 claims remain, and two more wrong ones found in that
+second run have since been fixed and verified live. The automated pass reads the detector's
 log rather than the card, so it measures firings, not experience.
 
 **Not measured:** what the extension is like to *use*. No human has yet browsed 30–40 pages
@@ -602,7 +603,7 @@ like a catastrophe.
 | `framing.savings_ratio` | 19 | **19** | **1** | Every single one. `\boff\b` matched a Zappos colourway called "Off White"; then max/min price across a grid tile paired two different shoes |
 | `nagging.repeat_interstitial` | 3 | **3** | **0** | A cookie banner and the scrim behind it are two elements and one interruption |
 | `urgency.countdown` | 33 | 3 | 31 | Two "Save this event" *buttons* and a sensor part number |
-| `scarcity.stock` | 9 | 2 | 7 | A product-grid blob claimed with evidence containing no scarcity word |
+| `scarcity.stock` | 9 | 2 | 7 → **5** | A product-grid blob claimed with evidence containing no scarcity word. Two survived into run 2 and were fixed after it; verified live rather than by re-running the whole audit |
 | `anchoring.reference_price` | 37 | 0 | 35 | — |
 | `pricing.charm` | 28 | 0 | 28 | — |
 | `goal_gradient.threshold` | 28 | 0 | 28 | — |
@@ -663,4 +664,34 @@ problem, not a precision one, and it is not fixed here.
 - **Evidence is truncated to 60 characters by the audit writer.** That cost real time: three
   REI firings were flagged as false positives and were not — the same banner appears in the
   corpus in full, ending "thru 11/12". A deadline was hiding in the truncation.
+
+## Two claims fixed after run 2, verified live rather than re-audited
+
+Run 2 still carried two wrong `scarcity.stock` claims. Both are fixed; the figures below are
+from loading the same pages with the built extension and reading the log, not from a third
+full audit, and are labelled that way so nobody mistakes them for one.
+
+| Page | Before | After |
+|---|---|---|
+| `zappos.com/` | `"Low Stock"` **plus** a duplicate evidenced as "brand name birkenstock product name birki flow eva clog gend…" | `"Low Stock"` only |
+| `temu.com/login.html` | `"Low stock items alerts"` ×4, scoring 0.75 — exactly the surface threshold, so it showed a card | silent |
+| `eventbrite.com/` | `"Going fast"` | unchanged |
+| `sephora.com/` | three "While supplies last" footnotes, log-only | unchanged |
+
+**The Temu one is the more embarrassing.** It is a benefit blurb in a sign-in page's footer,
+beside "Faster & more secure checkout" — an offer to email you about scarcity later, on a
+page where nothing is for sale.
+
+**The Zappos one is the more instructive**, because it had already been fixed once, verified,
+and declared done. `selectorPath` caps at `MAX_PATH_DEPTH = 12` and truncates from the ROOT
+end, so two nodes at different depths in one tile get paths starting at different ancestors
+and sharing no prefix. The badge sits at depth 20, and the ancestry test returns false for its
+own immediate `<dl>`. Every claim of ancestry that function makes on a real product grid is
+false — and the fixture that proved the fix was shallow enough that no path was truncated. It
+was tested on the one DOM shape where the bug cannot occur.
+
+That row was the only scarcity firing in the audit with **no lexeme tag**, which was the tell
+the whole time: the lexemes were matched against the node's own text and the pattern against
+its parent's, and nothing checked that the two agreed. The rule now is general — a claim may
+not be evidenced by text that does not itself contain the matched phrase.
 

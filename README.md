@@ -17,14 +17,14 @@ dialog no automation can accept. (The privacy-policy URL is live — see
 | | |
 |---|---|
 | Patterns shipped | **20** — 14 on-page + 2 cross-stage + 4 derived from visit history |
-| Unit tests | 478 |
+| Unit tests | 559 |
 | Real-browser e2e | 43 passing, 3 skipped (sites unreachable from this network) |
-| Bundle | 119 KB gzipped across all bundles; 28 KB is the content script, which is the number that matters on every page load |
+| Bundle | 119 KB gzipped across all bundles; 31 KB is the content script, which is the number that matters on every page load |
 | `host_permissions` | empty — the build throws otherwise, asserted on the built manifest |
 | Network requests | **zero with telemetry off** (the shipped default), asserted; with it on, the only reachable address is the declared endpoint, also asserted |
 | Card placement | 12/12 samples across 4 live retailers × 3 scroll depths |
 | Detector recall | measured against 29,742 label rows over 4,957 distinct snippets from 44 shops — `npm run eval:detectors`. The corpus itself is **not distributed** (it is real retailer page text); see [CORPUS.md](CORPUS.md) to rebuild it, and `tests/eval/baseline.json` for the committed numbers |
-| Precision | 145 firings across 22 live sites, audited claim by claim; the 27 wrong ones the previous run found are fixed and regression-tested — [EVAL.md](EVAL.md). Plus 0 confirmed false positives in ~44 hand-checked firings across 6 retailers |
+| Precision | 143 firings across 22 live sites, audited claim by claim over two runs; 29 wrong ones found and fixed, each with a regression test — [EVAL.md](EVAL.md). Plus 0 confirmed false positives in ~44 hand-checked firings across 6 retailers |
 
 **On the page (14):** `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
 `urgency.countdown`, `defaults.preselected`, `social_proof.live_activity`,
@@ -114,8 +114,9 @@ does it.
 
 - **Precision is measured on firings, not on experience.** An automated audit
   (`npm run spot:check`) drove this build over 64 pages on 22 live sites and every claim was
-  adjudicated one at a time ([EVAL.md](EVAL.md)). It found 27 wrong claims, all now fixed and
-  regression-tested, and it is the reason four detectors changed before launch. But it reads
+  adjudicated one at a time ([EVAL.md](EVAL.md)). It found 29 wrong claims, all now fixed and
+  regression-tested, and it is the reason four detectors and the shared money parser changed
+  before launch. But it reads
   the detector's own log rather than the card, so it cannot tell you that a claim was
   technically true and useless to a shopper — the failure that actually drives uninstalls.
   The hand pass plan §10 asked for (30–40 pages, judging each card) has **not** been run
