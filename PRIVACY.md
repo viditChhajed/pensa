@@ -1,6 +1,6 @@
 # Privacy Policy — Vero
 
-**Last updated: 2026-09-06**
+**Last updated: 2026-09-16**
 
 ## The short version
 
@@ -20,16 +20,19 @@ and browse with the extension enabled. There will be no requests from it.
 
 ## What the extension does
 
-On sites you have explicitly enabled, it reads the page to notice persuasion techniques —
+On the https sites where it runs, it reads the page to notice persuasion techniques —
 countdown timers, limited-stock messages, crossed-out reference prices, preselected
 checkboxes, and similar. When you add something to a cart or begin checkout, it may show a
 small card with a question about what it noticed.
+
+On any page with nothing to notice, it notices nothing and shows nothing. Shopping pages are
+not a list it holds; they are simply the pages where these techniques appear.
 
 ## What it stores, and where
 
 Locally on your device, in your browser's extension storage:
 
-- Which sites you have enabled it on.
+- Which sites you have turned it off for, if any.
 - A record of patterns it noticed: the pattern type, a confidence number, how long the
   element was on screen, the funnel stage, the site's origin (for example
   `https://www.example.com`), and a redacted path shape (for example `/products/:slug`).
@@ -46,17 +49,41 @@ Settings page ("Delete all my data").
 - Anything you type, including search terms, addresses, and payment details.
 - Cart contents, order totals, or prices you paid.
 - Names, email addresses, phone numbers, or any account identifier.
-- Browsing history on sites you have not enabled.
+- Browsing history. It keeps no list of pages you visited, and no record at all of a page where it found nothing.
 
 ## Site permissions
 
-The extension requests no site access at install time. Access is granted one site at a time,
-by you, from the toolbar popup. You can revoke a site at any time from Settings or from
-Chrome's extension settings. On sites you have not enabled, the extension cannot read
-anything at all — this is enforced by the browser, not by our code.
+**Vero asks for access to all https websites at install time, and Chrome will tell you so in
+those words.** You should read that warning as accurate: the permission is broad, and it is
+granted the moment you install rather than site by site.
 
-The extension deliberately never offers to run on banking, health, government, webmail, or
-similar sites, regardless of what those pages contain.
+This is a deliberate change from how Vero previously worked, and it is worth being plain
+about the trade. The earlier design asked for one site at a time, which made the permission
+narrow and the tool nearly useless — a shopper had to already suspect a page before they
+could ask Vero to look at it, which is precisely backwards for a tool whose whole purpose is
+to notice what you did not. Persuasion techniques are not confined to a list of large
+retailers; they turn up on small independent shops, regional sites, and storefronts that did
+not exist when any list was written. A fixed list is always wrong, and it is wrong in the
+direction that leaves people unprotected.
+
+So the permission is broad. What constrains it is not the permission; it is what the code
+does with it, and that is public and testable:
+
+- **Vero never runs on banking, health, government, or webmail sites.** This is enforced in
+  two independent layers: those hosts are excluded from the content script's match patterns,
+  so Chrome does not inject Vero there at all; and the script additionally refuses to run on
+  any denied host before it reads anything. The list is in `src/shared/urlScore.ts` and the
+  build fails if it is empty.
+- **Only `https` sites.** Plain `http` pages are outside the requested permission entirely.
+- **It still sends nothing anywhere.** Broad read access and zero network access are separate
+  questions, and the second answer has not changed. That is asserted against the compiled
+  bundles by an automated test, not merely stated here.
+- **It records nothing about a page where it found nothing.** Access to read a page is not a
+  record of having read it.
+
+You can turn Vero off for any individual site, or entirely, from its Settings page. You can
+also remove the permission wholesale by uninstalling, and Chrome lets you restrict any
+extension's site access from its own extension settings, independently of anything Vero says.
 
 ## Optional telemetry
 
@@ -113,11 +140,10 @@ Material changes will be reflected here with an updated date, and in the extensi
 ## Where this is published
 
 The authoritative copy is served at
-<https://viditchhajed.github.io/persuasion-patterns-docs/privacy.html>.
+<https://viditchhajed.github.io/vero-docs/privacy.html>.
 
-That URL predates the product being renamed to Vero. It is live and correct; renaming the
-docs repo would change it, which is a decision about a published address rather than a
-rename, so it is left alone deliberately.
+The previous address lived under the project's old name and no longer resolves. If you
+followed a `persuasion-patterns-docs` link here, the URL above is the current one.
 
 ## Contact
 

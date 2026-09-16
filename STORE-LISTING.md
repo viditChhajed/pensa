@@ -237,20 +237,12 @@ use it for creditworthiness.
 ## Privacy policy URL — **DONE**
 
 ```
-https://viditchhajed.github.io/persuasion-patterns-docs/privacy.html
+https://viditchhajed.github.io/vero-docs/privacy.html
 ```
 
-Live and returning 200, served from a separate docs repo so the extension repo can stay
-private. Paste it into the listing's Privacy policy field.
-
-> **The URL still says `persuasion-patterns-docs`.** That is a real address on GitHub Pages
-> and renaming it is your call, not a find-and-replace: renaming the repo changes the URL and
-> breaks the old one, which matters if it has been shared anywhere.
->
-> Nothing is wrong with submitting as-is — a policy URL does not have to match the product
-> name, and a live URL beats a tidy dead one. But it will look like a leftover to anyone who
-> notices, so either rename the docs repo and update both files, or leave it deliberately.
-> GitHub keeps a redirect from the old name, so renaming is safe if you do it.
+Live and returning 200, served from a separate docs repo. Paste it into the listing's
+Privacy policy field. The page is generated verbatim from PRIVACY.md, so the published
+policy and the committed one cannot drift.
 
 Keep it in step with [PRIVACY.md](PRIVACY.md): that file is the source and the page is a
 copy, so a change to one that does not reach the other means the published policy and the
