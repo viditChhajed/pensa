@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import denylistJson from "../../rulepacks/denylist.v1.json";
 import { type DenylistShape, toExcludeMatches } from "@/shared/denylistPatterns";
 import { matchesPattern } from "@/shared/domain";
 import { isDenied } from "@/shared/urlScore";
+import denylistJson from "../../rulepacks/denylist.v1.json";
 
 /**
  * This file replaces `grantable.test.ts`, which is wholly obsolete.
@@ -91,8 +91,10 @@ describe("denylist -> exclude_matches", () => {
       "^(secure|online|banking|ebanking|my)\\.(chase|bofa|bankofamerica|wellsfargo|citi|citibank|usbank|pnc|truist|capitalone|schwab|fidelity|vanguard|ally|discover|amex|americanexpress|synchrony|barclays|hsbc|santander|tdbank|regions|keybank|huntington|firstrepublic)\\.",
     ]) {
       expect(denylist.hostPatterns, "the rulepack changed under this test").toContain(pattern);
-      expect(inexpressible, `${pattern} must be reported as regex-only, never approximated`)
-        .toContain(pattern);
+      expect(
+        inexpressible,
+        `${pattern} must be reported as regex-only, never approximated`,
+      ).toContain(pattern);
     }
 
     // And nothing quietly disappears: every hostPattern is either converted or reported.

@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import denylistJson from "../../rulepacks/denylist.v1.json";
 import { type DenylistShape, toExcludeMatches } from "@/shared/denylistPatterns";
 import { matchesPattern } from "@/shared/domain";
+import denylistJson from "../../rulepacks/denylist.v1.json";
 
 /**
  * The permission-model regression net, inverted.
