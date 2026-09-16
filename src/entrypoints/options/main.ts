@@ -11,10 +11,13 @@ import type { PrevalenceRow } from "@/background/db";
 import { send } from "@/shared/messages";
 import type { DigestFrequency, Settings } from "@/shared/schema";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
+import { DENYLIST_COVERAGE } from "@/shared/urlScore";
 import { PATTERN_GROUPS } from "./groups";
 
 const sitesEl = document.getElementById("sites") as HTMLUListElement;
 const clearBtn = document.getElementById("clear") as HTMLButtonElement;
+const exportBtn = document.getElementById("export") as HTMLButtonElement;
+const exportedEl = document.getElementById("exported") as HTMLParagraphElement;
 const clearedEl = document.getElementById("cleared") as HTMLParagraphElement;
 const frequencyEl = document.getElementById("frequency") as HTMLDivElement;
 const telemetryEl = document.getElementById("telemetry") as HTMLInputElement;
@@ -30,36 +33,54 @@ const FREQUENCY_CHOICES: { value: DigestFrequency; label: string }[] = [
   { value: "off", label: "Turn detection off entirely" },
 ];
 
-async function renderSites(): Promise<void> {
-  const { origins = [] } = await chrome.permissions.getAll();
+/**
+ * "Sites you have enabled" is gone, because nothing is enabled any more — Vero holds every
+ * https site from the moment it is installed, and there was never a per-site switch other
+ * than the permission itself. A list of granted origins would now show one entry reading
+ * "every site", which is true and useless.
+ *
+ * What replaces it is the only per-site fact left that a person cannot see for themselves:
+ * where Vero REFUSES to run. It is read out of the manifest Chrome actually loaded rather
+ * than re-derived from the rulepack, so this list is the real one — if the exclusions ever
+ * shipped empty, this page would say so instead of describing a list that is not there.
+ */
+function renderSites(): void {
   sitesEl.replaceChildren();
 
-  if (origins.length === 0) {
+  const declared = chrome.runtime.getManifest().content_scripts ?? [];
+  const excluded = declared
+    .flatMap((cs) => cs.exclude_matches ?? [])
+    .map((p) => p.replace(/^https:\/\/\*\./, "").replace(/\/\*$/, ""))
+    .sort();
+
+  if (excluded.length === 0) {
     const li = document.createElement("li");
     li.className = "muted";
-    li.textContent = "None yet. Open the toolbar icon while on a shopping site to enable it.";
+    li.textContent =
+      "Nothing is excluded by Chrome in this build, which should be impossible. Please report it.";
     sitesEl.append(li);
-    return;
   }
 
-  for (const pattern of origins.slice().sort()) {
+  for (const host of excluded) {
     const li = document.createElement("li");
-    const name = document.createElement("span");
-    name.textContent = pattern.replace(/^https?:\/\//, "").replace(/\/\*$/, "");
-
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.textContent = "Remove";
-    remove.style.cssText = "margin-left:12px;padding:2px 8px;font-size:12px";
-    remove.addEventListener("click", () => {
-      chrome.permissions.remove({ origins: [pattern] }, (ok) => {
-        if (ok) void renderSites();
-      });
-    });
-
-    li.append(name, remove);
+    li.textContent = host;
     sitesEl.append(li);
   }
+
+  /**
+   * The honest footnote. `exclude_matches` can only name whole hosts, so most of the
+   * denylist cannot go in the manifest at all and is checked in code instead, at the top of
+   * the detector, before a single element is read. Saying how many there are — and that
+   * Chrome is not the one enforcing them — is the difference between a checkable claim and
+   * a reassuring one.
+   */
+  const noteEl = document.getElementById("sitesNote") as HTMLParagraphElement;
+  noteEl.textContent =
+    `${excluded.length} host patterns above are refused by Chrome itself — Vero's code is ` +
+    `never loaded there. A further ${DENYLIST_COVERAGE.inexpressible.length} rules cannot be ` +
+    "written as a Chrome pattern (things like “any site with 'bank' in its name” or “a " +
+    "mychart. address on any domain”). Those are checked by Vero, on page load, before " +
+    "anything is read — a weaker guarantee than the list above, and worth knowing apart.";
 }
 
 function renderFrequency(current: DigestFrequency): void {
@@ -218,7 +239,7 @@ async function renderPending(): Promise<void> {
   if (records.length === 0) {
     const none = document.createElement("p");
     none.textContent = telemetryEl.checked
-      ? "Nothing queued. Counts appear here as patterns are found on sites you have enabled."
+      ? "Nothing queued. Counts appear here as patterns are found while you shop."
       : "Nothing queued, because sharing is switched off. Nothing is recorded while it is off.";
     pendingEl.append(none);
     return;
@@ -250,6 +271,59 @@ telemetryEl.addEventListener("change", () => {
   });
 });
 
+interface ExportRow {
+  ts: number;
+  origin: string;
+  patternId: string;
+  [k: string]: unknown;
+}
+
+/**
+ * Hand the whole detection log over as JSONL.
+ *
+ * JSONL rather than JSON or CSV: one row per line means the file streams into pandas, jq,
+ * DuckDB or a spreadsheet without a parser that has to hold the lot in memory, and appending
+ * two exports together is `cat`. A single JSON array is the shape that breaks at the size
+ * this is meant to reach.
+ *
+ * This is the only path by which anything leaves the device, and a person clicked it. It is
+ * a download to their own disk, not a network request — the zero-egress guarantee is about
+ * what the extension sends on its own, and this sends nothing anywhere.
+ */
+exportBtn.addEventListener("click", async () => {
+  exportBtn.disabled = true;
+  exportedEl.hidden = false;
+  exportedEl.textContent = "Collecting…";
+  try {
+    const reply = await send<{ rows: ExportRow[] }>({ type: "export-events" });
+    const rows = reply?.rows ?? [];
+    if (rows.length === 0) {
+      exportedEl.textContent = "Nothing recorded yet, so there is nothing to export.";
+      return;
+    }
+    const jsonl = `${rows.map((r) => JSON.stringify(r)).join("\n")}\n`;
+    const url = URL.createObjectURL(new Blob([jsonl], { type: "application/x-ndjson" }));
+    const a = document.createElement("a");
+    a.href = url;
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.download = `vero-events-${stamp}.jsonl`;
+    a.click();
+    // Revoked on the next turn of the event loop: revoking synchronously can race the
+    // download on some Chrome versions and produce an empty file.
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+
+    const sites = new Set(rows.map((r) => r.origin)).size;
+    const oldest = new Date(Math.min(...rows.map((r) => r.ts))).toISOString().slice(0, 10);
+    exportedEl.textContent =
+      `Exported ${rows.length} detection(s) across ${sites} site(s), back to ${oldest}. ` +
+      `Retention trims anything older, so export again to keep accumulating.`;
+  } catch (err) {
+    exportedEl.textContent = `Export failed: ${err instanceof Error ? err.message : String(err)}`;
+  } finally {
+    exportBtn.disabled = false;
+  }
+});
+
 clearBtn.addEventListener("click", async () => {
   await send({ type: "clear-data" });
   clearedEl.hidden = false;
@@ -262,7 +336,7 @@ async function init(): Promise<void> {
   telemetryEl.checked = settings?.telemetryConsent ?? false;
   disabled = new Set(settings?.disabledDetectors ?? []);
   renderPatterns();
-  await renderSites();
+  renderSites();
   await renderSummary();
 }
 

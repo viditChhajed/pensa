@@ -1,14 +1,15 @@
 /**
  * Registrable-domain helper.
  *
- * Granting `https://www.booking.com/*` does NOT cover `secure.booking.com`, which is where
- * booking.com actually takes payment. Found in manual testing: the extension went dead at
- * exactly the funnel stage the cross-stage detectors exist for, and the user was asked to
- * grant a second time mid-checkout.
+ * It existed because permissions were requested per domain: granting `www.booking.com` did
+ * not cover `secure.booking.com`, which is where booking.com actually takes payment, so the
+ * extension went dead at exactly the funnel stage the cross-stage detectors exist for and
+ * asked for a second grant mid-checkout. Nothing is granted per site any more, so that
+ * particular failure is gone along with `domainMatchPattern` itself.
  *
- * So permissions are requested per registrable domain (`https://*.booking.com/*`) rather
- * than per exact origin. That is broader, and deliberately so: it is the same operator, and
- * the alternative is a tool that cannot see checkout.
+ * What is left is still needed twice over: the allowlist category lookup is keyed by
+ * registrable domain (us.shein.com and www.shein.com are one retailer), and it is the name
+ * the popup shows a person for the site they are on.
  */
 
 /** Public suffixes that take three labels rather than two. Not exhaustive; covers the allowlist. */
@@ -47,22 +48,17 @@ export function registrableDomain(hostname: string): string {
   return lastTwo;
 }
 
-/** The match pattern to request for a hostname: covers the domain and every subdomain. */
-export function domainMatchPattern(hostname: string): string {
-  return `https://*.${registrableDomain(hostname)}/*`;
-}
-
 /**
- * Does `url` fall under a declared match pattern?
+ * Does `url` fall under a match pattern?
  *
- * `chrome.permissions.request()` can ONLY grant patterns listed in
- * `optional_host_permissions`. Requesting anything else returns false with no explanation,
- * which is what produced a dead "Enable on this site" button: the popup offered enablement
- * on any non-denied site, including ones the manifest had never heard of, and the user got
- * "Nothing changed" twice with no way to tell why.
+ * It used to answer "can the popup offer to grant this?", back when there was something to
+ * grant. There is not any more, and `isGrantable` went with the button. What survives is
+ * the same string test applied to a different question: the popup asks the worker whether
+ * the manifest's declared content script matches this page, and whether one of the
+ * denylist-derived `exclude_matches` catches it first.
  *
  * Read the patterns from `chrome.runtime.getManifest()` rather than re-deriving them, so
- * the popup and the manifest cannot drift apart.
+ * the answer cannot drift from what Chrome actually loaded.
  */
 export function matchesPattern(pattern: string, url: URL): boolean {
   const m = /^(\*|https?):\/\/(\*\.)?([^/]*)(\/.*)$/.exec(pattern);
@@ -76,9 +72,4 @@ export function matchesPattern(pattern: string, url: URL): boolean {
   const target = url.hostname.toLowerCase();
   const want = host.toLowerCase();
   return wildcardSub ? target === want || target.endsWith(`.${want}`) : target === want;
-}
-
-/** Can this URL be granted at all, given what the manifest declares? */
-export function isGrantable(url: URL, patterns: readonly string[]): boolean {
-  return patterns.some((p) => matchesPattern(p, url));
 }

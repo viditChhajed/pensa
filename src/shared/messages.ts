@@ -68,11 +68,6 @@ export interface ObservationPayload {
   };
 }
 
-export interface QueryEnablement {
-  type: "query-enablement";
-  url: string;
-}
-
 export interface GetSummary {
   type: "get-summary";
 }
@@ -92,11 +87,35 @@ export interface DiagnoseRegistration {
 }
 
 export interface RegistrationReport {
+  /** Does Chrome still hand us this origin? The user can narrow site access at any time. */
   granted: boolean;
+  /** Does the declared content script match this URL, and is it not excluded? */
   registered: boolean;
-  matchCount: number;
+  /** Is this one of the denylist hosts `exclude_matches` refuses outright? */
+  excluded: boolean;
+  /**
+   * Has the detector decided this origin is actually a shop, this session?
+   *
+   * Derived from the presence of a session ledger, not from a stored verdict. The detector
+   * only messages the worker AFTER its commerce gate passes, so a ledger entry means "this
+   * was judged a shop" and its absence means "not judged one, or not judged yet". A page
+   * that is not a shop is therefore reported by producing nothing at all, which is the only
+   * way to answer the question without keeping a record of every page somebody visits.
+   */
+  active: boolean;
   error?: string;
 }
+/**
+ * Hand back every stored detection row, for research rather than for display.
+ *
+ * `get-summary` returns counts. This returns the rows the counts were computed from, which
+ * is what prevalence work actually needs: the pattern, where in the funnel it appeared, how
+ * confident the detector was, whether it was ever shown, and why it was suppressed if not.
+ */
+export interface ExportEvents {
+  type: "export-events";
+}
+
 export interface GetSettings {
   type: "get-settings";
 }
@@ -120,9 +139,9 @@ export type Message =
   | ObservationPayload
   | CandidatesPayload
   | TriggerPayload
-  | QueryEnablement
   | GetSummary
   | DiagnoseRegistration
+  | ExportEvents
   | GetSettings
   | SetSettings
   | GetPendingTelemetry

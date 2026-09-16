@@ -1,15 +1,22 @@
 /**
- * Stage-1 commerce classifier (plan §14.3). URL ONLY — this runs with zero page access,
- * because without host permission there is no DOM to inspect. That is the whole constraint:
- * you cannot read a page to decide whether to ask for permission to read the page.
+ * The denylist, and the URL-only commerce classifier that used to gate enablement.
  *
- * The denylist is evaluated FIRST and is absolute. No commerce score can override it.
- * A false positive here means inviting someone to grant page access on their bank or their
- * doctor's portal, which is the worst outcome this product can produce.
+ * `isDenied()` is now the more important half of this file by a wide margin. It used to
+ * suppress an OFFER — the worst case was inviting someone to grant page access on their
+ * bank. Vero holds access to every https site at install now, so the same function decides
+ * whether the detector runs at all, and the worst case is no longer an awkward invitation
+ * but the extension actually reading a patient portal. It is called from two places that
+ * must both keep calling it: the top of the content script, and the popup.
+ *
+ * `scoreUrl()` no longer decides anything. It reads the address and nothing else — it never
+ * could do more, since it once had to run before there was any page access — and all it
+ * does today is let the popup say "nothing commerce-shaped here, so you may see nothing",
+ * which is the only way to tell a quiet page from a broken extension.
  */
 
 import allowlistJson from "../../rulepacks/allowlist.v1.json";
 import denylistJson from "../../rulepacks/denylist.v1.json";
+import { toExcludeMatches } from "./denylistPatterns";
 import { registrableDomain } from "./domain";
 import type { OriginCategory } from "./schema";
 
@@ -31,6 +38,16 @@ const allowlist = allowlistJson as {
 };
 
 const denyPatterns = denylist.hostPatterns.map((p) => new RegExp(p, "i"));
+
+/**
+ * What the denylist looks like once it is split into "Chrome enforces this" and "we do".
+ *
+ * Exported from here rather than recomputed by each caller so that the settings page, the
+ * build hook and `isDenied()` are all describing one list. `matches` is what ships as the
+ * content script's `exclude_matches`; `inexpressible` is everything a match pattern cannot
+ * say, which is covered only by `isDenied()` below.
+ */
+export const DENYLIST_COVERAGE = toExcludeMatches(denylist);
 
 /**
  * Keyed by REGISTRABLE DOMAIN, not exact origin.
@@ -60,10 +77,14 @@ export function isAllowlisted(origin: string): boolean {
   return categoryForOrigin(origin) !== undefined;
 }
 
-/** Registrable domains of every allowlisted entry, for declarativeContent rules. */
-export const ALLOWLIST_DOMAINS: readonly string[] = [...DOMAIN_TO_CATEGORY.keys()];
-
-/** Absolute suppression. Checked before anything else, and never overridden. */
+/**
+ * Absolute suppression. Checked before anything else, and never overridden.
+ *
+ * This is the RUNTIME half of a two-layer guarantee. The manifest's `exclude_matches` stops
+ * Chrome injecting on the hosts a match pattern can name; everything else in the denylist —
+ * every regex with a wildcard inside a DNS label or no TLD anchor — reaches this function
+ * and nothing else. See `denylistPatterns.ts` for exactly which is which.
+ */
 export function isDenied(url: URL): boolean {
   if (denylist.schemes.includes(url.protocol)) return true;
 

@@ -18,6 +18,7 @@ import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
+import { stageLocalBuild } from "./localBuild";
 
 const BUILD = resolve(".output/chrome-mv3");
 const PAGES = resolve("tests/e2e/pages");
@@ -25,12 +26,7 @@ const PAGES = resolve("tests/e2e/pages");
 let context: BrowserContext;
 
 test.beforeAll(async () => {
-  const testBuild = mkdtempSync(join(tmpdir(), "patterns-drip-"));
-  cpSync(BUILD, testBuild, { recursive: true });
-  const manifestPath = join(testBuild, "manifest.json");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  manifest.host_permissions = ["http://localhost/*"];
-  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  const testBuild = stageLocalBuild("vero-drip-", ["http://shop.example.com/*"]);
 
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",
@@ -96,15 +92,15 @@ async function events(): Promise<{ patternId: string; stage: string; surfaced: b
 test("fees disclosed only at checkout produce a pricing.drip finding", async () => {
   const { page, logs } = await openJourney();
 
-  await page.goto("http://localhost/drip-pdp.html", { waitUntil: "domcontentloaded" });
+  await page.goto("http://shop.example.com/drip-pdp.html", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2500);
   await page.click("#atc");
   await page.waitForTimeout(2500);
 
-  await page.goto("http://localhost/drip-cart.html", { waitUntil: "domcontentloaded" });
+  await page.goto("http://shop.example.com/drip-cart.html", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2500);
 
-  await page.goto("http://localhost/drip-checkout.html", { waitUntil: "domcontentloaded" });
+  await page.goto("http://shop.example.com/drip-checkout.html", { waitUntil: "domcontentloaded" });
   // Entering checkout is itself a trigger — no click required.
   await page.waitForTimeout(6000);
 
@@ -128,15 +124,15 @@ test("an add-on the shopper never chose produces a basket.sneak finding", async 
   // trigger to have reached the ledger, which is a different link again.
   const { page, logs } = await openJourney();
 
-  await page.goto("http://localhost/drip-pdp.html", { waitUntil: "domcontentloaded" });
+  await page.goto("http://shop.example.com/drip-pdp.html", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2500);
   await page.click("#atc");
   await page.waitForTimeout(2500);
 
-  await page.goto("http://localhost/drip-cart.html", { waitUntil: "domcontentloaded" });
+  await page.goto("http://shop.example.com/drip-cart.html", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2000);
 
-  await page.goto("http://localhost/drip-checkout.html", { waitUntil: "domcontentloaded" });
+  await page.goto("http://shop.example.com/drip-checkout.html", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(6000);
 
   const all = await events();

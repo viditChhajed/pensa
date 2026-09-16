@@ -22,6 +22,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
+import { stageLocalBuild } from "./localBuild";
 
 const BUILD = resolve(".output/chrome-mv3");
 const PAGES = resolve("tests/e2e/pages");
@@ -31,12 +32,10 @@ let context: BrowserContext;
 
 test.beforeAll(async () => {
   mkdirSync(OUT, { recursive: true });
-  const testBuild = mkdtempSync(join(tmpdir(), "patterns-visual-"));
-  cpSync(BUILD, testBuild, { recursive: true });
-  const manifestPath = join(testBuild, "manifest.json");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  manifest.host_permissions = ["http://localhost/*", "http://127.0.0.1/*"];
-  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  const testBuild = stageLocalBuild("vero-visual-", [
+    "http://shop.example.com/*",
+    "http://shop.example.com/*",
+  ]);
 
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",
@@ -76,7 +75,7 @@ async function openFixture(name: string): Promise<{ page: Page; logs: string[] }
     }
     await route.fulfill({ status: 204, body: "" });
   });
-  await page.goto(`http://localhost/${name}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`http://shop.example.com/${name}`, { waitUntil: "domcontentloaded" });
   return { page, logs };
 }
 

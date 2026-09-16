@@ -4,6 +4,7 @@ import {
   evictOffers,
   prevalence,
   pruneEvents,
+  readEvents,
   readSettings,
   writeSettings,
 } from "@/background/db";
@@ -17,54 +18,43 @@ import {
   saveLedger,
 } from "@/background/sessionLedger";
 import { discardQueue, flush, pendingRecords } from "@/background/telemetry";
-import { CONTENT_SCRIPT_FILE, DETECTOR_SCRIPT_ID, TELEMETRY_ENDPOINT } from "@/shared/constants";
-import { domainMatchPattern, matchesPattern } from "@/shared/domain";
+import { DETECTOR_SCRIPT_ID, TELEMETRY_ENDPOINT } from "@/shared/constants";
+import { matchesPattern } from "@/shared/domain";
 import type { ShowDigest } from "@/shared/messages";
 import { Message } from "@/shared/messages.schema";
-import { ALLOWLIST_DOMAINS, DEFAULT_PROMPT_THRESHOLD, scoreUrl } from "@/shared/urlScore";
 import { decodePriceSnapshot } from "@/shared/wire";
 
 /**
  * Service worker.
  *
- *   1. Light up the toolbar icon on plausible shopping URLs WITHOUT reading any page
- *      (declarativeContent + pageUrl only — plan §1.1).
- *   2. Register / unregister the detector content script as host permissions come and go
- *      (plan §1.2, §1.3). Registration is NOT injection: a registered script stays inert
- *      until the extension holds permission for that origin, so grant and registration have
- *      to stay in sync or the failure is completely silent.
- *   3. Own the session ledger and the digest decision, because both outlive any one page.
+ *   1. Own the session ledger and the digest decision, because both outlive any one page.
+ *   2. Answer the popup's "are you actually running here?" question.
+ *   3. Clean up after the permission model this build replaced (see dropLegacyRegistration).
+ *
+ * What it no longer does: register the content script. The manifest declares it, matching
+ * the required https host permission and excluding what the denylist can express, so there
+ * is nothing to keep in sync at runtime and nothing that can silently fail to register. It
+ * also no longer installs declarativeContent page rules — the action is enabled everywhere
+ * and the popup opens on every page, so there was nothing for a page rule to decide.
  */
 export default defineBackground(() => {
-  chrome.runtime.onInstalled.addListener(async () => {
-    // The action stays ENABLED everywhere on purpose.
-    //
-    // It used to be disabled by default so `ShowAction` could grey it out on non-shopping
-    // pages. That worked visually and failed as UX: a disabled action is unclickable, so on
-    // a bank or a wiki the user got no response and no explanation at all. Silence is a
-    // worse answer than "not offered here", especially for the denylist case where the
-    // refusal is the most important thing this product does.
-    //
-    // The popup now always opens and says which of the three states applies. The
-    // declarativeContent rules below still run and still mark shopping pages.
-    await chrome.action.enable();
-    await installPageRules();
-    await reconcileRegistrations();
+  chrome.runtime.onInstalled.addListener(() => {
+    void dropLegacyRegistration();
   });
 
   // Service workers die. Anything assumed to persist has to be re-derived on wake.
   chrome.runtime.onStartup.addListener(() => {
-    void reconcileRegistrations();
+    void dropLegacyRegistration();
     void housekeeping();
   });
-  void reconcileRegistrations();
 
-  chrome.permissions.onAdded.addListener(() => {
-    void reconcileRegistrations();
-  });
-  chrome.permissions.onRemoved.addListener(() => {
-    void reconcileRegistrations();
-  });
+  // No `chrome.permissions.onAdded` / `onRemoved` listener any more, and that is not an
+  // oversight. They existed to re-derive the runtime registration when an optional origin
+  // was granted or revoked from the popup. There are no optional origins now, nothing in
+  // this extension calls `permissions.request` or `permissions.remove`, and the content
+  // script is declared in the manifest — so a permission change has nothing to reconcile.
+  // If a user narrows site access from chrome://extensions, Chrome simply stops injecting;
+  // that needs no cooperation from us, and the popup reports it (see diagnose-registration).
 
   chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
     // The .catch is load-bearing. Without it a throw anywhere inside handleMessage skips
@@ -120,84 +110,35 @@ async function flushTelemetry(): Promise<void> {
 }
 
 /**
- * declarativeContent rules from the allowlist plus generic commerce path tokens.
- * `pageUrl` conditions need no host permission and read nothing. A `css` condition WOULD
- * require host permission, which is exactly why Stage 1 is URL-only.
+ * Remove the runtime content-script registration left behind by an earlier permission model.
+ *
+ * Builds before this one registered the detector with `chrome.scripting`, per granted
+ * origin, with `persistAcrossSessions: true`. Those registrations SURVIVE an extension
+ * update. On an upgraded install the manifest entry and the stale runtime entry would both
+ * match, so the script would be injected twice (harmless — the injection flag catches the
+ * second) and, far worse, the stale entry carries whatever matches the old model had
+ * accumulated, with no exclude_matches on it at all. A user who once granted a bank
+ * subdomain would keep being injected there, invisibly, forever.
+ *
+ * This is the only reason the `scripting` permission is still requested. It is a migration,
+ * and it is cheap enough to run on every wake rather than trying to remember whether it has
+ * already happened.
  */
-async function installPageRules(): Promise<void> {
-  const conditions: chrome.declarativeContent.PageStateMatcher[] = [];
-
-  for (const domain of ALLOWLIST_DOMAINS) {
-    // Two matchers per domain, deliberately. `hostSuffix: "shein.com"` alone would also
-    // match notshein.com, since hostSuffix is a plain string suffix test. The bare domain
-    // needs hostEquals and subdomains need the dot-prefixed suffix.
-    conditions.push(
-      new chrome.declarativeContent.PageStateMatcher({
-        pageUrl: { hostEquals: domain, schemes: ["https"] },
-      }),
-      new chrome.declarativeContent.PageStateMatcher({
-        pageUrl: { hostSuffix: `.${domain}`, schemes: ["https"] },
-      }),
-    );
-  }
-
-  for (const contains of ["/cart", "/checkout", "/basket", "/products/", "/product/", "/dp/"]) {
-    conditions.push(
-      new chrome.declarativeContent.PageStateMatcher({
-        pageUrl: { pathContains: contains, schemes: ["https"] },
-      }),
-    );
-  }
-
-  await new Promise<void>((resolve) => {
-    chrome.declarativeContent.onPageChanged.removeRules(undefined, () => {
-      chrome.declarativeContent.onPageChanged.addRules(
-        [{ conditions, actions: [new chrome.declarativeContent.ShowAction()] }],
-        () => resolve(),
-      );
-    });
-  });
-}
-
-/**
- * Make the set of registered content scripts match the set of granted origins, exactly.
- * Called on install, on wake, and on every permission change, because `persistAcrossSessions`
- * can drift from reality and a stale registration is invisible.
- */
-async function reconcileRegistrations(): Promise<void> {
-  const granted = await chrome.permissions.getAll();
-  const origins = (granted.origins ?? []).filter((o) => !o.startsWith("chrome-extension://"));
-
-  const existing = await chrome.scripting.getRegisteredContentScripts({
-    ids: [DETECTOR_SCRIPT_ID],
-  });
-
-  if (origins.length === 0) {
-    if (existing.length > 0) {
-      await chrome.scripting.unregisterContentScripts({ ids: [DETECTOR_SCRIPT_ID] });
-    }
-    return;
-  }
-
-  const registration: chrome.scripting.RegisteredContentScript = {
-    id: DETECTOR_SCRIPT_ID,
-    js: [CONTENT_SCRIPT_FILE],
-    matches: origins,
-    runAt: "document_idle",
-    allFrames: false,
-    persistAcrossSessions: true,
-  };
-
+async function dropLegacyRegistration(): Promise<void> {
   try {
-    if (existing.length > 0) {
-      await chrome.scripting.updateContentScripts([registration]);
-    } else {
-      await chrome.scripting.registerContentScripts([registration]);
-    }
+    const existing = await chrome.scripting.getRegisteredContentScripts({
+      ids: [DETECTOR_SCRIPT_ID],
+    });
+    if (existing.length === 0) return;
+    await chrome.scripting.unregisterContentScripts({ ids: [DETECTOR_SCRIPT_ID] });
+    console.info(
+      `[vero] removed a legacy runtime registration (${existing[0]?.matches?.length ?? 0} ` +
+        "match patterns); the manifest declares the content script now",
+    );
   } catch (err) {
-    // Most likely a match pattern the scripting API rejects. Surface it — a silent no-op
-    // here looks identical to "the detector found nothing".
-    console.error("[vero] content script registration failed", err, origins);
+    // Surface it. A failure here means the old registration is still live alongside the new
+    // manifest one, which is exactly the state that looks fine and is not.
+    console.error("[vero] could not drop the legacy content-script registration", err);
   }
 }
 
@@ -237,22 +178,6 @@ async function handleMessage(raw: unknown): Promise<unknown> {
   switch (msg.type) {
     case "ping":
       return { ok: true };
-
-    case "query-enablement": {
-      const scored = scoreUrl(msg.url);
-      const granted = await chrome.permissions.getAll();
-      let enabled = false;
-      try {
-        enabled = (granted.origins ?? []).includes(`${new URL(msg.url).origin}/*`);
-      } catch {
-        enabled = false;
-      }
-      return {
-        ...scored,
-        enabled,
-        shouldOffer: !scored.denied && scored.score >= DEFAULT_PROMPT_THRESHOLD,
-      };
-    }
 
     case "stage": {
       const sessionId = await currentSessionId();
@@ -308,39 +233,117 @@ async function handleMessage(raw: unknown): Promise<unknown> {
     }
 
     case "diagnose-registration": {
-      // Permission and registration are two separate things, and only the first is visible
-      // in the popup. This reports the second.
-      const pattern = domainMatchPattern(new URL(msg.url).hostname);
-      const granted = await chrome.permissions.contains({ origins: [pattern] });
-      let registered = false;
-      let matchCount = 0;
+      /**
+       * Three separate facts, only the last of which the popup can work out on its own.
+       *
+       *   granted    - does Chrome still hand us this origin? `https://*` is required at
+       *                install, but the user can narrow site access from chrome://extensions
+       *                at any time and the extension is never notified.
+       *   excluded   - is this one of the hosts the manifest's `exclude_matches` refuses?
+       *                Chrome will not inject there, whatever the permission says.
+       *   registered - does the declared content script match this URL at all?
+       *
+       * Read from the manifest rather than from `chrome.scripting`: the content script is
+       * declared, not registered, so `getRegisteredContentScripts` legitimately returns
+       * nothing and reporting that as "not running" would be a lie.
+       */
+      let url: URL;
+      try {
+        url = new URL(msg.url);
+      } catch {
+        return {
+          granted: false,
+          registered: false,
+          excluded: false,
+          active: false,
+          error: "unparseable url",
+        };
+      }
+
+      let granted = false;
       let error: string | undefined;
       try {
-        const scripts = await chrome.scripting.getRegisteredContentScripts({
-          ids: [DETECTOR_SCRIPT_ID],
-        });
-        const matches = scripts[0]?.matches ?? [];
-        matchCount = matches.length;
-        registered = matches.some((m) => matchesPattern(m, new URL(msg.url)));
+        granted = await chrome.permissions.contains({ origins: [`${url.origin}/*`] });
       } catch (err) {
         error = err instanceof Error ? err.message : String(err);
       }
-      // Registration can drift from permissions — a service worker dies mid-grant, or a bad
-      // pattern makes the whole update throw. Repair it here rather than only reporting.
-      if (granted && !registered) {
-        await reconcileRegistrations();
-        const after = await chrome.scripting.getRegisteredContentScripts({
-          ids: [DETECTOR_SCRIPT_ID],
-        });
-        const matches = after[0]?.matches ?? [];
-        matchCount = matches.length;
-        registered = matches.some((m) => matchesPattern(m, new URL(msg.url)));
+
+      const declared = chrome.runtime.getManifest().content_scripts ?? [];
+      const excluded = declared.some((cs) =>
+        (cs.exclude_matches ?? []).some((p) => matchesPattern(p, url)),
+      );
+      const matched = declared.some((cs) => (cs.matches ?? []).some((p) => matchesPattern(p, url)));
+
+      /**
+       * Absence is the answer for a non-shop page.
+       *
+       * A ledger key exists only once the detector has messaged the worker, and it only
+       * does that after its commerce gate passes. So this reports "Vero decided this is a
+       * shop" without anything, anywhere, having written down that the other pages were
+       * visited. storage.session is also cleared when the browser closes.
+       */
+      let active = false;
+      try {
+        const all = await chrome.storage.session.get(null);
+        active = Object.keys(all).some((k) => k.startsWith("ledger:") && k.includes(url.origin));
+      } catch {
+        // Session storage being unavailable is not worth failing the whole report over.
       }
-      return { granted, registered, matchCount, ...(error ? { error } : {}) };
+
+      return {
+        granted,
+        excluded,
+        registered: matched && !excluded,
+        active,
+        ...(error ? { error } : {}),
+      };
     }
 
     case "get-summary":
       return { rows: await prevalence(Date.now() - 24 * 60 * 60 * 1000) };
+
+    case "export-events": {
+      /**
+       * The prevalence substrate, handed over whole.
+       *
+       * `get-summary` answers "what did I see today" for a person. This answers "what has
+       * this browser actually observed" for research — one row per detection, with the
+       * fields that make a row analysable: which pattern, where in the funnel, how confident,
+       * whether it was ever actually shown, and why it was suppressed if not.
+       *
+       * Deliberately NOT the same shape as the telemetry record. Telemetry is k-anonymised
+       * and strips the origin by design, because it leaves the device. This does not leave
+       * the device unless the person exporting it chooses to move it, so it keeps the origin
+       * — without which per-site prevalence cannot be computed at all, and per-site
+       * prevalence is most of the point.
+       *
+       * `textSample` is included: it is already stored, it is what makes a row auditable
+       * rather than merely countable, and a person exporting their own data should not have
+       * to take the detector's word for what it matched. Anyone republishing an export is
+       * republishing retailer copy they observed, which is their call to make knowingly.
+       */
+      const rows = await readEvents(0);
+      return {
+        rows: rows.map((e) => ({
+          ts: e.ts,
+          origin: e.origin,
+          pathTemplate: e.pathTemplate,
+          patternId: e.patternId,
+          detectorId: e.detectorId,
+          detectorVersion: e.detectorVersion,
+          rulepackVersion: e.rulepackVersion,
+          confidence: e.confidence,
+          confidenceBasis: e.confidenceBasis,
+          funnelStage: e.funnelStage,
+          surfaced: e.surfaced,
+          suppressionReason: e.suppressionReason,
+          visibleMs: e.salience.visibleMs,
+          viewportFraction: e.salience.viewportFraction,
+          textSample: e.evidence.textSample ?? null,
+          matchedLexemes: e.evidence.matchedLexemes,
+        })),
+      };
+    }
 
     case "get-settings":
       return await readSettings();

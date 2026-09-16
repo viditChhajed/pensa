@@ -20,6 +20,7 @@ import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, test } from "@playwright/test";
 import { K_FLOOR, MIN_BATCH } from "@/shared/constants";
 import { type CountRow, handle } from "../../server/handler";
+import { stageLocalBuild } from "./localBuild";
 
 const PORT = 9911;
 const ENDPOINT = `http://127.0.0.1:${PORT}/counts`;
@@ -66,12 +67,13 @@ test.beforeAll(async () => {
     stdio: "pipe",
   });
 
-  const build = mkdtempSync(join(tmpdir(), "patterns-tele-"));
-  cpSync(resolve(".output/chrome-mv3"), build, { recursive: true });
-  const mp = join(build, "manifest.json");
-  const m = JSON.parse(readFileSync(mp, "utf8"));
-  m.host_permissions = ["http://localhost/*", "http://127.0.0.1/*"];
-  writeFileSync(mp, JSON.stringify(m, null, 2));
+  // The sink is a permission, not a place to inject: the worker posts to it, no page there
+  // is ever read.
+  const build = stageLocalBuild(
+    "vero-tele-",
+    ["http://shop.example.com/*"],
+    [`http://127.0.0.1:${PORT}/*`],
+  );
 
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",

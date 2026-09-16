@@ -1,17 +1,22 @@
 /**
  * The detector content script.
  *
- * Built via `defineUnlistedScript`, so WXT compiles it but never writes it into the
- * manifest. That is what keeps `host_permissions` empty (plan §1.2): a content script
- * declared in the manifest implicitly grants its match patterns at install, producing the
- * 150-site install warning the permission design exists to avoid. The service worker
- * registers this file at runtime, only for origins the user granted.
+ * Still built via `defineUnlistedScript` — WXT compiles it to `detector.js` and writes
+ * nothing into the manifest — but the manifest entry that injects it is now written by
+ * hand in `wxt.config.ts`, matching the required `https://` host permission and carrying
+ * the denylist-derived `exclude_matches`. Keeping the entry in the config is what lets one
+ * function both generate those exclusions and refuse to build without them.
+ *
+ * This file runs on every https page that Chrome did not already refuse, so the FIRST
+ * thing it does is check the denylist itself. See the bail-out at the top of the body: the
+ * manifest can only express a fraction of the denylist, and the rest is this check.
  *
  * Responsibilities here are narrow on purpose: observe the page, score it, report upward.
  * Ranking, persistence, and the cross-stage findings live in the worker, because they
  * outlive any single page.
  */
 import { defineUnlistedScript } from "wxt/utils/define-unlisted-script";
+import { classifyCommerce } from "@/content/commerce";
 import { runDetectors } from "@/content/detectors";
 import { createHash } from "@/content/detectors/hash";
 import { explainStage } from "@/content/funnel";
@@ -33,7 +38,7 @@ import { DigestCard, measureCapacity } from "@/content/ui/card";
 import { BUILD_STAMP, INJECTION_FLAG } from "@/shared/constants";
 import { type ShowDigest, send } from "@/shared/messages";
 import type { DetectionCandidate, FunnelStage } from "@/shared/schema";
-import { originOf, pathTemplate } from "@/shared/urlScore";
+import { isDenied, originOf, pathTemplate } from "@/shared/urlScore";
 import { encodePriceSnapshot } from "@/shared/wire";
 
 /** Day-1 hand-set value. Below this, a candidate is not even worth reporting upward. */
@@ -52,6 +57,29 @@ interface Scored {
 }
 
 export default defineUnlistedScript(() => {
+  /**
+   * The denylist, enforced in the only place that can enforce all of it.
+   *
+   * `exclude_matches` in the manifest stops Chrome injecting on the part of the denylist a
+   * match pattern can express — whole hosts and their subdomains. It cannot express the
+   * rest, and the rest is most of it: "any label containing `bank`", "`mychart.` under any
+   * TLD", "`secure.` in front of a bank name". Those hosts DO get this script injected, and
+   * this is the line that stops it doing anything on them.
+   *
+   * First statement in the body, before the injection flag, before a single DOM read. A
+   * bail-out that happens after the observers are attached is not a bail-out.
+   *
+   * Checked once rather than per pass, because the denylist is a hostname test and a
+   * client-side route change cannot move a document to a different host. The host is fixed
+   * for the lifetime of this script.
+   */
+  try {
+    if (isDenied(new URL(location.href))) return;
+  } catch {
+    // An unparseable location is not a page we understand well enough to run on.
+    return;
+  }
+
   const w = globalThis as unknown as Record<string, unknown>;
   if (w[INJECTION_FLAG]) return;
   w[INJECTION_FLAG] = true;
@@ -138,9 +166,64 @@ export default defineUnlistedScript(() => {
     };
   }
 
+  /**
+   * Has this page ever looked like a shop? Latched, not re-decided every pass.
+   *
+   * Single-page storefronts build the cart after the first paint, so a page that is not a
+   * shop at pass 1 can be one at pass 3 — the check has to be able to turn Vero ON later.
+   * It must not be able to turn it OFF again: a cart that empties is still a shop, and
+   * flapping would mean a detection recorded on one pass and silently dropped on the next.
+   */
+  let commerceConfirmed = false;
+  let notCommercePasses = 0;
+
+  /**
+   * How far apart to re-check a page that does not look like a shop. Long enough that an
+   * ordinary browsing session costs effectively nothing, short enough that a storefront
+   * which renders late is still picked up within a few seconds of settling.
+   */
+  const NOT_COMMERCE_CEILING_MS = 20_000;
+
   async function pass(): Promise<void> {
     const started = performance.now();
+
+    /**
+     * The gate: read the page, and if it is not selling anything, do nothing and keep
+     * nothing.
+     *
+     * Deliberately BEFORE `buildContext`, so a page that is not a shop never pays for the
+     * harvest — which is the expensive half and which, now that Vero runs on every https
+     * page, would otherwise be paid on every page of the web. The cost of putting it here
+     * is that `readDocumentMeta` runs twice on the one pass that first confirms a shop.
+     * That is one extra structural read, once per page, against not walking the DOM at all
+     * on every non-shop page a person visits.
+     *
+     * Nothing downstream has run at this point: no detector, no salience observation, no
+     * message to the worker, and therefore no row in the event log. A page that is not a
+     * shop leaves no trace that Vero was ever there — which, given the permission it now
+     * holds, is the difference between a shopping tool and something that watches you
+     * browse.
+     */
+    if (!commerceConfirmed) {
+      const verdict = classifyCommerce(readDocumentMeta(document, location.href));
+      if (!verdict.isCommerce) {
+        // Geometric, to a ceiling. A single-page storefront can build its cart after the
+        // first paint, so this has to stay willing to look again — but a blog must not cost
+        // a DOM read every second forever, and mutation-driven passes come through the same
+        // debounce, so raising it here quiets both.
+        notCommercePasses++;
+        debounceMs = Math.min(NOT_COMMERCE_CEILING_MS, PASS_DEBOUNCE_MS * 2 ** notCommercePasses);
+        return;
+      }
+      commerceConfirmed = true;
+      debounceMs = PASS_DEBOUNCE_MS;
+      console.info(
+        `[vero] commerce page (score ${verdict.score}) :: ${verdict.reasons.join(" | ")}`,
+      );
+    }
+
     const ctx = buildContext();
+
     const collected: Scored[] = [];
 
     // One badge, one event.

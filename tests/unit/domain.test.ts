@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { domainMatchPattern, registrableDomain } from "@/shared/domain";
+import { registrableDomain } from "@/shared/domain";
 
 /**
- * Regression net for a flaw found in manual testing: a grant for www.booking.com did not
- * cover secure.booking.com, so the extension went blind at checkout — exactly where the
- * cross-stage detectors (pricing.drip, basket.sneak) do their only work.
+ * `domainMatchPattern` and its tests went with the per-site grant flow: nothing is requested
+ * per domain any more. `registrableDomain` stays load-bearing in two places — the allowlist
+ * category lookup (us.shein.com and www.shein.com are one retailer) and the name the popup
+ * puts in front of a person — and the public-suffix case is the one that bites, because two
+ * labels of "marksandspencer.co.uk" is "co.uk", which is all of Britain.
  */
 describe("registrableDomain", () => {
   it("strips subdomains", () => {
@@ -26,27 +28,5 @@ describe("registrableDomain", () => {
 
   it("is case-insensitive and tolerates a trailing dot", () => {
     expect(registrableDomain("WWW.Booking.COM.")).toBe("booking.com");
-  });
-});
-
-describe("domainMatchPattern", () => {
-  it("covers the checkout subdomain from one grant", () => {
-    const pattern = domainMatchPattern("www.booking.com");
-    expect(pattern).toBe("https://*.booking.com/*");
-  });
-
-  it("never produces a pattern that spans a public suffix", () => {
-    for (const host of [
-      "www.booking.com",
-      "www.marksandspencer.co.uk",
-      "shop.example.com.au",
-      "etsy.com",
-    ]) {
-      const p = domainMatchPattern(host);
-      expect(p).not.toBe("https://*.com/*");
-      expect(p).not.toBe("https://*.co.uk/*");
-      expect(p).not.toBe("https://*.com.au/*");
-      expect(p.split(".").length).toBeGreaterThanOrEqual(3);
-    }
   });
 });

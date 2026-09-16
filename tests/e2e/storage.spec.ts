@@ -14,17 +14,13 @@ import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, test } from "@playwright/test";
+import { stageLocalBuild } from "./localBuild";
 
 let context: BrowserContext;
 let extensionId: string;
 
 test.beforeAll(async () => {
-  const build = mkdtempSync(join(tmpdir(), "vero-store-"));
-  cpSync(resolve(".output/chrome-mv3"), build, { recursive: true });
-  const mp = join(build, "manifest.json");
-  const m = JSON.parse(readFileSync(mp, "utf8"));
-  m.host_permissions = ["http://localhost/*"];
-  writeFileSync(mp, JSON.stringify(m, null, 2));
+  const build = stageLocalBuild("vero-store-", ["http://shop.example.com/*"]);
 
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",
@@ -99,14 +95,14 @@ test("the offers store accumulates across visits and yields a temporal claim", a
 
     const a = await send({
       type: "observation",
-      origin: "http://localhost",
+      origin: "http://shop.example.com",
       offerKey: "sku:E2E",
       offerKeySource: "sku",
       observation: observation(0),
     });
     const b = await send({
       type: "observation",
-      origin: "http://localhost",
+      origin: "http://shop.example.com",
       offerKey: "sku:E2E",
       offerKeySource: "sku",
       observation: observation(3 * hour),
@@ -161,7 +157,7 @@ test("delete all my data — CLICKED FROM THE OPTIONS UI — empties IndexedDB",
     const send = (msg: unknown) => new Promise((res) => chrome.runtime.sendMessage(msg, res));
     await send({
       type: "observation",
-      origin: "http://localhost",
+      origin: "http://shop.example.com",
       offerKey: "sku:DELETE-ME",
       offerKeySource: "sku",
       observation: {
@@ -243,7 +239,7 @@ test("an accumulated history produces a temporal claim in the digest", async () 
 
   const result = await page.evaluate(async () => {
     const send = (msg: unknown) => new Promise((res) => chrome.runtime.sendMessage(msg, res));
-    const origin = "http://localhost";
+    const origin = "http://shop.example.com";
     const offerKey = "sku:RESTOCKER";
 
     for (const n of [2, 5, 9]) {

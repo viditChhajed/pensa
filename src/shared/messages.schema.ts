@@ -107,16 +107,12 @@ export const ObservationPayload = z.object({
   }),
 });
 
-export const QueryEnablement = z.object({
-  type: z.literal("query-enablement"),
-  url: z.string().max(2048),
-});
-
 export const GetSummary = z.object({ type: z.literal("get-summary") });
 export const DiagnoseRegistration = z.object({
   type: z.literal("diagnose-registration"),
   url: z.string().max(2048),
 });
+export const ExportEvents = z.object({ type: z.literal("export-events") });
 export const GetSettings = z.object({ type: z.literal("get-settings") });
 export const SetSettings = z.object({
   type: z.literal("set-settings"),
@@ -131,9 +127,9 @@ export const Message = z.discriminatedUnion("type", [
   ObservationPayload,
   CandidatesPayload,
   TriggerPayload,
-  QueryEnablement,
   GetSummary,
   DiagnoseRegistration,
+  ExportEvents,
   GetSettings,
   SetSettings,
   GetPendingTelemetry,

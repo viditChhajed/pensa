@@ -65,22 +65,49 @@ describe("store listing describes what ships", () => {
     ).toBe(false);
   });
 
-  it.skipIf(!existsSync(MANIFEST))("justifies every host pattern the manifest declares", () => {
+  it.skipIf(!existsSync(MANIFEST))("names every host pattern the manifest REQUIRES", () => {
+    /**
+     * This used to check `optional_host_permissions`, because the broad pattern was optional
+     * and the listing's job was to explain why an optional all-sites pattern was there.
+     * It is required now, so the same check has more teeth, not less: this is the field a
+     * reviewer opens the manifest to compare against, and a listing describing a curated
+     * list of retailers beside a manifest asking for every https site is the single fastest
+     * way to get an extension rejected — and it would deserve it.
+     */
     const manifest = JSON.parse(readFileSync(MANIFEST, "utf8")) as {
+      host_permissions?: string[];
       optional_host_permissions?: string[];
     };
-    const optional = manifest.optional_host_permissions ?? [];
 
-    // A broad pattern is the thing a reviewer asks about. If one is declared, the
-    // justification section has to address it by name — not describe the named list alone.
-    const broad = optional.filter((p) => /^https?:\/\/\*\/\*$/.test(p));
-    for (const pattern of broad) {
+    for (const pattern of manifest.host_permissions ?? []) {
       expect(
         listing.includes(pattern),
-        `the manifest declares ${pattern} and the listing never mentions it — the ` +
-          "permission justification would not match what the reviewer is reading",
+        `the manifest REQUIRES ${pattern} at install and the listing never mentions it — ` +
+          "the permission justification would not match what the reviewer is reading",
       ).toBe(true);
     }
+
+    expect(
+      manifest.optional_host_permissions,
+      "optional_host_permissions is back; the listing and the two-tier story went away with it",
+    ).toBeUndefined();
+  });
+
+  it.skipIf(!existsSync(MANIFEST))("does not still promise a per-site opt-in", () => {
+    /**
+     * The claim most likely to survive the change and become a lie. The old listing had to
+     * explain that Vero reads nothing until you enable it site by site; the product now
+     * holds every https site from the moment it is installed. A listing that still promises
+     * the opposite is worse than one that says nothing.
+     */
+    const promises =
+      /enable (it |vero )?(on )?(each|every|per)[- ]site|site by site|only reads sites you (have )?enabled|nothing until you enable/i;
+    const hit = promises.exec(listing);
+    expect(
+      hit?.[0],
+      `the listing still promises per-site enablement ("${hit?.[0]}") — Vero now holds ` +
+        "https://*/* at install",
+    ).toBeUndefined();
   });
 });
 

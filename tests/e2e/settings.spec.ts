@@ -17,17 +17,13 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
 import { PATTERN_GROUPS } from "@/entrypoints/options/groups";
+import { stageLocalBuild } from "./localBuild";
 
 let context: BrowserContext;
 let extensionId: string;
 
 test.beforeAll(async () => {
-  const build = mkdtempSync(join(tmpdir(), "patterns-settings-"));
-  cpSync(resolve(".output/chrome-mv3"), build, { recursive: true });
-  const mp = join(build, "manifest.json");
-  const m = JSON.parse(readFileSync(mp, "utf8"));
-  m.host_permissions = ["http://localhost/*"];
-  writeFileSync(mp, JSON.stringify(m, null, 2));
+  const build = stageLocalBuild("vero-settings-", ["http://shop.example.com/*"]);
 
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",
@@ -50,7 +46,7 @@ async function historyDigest(page: Page, offerKey: string): Promise<unknown> {
     for (const n of [2, 5, 9]) {
       await send({
         type: "observation",
-        origin: "http://localhost",
+        origin: "http://shop.example.com",
         offerKey: key,
         offerKeySource: "sku",
         observation: {
@@ -64,7 +60,7 @@ async function historyDigest(page: Page, offerKey: string): Promise<unknown> {
     }
     return await send({
       type: "candidates",
-      origin: "http://localhost",
+      origin: "http://shop.example.com",
       pathTemplate: "/x",
       stage: "pdp",
       items: [],

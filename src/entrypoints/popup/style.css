@@ -3,7 +3,6 @@
   --bg: #ffffff;
   --fg: #1a1a1a;
   --muted: #666;
-  --accent: #2b5cff;
   --border: #e2e2e2;
 }
 @media (prefers-color-scheme: dark) {
@@ -44,29 +43,11 @@ h1 {
   font-size: 12px;
   margin: 10px 0 0;
 }
-/* The heuristic's own reading. Deliberately quieter than the offer above it. */
+/* The heuristic's own reading. Deliberately quieter than the status above it. */
 .detail.score {
   margin-top: 6px;
   opacity: 0.8;
   font-variant-numeric: tabular-nums;
-}
-button.primary {
-  width: 100%;
-  padding: 9px 12px;
-  font: inherit;
-  font-weight: 600;
-  color: #fff;
-  background: var(--accent);
-  border: 0;
-  border-radius: 7px;
-  cursor: pointer;
-}
-button.primary:hover {
-  filter: brightness(1.08);
-}
-button.primary:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 footer {
   margin-top: 14px;
@@ -96,27 +77,6 @@ button.linklike {
 footer a:hover,
 button.linklike:hover {
   text-decoration: underline;
-}
-
-/*
- * The revoke state. `renderRevoke` drops `.primary` so that "Stop watching example.com" does
- * not wear the same emphatic blue as the enable offer — turning a site off should not be
- * styled as the thing the popup wants you to do. Dropping the class left it with no styling
- * at all, which is the same bug as above and reached every user who had enabled a site.
- */
-button.secondary {
-  width: 100%;
-  padding: 9px 12px;
-  font: inherit;
-  font-weight: 500;
-  color: var(--fg);
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  cursor: pointer;
-}
-button.secondary:hover {
-  border-color: var(--muted);
 }
 
 section#today {

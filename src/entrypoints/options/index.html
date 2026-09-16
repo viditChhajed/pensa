@@ -21,8 +21,15 @@
       </section>
 
       <section>
-        <h2>Sites you have enabled</h2>
+        <h2>Where Vero runs</h2>
+        <p class="muted">
+          On every <code>https://</code> page, except the ones below. There is no per-site
+          switch: Vero asked for access to all sites when you installed it, and it does not
+          ask again. This list is fixed in the extension, is applied before anything on a
+          page is read, and cannot be added to or turned off from here.
+        </p>
         <ul id="sites"><li class="muted">Loading…</li></ul>
+        <p class="muted small" id="sitesNote"></p>
       </section>
 
       <section>
@@ -87,7 +94,9 @@
           Everything stays on this device. There are no network requests. You can check that
           yourself in DevTools → Network.
         </p>
+        <button type="button" id="export">Export my data (JSONL)</button>
         <button type="button" id="clear">Delete all my data</button>
+        <p id="exported" class="muted" hidden></p>
         <p id="cleared" class="muted" hidden>Deleted.</p>
       </section>
     </main>

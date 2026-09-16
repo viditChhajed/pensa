@@ -32,7 +32,7 @@ test.beforeAll(async () => {
   cpSync(resolve(".output/chrome-mv3"), build, { recursive: true });
   const mp = join(build, "manifest.json");
   const m = JSON.parse(readFileSync(mp, "utf8"));
-  m.host_permissions = ["http://localhost/*"];
+  m.host_permissions = ["http://shop.example.com/*"];
   writeFileSync(mp, JSON.stringify(m, null, 2));
 
   context = await chromium.launchPersistentContext("", {
@@ -85,7 +85,7 @@ async function browseSession(): Promise<void> {
   );
 
   for (const path of ["/product", "/cart", "/checkout"]) {
-    await page.goto(`http://localhost${path}`, { waitUntil: "domcontentloaded" });
+    await page.goto(`http://shop.example.com${path}`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1200);
     // Drive a real add-to-cart and a checkout click, the two digest triggers.
     await page.evaluate(() => {
@@ -120,7 +120,7 @@ test("a full browsing session produces ZERO extension-originated requests", asyn
     const u = r.url;
     if (u.startsWith("chrome-extension://")) return false; // loading our own bundled files
     if (u.startsWith("data:") || u.startsWith("blob:") || u.startsWith("about:")) return false;
-    if (u.startsWith("http://localhost/")) return false; // the stubbed fixture page itself
+    if (u.startsWith("http://shop.example.com/")) return false; // the stubbed fixture page itself
     return true;
   });
 
@@ -194,7 +194,7 @@ test("with consent ON, the only address that can be contacted is the declared en
   const egress = seen.filter(
     (r) =>
       !r.url.startsWith("chrome-extension://") &&
-      !r.url.startsWith("http://localhost/") &&
+      !r.url.startsWith("http://shop.example.com/") &&
       !r.url.startsWith("data:") &&
       !r.url.startsWith("about:"),
   );

@@ -1,25 +1,30 @@
 /**
- * The enablement surface (plan §1.4).
+ * The popup.
  *
- * `chrome.permissions.request()` needs a live user gesture, and the gesture is consumed by
- * the first `await` that yields to the event loop. So everything asynchronous — reading the
- * tab URL, scoring it — happens when the popup OPENS. By the time the button exists, the
- * origin pattern is already a plain string in scope, and the click handler can call
- * `request()` with nothing in front of it.
+ * It used to be the enablement surface: an "Enable on this site" button, a live user
+ * gesture carefully preserved through to `chrome.permissions.request()`, and a revoke
+ * control once a site was granted. All of that is gone. Vero now holds `https://` for every
+ * site at install, so there is nothing left to ask for and nothing left to take back — the
+ * only per-site control that ever existed was the permission itself, and settings has no
+ * per-site flag to wire this to instead.
  *
- * `activeTab` is what lets this read the current tab's URL without the `tabs` permission.
+ * What is left is the question the popup was always really answering, now answered honestly
+ * instead of inferred from a permission: is Vero running on this page, or not, and why not.
+ *
+ * `activeTab` is what lets this read the current tab's URL on pages the host permission
+ * does NOT cover — http://, chrome://, a PDF viewer — so a page Vero cannot run on can still
+ * be told apart from a popup that failed to load.
  */
 
 import { BUILD_STAMP } from "@/shared/constants";
-import { domainMatchPattern, isGrantable, registrableDomain } from "@/shared/domain";
+import { registrableDomain } from "@/shared/domain";
 import type { RegistrationReport } from "@/shared/messages";
 import { send } from "@/shared/messages";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
-import { DEFAULT_PROMPT_THRESHOLD, describeSignals, isDenied, scoreUrl } from "@/shared/urlScore";
+import { isDenied } from "@/shared/urlScore";
 
 const statusEl = document.getElementById("status") as HTMLParagraphElement;
 const detailEl = document.getElementById("detail") as HTMLParagraphElement;
-const enableBtn = document.getElementById("enable") as HTMLButtonElement;
 const optionsLink = document.getElementById("options") as HTMLButtonElement;
 
 // Same reason as the detector's startup log: a stale unpacked load is otherwise invisible.
@@ -33,9 +38,6 @@ document
 optionsLink.addEventListener("click", () => {
   void chrome.runtime.openOptionsPage();
 });
-
-/** Resolved during init, BEFORE any click can happen. Never awaited inside the handler. */
-let originPattern: string | null = null;
 
 async function init(): Promise<void> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -54,140 +56,94 @@ async function init(): Promise<void> {
     return;
   }
 
+  /**
+   * The refusal, stated first and stated plainly.
+   *
+   * This is the most important sentence in the popup. Everywhere else Vero runs by default
+   * now, which makes the places it does not run the only thing a person cannot infer. The
+   * copy says both halves — it does not run here, and it is not reading this page — because
+   * "not running" is a claim about behaviour and "not reading" is the one people care about.
+   */
   if (isDenied(parsed)) {
-    statusEl.textContent = `Not available on ${parsed.hostname}.`;
+    statusEl.textContent = `Vero does not run on ${parsed.hostname}.`;
     detailEl.textContent =
-      "This extension never asks for access to banking, health, government or mail sites. " +
-      "It cannot be enabled here, and it is not reading this page.";
+      "Vero never runs on banking, health, government, webmail or similar sites. It is not " +
+      "reading this page, and nothing about it is recorded.";
     return;
   }
 
-  // Domain-wide, so checkout subdomains (secure.booking.com) are covered by one grant.
-  const pattern = domainMatchPattern(parsed.hostname);
+  if (parsed.protocol !== "https:") {
+    // Honest about the edge the permission deliberately does not cover. Vero asks for
+    // https:// only, so a plaintext page — or a chrome:// page, or a local file — is one it
+    // has no access to at all.
+    statusEl.textContent = `Vero does not run on ${parsed.hostname || "this page"}.`;
+    detailEl.textContent =
+      `Vero only runs on https:// pages, and this one is ${parsed.protocol.replace(":", "")}. ` +
+      "It is not reading this page.";
+    return;
+  }
+
   const domain = registrableDomain(parsed.hostname);
-
-  // A permission that cannot be requested must not be offered. Chrome only grants patterns
-  // declared in optional_host_permissions; anything else fails silently and the user is left
-  // clicking a button that does nothing.
-  const declared = chrome.runtime.getManifest().optional_host_permissions ?? [];
-  if (!isGrantable(parsed, declared)) {
-    // Should be unreachable now that https://*/* is declared, but a permission that cannot
-    // be requested must never be offered as a button — that produced a dead control twice
-    // during manual testing.
-    statusEl.textContent = `${domain} cannot be enabled.`;
-    detailEl.textContent = "This extension is not reading this page, and sent nothing anywhere.";
-    return;
-  }
-  const alreadyGranted = await chrome.permissions.contains({ origins: [pattern] });
-
-  if (alreadyGranted) {
-    statusEl.textContent = `Watching ${domain}.`;
-    detailEl.textContent = "Patterns found on this page will appear when you add to cart.";
-    renderRevoke(pattern, domain);
-
-    // "Watching" only means the permission was granted. Registering the detector script is a
-    // separate step that can fail on its own, and its error goes to the service worker
-    // console — which a tester looking at the page console cannot see. The symptom is a
-    // popup claiming to watch a site while nothing runs on it, indistinguishable from the
-    // detectors genuinely finding nothing. Ask, repair, and say so.
-    const report = await send<RegistrationReport>({ type: "diagnose-registration", url });
-    if (report && !report.registered) {
-      const line = document.createElement("p");
-      line.className = "detail score";
-      line.textContent = report.error
-        ? `Not running here — registration failed: ${report.error}. Reload the extension.`
-        : `Not running here yet. Reload this page to start (${report.matchCount} site(s) registered).`;
-      detailEl.after(line);
-    }
-    return;
-  }
-
-  const scored = scoreUrl(url);
-  originPattern = pattern; // set BEFORE the button becomes clickable
+  statusEl.textContent = `Vero is running on ${domain}.`;
+  detailEl.textContent = "Patterns found on this page will appear when you add to cart.";
 
   /**
-   * Both branches are an OFFER. The low-score copy used to read "<host> does not look like a
-   * shopping site" above a working Enable button — a sentence that talks the user out of
-   * pressing the control directly beneath it, and which overstates what was measured. The
-   * heuristic reads the URL and nothing else, by necessity: you cannot inspect a page to
-   * decide whether to ask permission to inspect the page. So a low score is a statement
-   * about a string, not a verdict on the site.
+   * "Running" is a claim, so check it.
+   *
+   * Chrome's per-extension site access can be narrowed to "on click" or to a list of sites
+   * from chrome://extensions, and the extension is never told. The symptom is a popup
+   * saying it is watching a site while nothing whatsoever runs on it — indistinguishable
+   * from the detectors genuinely finding nothing. The worker answers from the manifest
+   * Chrome actually loaded, so this also catches a page the denylist exclusions cover by a
+   * pattern the local `isDenied()` above did not.
    */
-  if (scored.score >= DEFAULT_PROMPT_THRESHOLD) {
-    statusEl.textContent = `${parsed.hostname} looks like a shopping site.`;
-  } else {
-    statusEl.textContent = `Turn on Vero for ${domain}?`;
+  const report = await send<RegistrationReport>({ type: "diagnose-registration", url });
+  if (report && !(report.granted && report.registered)) {
+    const line = document.createElement("p");
+    line.className = "detail score";
+    if (report.excluded) {
+      statusEl.textContent = `Vero does not run on ${parsed.hostname}.`;
+      detailEl.textContent = "This site is on Vero's permanent exclusion list.";
+      line.textContent = "Chrome is not allowed to load Vero's detector here at all.";
+    } else if (!report.granted) {
+      statusEl.textContent = `Vero is not running on ${domain}.`;
+      detailEl.textContent =
+        "Chrome is withholding access to this site. Check Site access for Vero in " +
+        "chrome://extensions if that was not deliberate.";
+      line.textContent = report.error ?? "";
+    } else {
+      line.textContent = report.error
+        ? `Not running here — ${report.error}.`
+        : "Not running on this page yet. Reload it to start.";
+    }
+    if (line.textContent) detailEl.after(line);
+    if (report.excluded || !report.granted) return;
   }
 
-  detailEl.textContent =
-    `Enabling covers ${domain} and its checkout pages, on your device only. ` +
-    "Nothing is sent anywhere.";
-
-  // The heuristic's own reading, shown so a silent extension can be diagnosed: a score with
-  // signals means the check ran and this URL simply had nothing commerce-shaped in it;
-  // no score line at all means the popup never got this far.
-  renderScore(scored, parsed);
-  enableBtn.hidden = false;
+  renderPageKind(report?.active === true);
 }
-
-// Synchronous handler. No `await` before request() — that is the whole point.
-enableBtn.addEventListener("click", () => {
-  if (!originPattern) return;
-  const pattern = originPattern;
-
-  chrome.permissions.request({ origins: [pattern] }, (granted) => {
-    if (granted) {
-      statusEl.textContent = "Enabled. Reload the page to start.";
-      detailEl.textContent = "";
-      enableBtn.hidden = true;
-    } else {
-      statusEl.textContent = "Not enabled.";
-      detailEl.textContent = "Nothing changed. You can enable this site any time.";
-    }
-  });
-});
 
 /**
- * Why the extension thinks what it thinks, in one line.
+ * Whether Vero is actually working on this page, or idling.
  *
- * This exists to separate two failures that look identical from the outside: the heuristic
- * ran and scored the URL low, versus the heuristic never ran at all. Without it the only
- * available diagnosis was "nothing happened".
+ * This replaces a line that reported a URL SCORE — "nothing commerce-shaped in
+ * /chat/67039775…, so you may see nothing here. That check only reads the address, never the
+ * page." It existed because the old permission model had to guess from the address: you
+ * cannot inspect a page to decide whether to ask permission to inspect the page. It read as
+ * nonsense on an obviously non-shopping page, and it was nonsense — the address was never
+ * the question.
+ *
+ * Vero now reads the page and decides from what is on it. So this reports the decision
+ * instead of the guess, and the answer for a page that is not a shop is the useful one:
+ * nothing is being collected here.
  */
-function renderScore(scored: ReturnType<typeof scoreUrl>, parsed: URL): void {
+function renderPageKind(active: boolean): void {
   const line = document.createElement("p");
   line.className = "detail score";
-
-  const pct = Math.round(scored.score * 100);
-  const readable = describeSignals(scored.signals);
-
-  line.textContent =
-    readable.length > 0
-      ? `URL check: ${pct}% — ${readable.join(", ")}.`
-      : `URL check: ${pct}% — nothing commerce-shaped in ${parsed.pathname === "/" ? "this address" : parsed.pathname}. ` +
-        "The check only reads the address, never the page.";
-
+  line.textContent = active
+    ? "This page is being checked for persuasion techniques."
+    : "This page does not look like a shop, so Vero is idle here and is recording nothing.";
   detailEl.after(line);
-}
-
-function renderRevoke(pattern: string, hostname: string): void {
-  enableBtn.hidden = false;
-  enableBtn.textContent = `Stop watching ${hostname}`;
-  enableBtn.classList.remove("primary");
-  enableBtn.classList.add("secondary");
-  enableBtn.addEventListener(
-    "click",
-    () => {
-      chrome.permissions.remove({ origins: [pattern] }, (removed) => {
-        if (removed) {
-          statusEl.textContent = "Stopped.";
-          detailEl.textContent = "";
-          enableBtn.hidden = true;
-        }
-      });
-    },
-    { once: true },
-  );
 }
 
 void init();

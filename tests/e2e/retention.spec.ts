@@ -17,17 +17,13 @@ import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
+import { stageLocalBuild } from "./localBuild";
 
 let context: BrowserContext;
 let extensionId: string;
 
 test.beforeAll(async () => {
-  const build = mkdtempSync(join(tmpdir(), "patterns-retain-"));
-  cpSync(resolve(".output/chrome-mv3"), build, { recursive: true });
-  const mp = join(build, "manifest.json");
-  const m = JSON.parse(readFileSync(mp, "utf8"));
-  m.host_permissions = ["http://localhost/*"];
-  writeFileSync(mp, JSON.stringify(m, null, 2));
+  const build = stageLocalBuild("vero-retain-", ["http://shop.example.com/*"]);
 
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",

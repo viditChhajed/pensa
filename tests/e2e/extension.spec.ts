@@ -50,44 +50,86 @@ test.describe("extension runtime", () => {
     expect(extensionId).toMatch(/^[a-z]{32}$/);
   });
 
-  test("manifest as Chrome actually parsed it has no host permissions", async () => {
+  test("manifest as Chrome actually parsed it asks for https and nothing wider", async () => {
     const [sw] = context.serviceWorkers();
     const manifest = await sw?.evaluate(() => chrome.runtime.getManifest());
-    // Not the file on disk — what the browser loaded.
-    expect(manifest?.host_permissions ?? []).toEqual([]);
-    expect(manifest?.content_scripts ?? []).toEqual([]);
+
+    /**
+     * This assertion used to demand that `host_permissions` be EMPTY. The product decision
+     * reversed: Vero now asks for every https site at install and shows Chrome's warning.
+     *
+     * The assertion is still worth having, for a narrower reason. It pins the permission to
+     * https exactly — not `<all_urls>`, not a scheme wildcard — so plain http pages and
+     * non-web schemes stay outside what was granted, and a careless widening has to be
+     * deliberate enough to edit this line.
+     */
+    expect(manifest?.host_permissions ?? []).toEqual(["https://*/" + "*"]);
+    expect(manifest?.optional_host_permissions ?? []).toEqual([]);
     expect(manifest?.permissions).toEqual([
       "storage",
       "scripting",
       "activeTab",
-      "declarativeContent",
       // Added late, after the round-trip test revealed both alarms had been silent no-ops
       // for the whole build. It shows no install warning and grants no page or data access.
       "alarms",
     ]);
-    expect((manifest?.optional_host_permissions ?? []).length).toBeGreaterThan(100);
   });
 
-  test("holds no host permissions at install", async () => {
+  test("the declared content script carries the denylist as exclusions", async () => {
+    /**
+     * The load-bearing assertion of the new permission model.
+     *
+     * Once the broad permission is granted at install, `exclude_matches` is the only thing
+     * that stops Chrome injecting Vero into a bank. An empty or missing exclusion list would
+     * not fail any other test in this suite — the extension would simply work, everywhere,
+     * including where it must never run.
+     */
+    const [sw] = context.serviceWorkers();
+    const manifest = await sw?.evaluate(() => chrome.runtime.getManifest());
+    const scripts = manifest?.content_scripts ?? [];
+    expect(scripts).toHaveLength(1);
+
+    const excludes = scripts[0]?.exclude_matches ?? [];
+    expect(excludes.length).toBeGreaterThan(50);
+
+    // Whole hosts and their subdomains ARE expressible as match patterns, so these must be
+    // refused by Chrome itself, before a line of Vero's code runs on them.
+    for (const host of ["chase.com", "bankofamerica.com", "irs.gov"]) {
+      expect(
+        excludes.includes(`https://*.${host}/` + "*"),
+        `${host} is not excluded from injection`,
+      ).toBe(true);
+    }
+
+    /**
+     * And the honest half, asserted so nobody later "fixes" it by widening a pattern.
+     *
+     * `mail.google.com` is denied, but it CANNOT appear here. The rule that catches it is
+     * "a `mail.` label under any TLD", and a match pattern cannot express a wildcard TLD —
+     * the only pattern that would cover it is `*.google.com`, which would also exclude every
+     * other Google property and is a different rule from the one the denylist states.
+     *
+     * So Chrome does inject on it, and the runtime `isDenied()` check at the top of the
+     * detector is what stops anything happening. That layer is not decoration; for this
+     * whole class of rule it is the only thing there is.
+     */
+    expect(excludes.some((p) => p.includes("google"))).toBe(false);
+  });
+
+  test("holds the broad permission at install, without being asked", async () => {
+    // Required, not optional: it is granted the moment the extension loads, with no prompt
+    // and no popup interaction. That is the whole point of the change, so assert it.
     const [sw] = context.serviceWorkers();
     const granted = await sw?.evaluate(() => chrome.permissions.getAll());
-    expect(granted?.origins ?? []).toEqual([]);
+    expect(granted?.origins ?? []).toContain("https://*/" + "*");
   });
 
-  test("registers NO content script while no origin is granted", async () => {
-    // Registration without permission would be an inert no-op that looks like success.
-    const [sw] = context.serviceWorkers();
-    const scripts = await sw?.evaluate(() =>
-      chrome.scripting.getRegisteredContentScripts().catch(() => []),
-    );
-    expect(scripts ?? []).toEqual([]);
-  });
-
-  test("popup renders and offers enablement", async () => {
+  test("popup no longer offers enablement, because there is nothing to enable", async () => {
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/popup.html`);
     await expect(page.locator("h1")).toContainText("Vero");
-    await expect(page.locator("#enable")).toBeAttached();
+    // The grant button and the whole per-origin request flow are gone.
+    await expect(page.locator("#enable")).toHaveCount(0);
     await page.close();
   });
 

@@ -2,56 +2,23 @@ import { cpSync, readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import preact from "@preact/preset-vite";
 import { defineConfig } from "wxt";
-
-interface AllowlistFile {
-  version: string;
-  entries: { origin: string; category: string; note?: string }[];
-}
-
-const allowlist = JSON.parse(
-  readFileSync(new URL("./rulepacks/allowlist.v1.json", import.meta.url), "utf8"),
-) as AllowlistFile;
+import { CONTENT_SCRIPT_FILE } from "./src/shared/constants";
+import { type DenylistShape, toExcludeMatches } from "./src/shared/denylistPatterns";
 
 /**
- * One pattern per REGISTRABLE DOMAIN, covering subdomains.
+ * The denylist, read here and converted into `exclude_matches`.
  *
- * Exact origins were wrong: granting www.booking.com left secure.booking.com — the actual
- * checkout host — unreadable, so the extension went blind at precisely the funnel stage the
- * cross-stage detectors exist for. Deduping by domain also shrinks the list.
+ * Same file the runtime `isDenied()` reads, deliberately: two lists would drift, and the
+ * one that drifts is always the one nobody looks at.
  */
-const TWO_PART = new Set([
-  "co.uk",
-  "org.uk",
-  "ac.uk",
-  "gov.uk",
-  "me.uk",
-  "com.au",
-  "net.au",
-  "org.au",
-  "co.nz",
-  "co.za",
-  "com.br",
-  "com.mx",
-  "com.ar",
-  "co.jp",
-  "co.in",
-  "com.sg",
-  "com.hk",
-  "com.tr",
-  "co.kr",
-]);
-function registrable(hostname: string): string {
-  const parts = hostname.toLowerCase().split(".");
-  if (parts.length <= 2) return parts.join(".");
-  return TWO_PART.has(parts.slice(-2).join("."))
-    ? parts.slice(-3).join(".")
-    : parts.slice(-2).join(".");
-}
-const matchPatterns = [
-  ...new Set(
-    allowlist.entries.map((e) => `https://*.${registrable(new URL(e.origin).hostname)}/*`),
-  ),
-].sort();
+const denylist = JSON.parse(
+  readFileSync(new URL("./rulepacks/denylist.v1.json", import.meta.url), "utf8"),
+) as DenylistShape;
+
+const { matches: DENY_EXCLUDES, inexpressible: RUNTIME_ONLY_DENIES } = toExcludeMatches(denylist);
+
+/** The one pattern Vero asks for, and the only one this build will let through. */
+const REQUIRED_HOST = "https://*/*";
 
 export default defineConfig({
   srcDir: "src",
@@ -92,40 +59,50 @@ export default defineConfig({
       "Notices persuasion techniques on shopping pages and asks a question about them. Runs on-device; nothing leaves your browser.",
     version: "1.0.0",
 
-    // Justification for each, for the store listing (plan §1.4):
-    //   storage            - remember per-site choices and the local event log
-    //   scripting          - register the detector script AFTER you grant a site
-    //   activeTab          - read the current tab's URL in the popup so it can offer that site
-    //   declarativeContent - light up the toolbar icon on shopping URLs WITHOUT reading pages
-    /**
-     * `alarms` was missing, and `chrome.alarms?.` hid it completely.
-     *
-     * Two alarms have been registered since the day housekeeping was written — the 30-day
-     * event prune and the offer-store eviction — and neither has ever fired, because without
-     * this permission `chrome.alarms` is `undefined` and the optional chaining turned the
-     * whole call into a silent no-op. Retention was a promise in PRIVACY.md with nothing
-     * behind it, and the telemetry round-trip test is what finally surfaced it.
-     *
-     * Optional chaining on a browser API is how a missing permission becomes invisible. It
-     * stays here because the worker also runs in contexts where the API genuinely is absent,
-     * but the permission being declared is what makes it a fallback rather than the norm.
-     */
-    permissions: ["storage", "scripting", "activeTab", "declarativeContent", "alarms"],
+    // Justification for each, for the store listing:
+    //   storage   - remember settings and the local event log
+    //   scripting - unregister the runtime content-script registration left behind by
+    //               builds before the permission model changed. Registrations made with
+    //               `persistAcrossSessions` survive an update, so a stale one would keep
+    //               injecting on origins a previous version had been granted, forever,
+    //               with matches nobody can see. Removing it needs this permission.
+    //   activeTab - read the CURRENT tab's URL in the popup on pages the host permission
+    //               below does not cover (http://, chrome://, a PDF viewer), so the popup
+    //               can say "Vero does not run here" instead of showing nothing at all.
+    //   alarms    - the 30-day event prune and the offer-store eviction. Without it
+    //               `chrome.alarms` is undefined, the optional chaining turns both into
+    //               silent no-ops, and the retention promise has nothing behind it.
+    //
+    // `declarativeContent` is GONE. It existed to light the toolbar icon on plausible
+    // shopping URLs without reading pages, back when lighting the icon meant "you can turn
+    // Vero on here". Vero is now on everywhere it is allowed to be, the action is enabled
+    // by default, and the popup opens on every page and says which state applies — so the
+    // page rules decided nothing and the permission bought nothing.
+    permissions: ["storage", "scripting", "activeTab", "alarms"],
 
     /**
-     * Two tiers, per plan §14.2 (curated) and §14.3 Tier B (everything else).
+     * REQUIRED, granted at install, and the install warning says so: "Read and change all
+     * your data on all websites you visit."
      *
-     * The curated domains drive the declarativeContent icon and the commerce score. The
-     * broad pattern is what makes Tier B possible at all: chrome.permissions.request can
-     * only grant what is declared here, so without it the popup could only ever offer a
-     * dead button on any site not in the list — which is exactly what happened in manual
-     * testing, twice.
+     * This replaces the two-tier optional-permission design, and the trade is not subtle.
+     * What is given up: the extension no longer has to be invited onto a site, so a user
+     * cannot decide site by site, and the install prompt is the scariest one Chrome shows.
+     * What is bought: the detector actually runs. Under the old model nothing happened
+     * until someone found the popup, understood a permission prompt, and accepted it per
+     * site — and cross-stage detection needs the whole funnel, which repeatedly meant a
+     * second grant mid-checkout on a different subdomain.
      *
-     * This is OPTIONAL. It is not granted at install, produces no install-time warning, and
-     * is requested one origin at a time behind a user gesture. The denylist still refuses
-     * banking, health, government and mail outright, before any of this is reached.
+     * `https://` only, and that is load-bearing. `<all_urls>` and the any-scheme wildcard
+     * would also take ftp, file and data URLs; the http variant would take plaintext pages,
+     * where anything Vero can read is already readable by every hop in between. The build
+     * hook below refuses all four by name.
+     *
+     * The denylist is still absolute. It is enforced twice: `exclude_matches` on the
+     * content script below, so Chrome never injects on what it can express; and
+     * `isDenied()` at the top of the detector, which covers the rest. Neither layer alone
+     * is sufficient and both ship.
      */
-    optional_host_permissions: [...matchPatterns, "https://*/*"],
+    host_permissions: [REQUIRED_HOST],
 
     icons: {
       16: "icon/16.png",
@@ -149,57 +126,106 @@ export default defineConfig({
 
   hooks: {
     /**
-     * THE assertion (plan §1.2). WXT's `registration: 'runtime'` moves content-script
-     * `matches` into REQUIRED `host_permissions`, which would produce exactly the
-     * install-time warning listing 150 sites that §14.2 exists to avoid. There is no
-     * built-in mode that targets `optional_host_permissions` (wxt-dev/wxt#2239).
+     * Declare the content script HERE, and assert the permission model in the same place.
      *
-     * So: move them, then assert. If a future refactor reintroduces a manifest content
-     * script, this throws at build time instead of silently shipping a scary install prompt.
+     * The detector is still built with `defineUnlistedScript`, so WXT emits `detector.js`
+     * and writes nothing into the manifest; the entry below is written by hand. That is
+     * deliberate. `exclude_matches` is the only part of this extension Chrome enforces on
+     * our behalf, it is generated from the denylist, and generating it in the same function
+     * that asserts it is non-empty means there is no arrangement of this file in which a
+     * build ships the broad host pattern with the exclusions quietly missing.
+     *
+     * Manifest-declared rather than runtime-registered, now that the permission is held at
+     * install. A runtime registration has to be re-derived every time the service worker
+     * wakes, it can fail silently in a context with no console anyone is watching, and it
+     * is a strictly worse way to say a fixed fact. The manifest entry is loaded by Chrome
+     * before any of our code runs and cannot drift from what we asked for.
      */
-    "build:manifestGenerated": (_wxt, manifest) => {
+    "build:manifestGenerated": (wxt, manifest) => {
       const m = manifest as chrome.runtime.ManifestV3 & Record<string, unknown>;
 
-      // NOTE: this used to MOVE any leaked host_permissions into
-      // optional_host_permissions and then assert the array was empty. The assertion was
-      // therefore unreachable dead code — verified by deliberately reintroducing a host
-      // permission, which built cleanly and silently downgraded it to optional. Output was
-      // safe by accident, but nothing detected the change, and a developer who added a
-      // required permission on purpose would have had its semantics quietly altered.
-      //
-      // The auto-move is also no longer needed: the detector is built with
-      // defineUnlistedScript, so nothing injects host permissions in the first place.
+      m.content_scripts = [
+        {
+          matches: [REQUIRED_HOST],
+          exclude_matches: DENY_EXCLUDES,
+          js: [CONTENT_SCRIPT_FILE],
+          run_at: "document_idle",
+          all_frames: false,
+        },
+      ];
+
+      wxt.logger.info(
+        `content script: ${DENY_EXCLUDES.length} exclude_matches from the denylist; ` +
+          `${RUNTIME_ONLY_DENIES.length} denylist patterns are regex-only and are covered ` +
+          "at runtime by isDenied() alone",
+      );
+
+      /**
+       * THE assertion, inverted.
+       *
+       * It used to throw if `host_permissions` was non-empty, because the whole design was
+       * that the extension held nothing at install. That is no longer the design, so the
+       * old rule would now fail every build — but the reasoning behind it was never "no
+       * host permissions", it was "never ship a broader reach than the one that was argued
+       * for". That is what is asserted now.
+       *
+       * Exactly REQUIRED_HOST. Not `<all_urls>` (adds file:, ftp:, data:), not the
+       * any-scheme wildcard, and not the http variant (adds plaintext pages). A build that
+       * widens this has changed what the install warning means, and it should have to
+       * change this line to do it.
+       */
       const hosts = (m.host_permissions ?? []) as string[];
-      if (hosts.length > 0) {
+      if (hosts.length !== 1 || hosts[0] !== REQUIRED_HOST) {
         throw new Error(
-          `host_permissions must be empty (plan §1.2). Found: ${JSON.stringify(hosts)}. ` +
-            "Declaring a host permission grants it at install and produces a 150-site " +
-            "install warning. Put it in optional_host_permissions and request it at runtime.",
+          `host_permissions must be exactly ["${REQUIRED_HOST}"]. Found: ${JSON.stringify(hosts)}. ` +
+            "http:// and non-web schemes stay out: on a plaintext page anything Vero can " +
+            "read is already readable by every hop in between, and file:/ftp:/data: are " +
+            "not shopping.",
         );
       }
 
-      if (Array.isArray(m.content_scripts) && m.content_scripts.length > 0) {
+      if (m.optional_host_permissions) {
         throw new Error(
-          "No content script may be declared in the manifest — declaring one implicitly " +
-            "grants its match patterns at install. Register at runtime instead (plan §1.2).",
+          "optional_host_permissions is obsolete. Every origin worth asking for is already " +
+            "covered by the required https://*/*, and a leftover optional list is a second " +
+            "source of truth for the same question.",
         );
       }
 
-      // A broad pattern is acceptable ONLY as an optional permission, never as a required
-      // one. Required means granted at install with a warning listing every site; optional
-      // means the user grants one origin at a time from the popup.
       const broad = ["<all_urls>", "http://*/*", "https://*/*", "*://*/*"];
       for (const p of (m.permissions ?? []) as string[]) {
         if (broad.includes(p)) {
-          throw new Error(`Broad host permission "${p}" must never be a REQUIRED permission.`);
+          throw new Error(
+            `"${p}" is a host pattern and belongs in host_permissions, not permissions.`,
+          );
         }
       }
-      const optional = (m.optional_host_permissions ?? []) as string[];
-      for (const p of optional) {
-        if (p === "<all_urls>" || p === "*://*/*" || p === "http://*/*") {
-          throw new Error(
-            `"${p}" is broader than needed. Only https://*/* is acceptable, and only as optional.`,
-          );
+
+      /**
+       * The denylist has to SHIP, and it has to be non-empty.
+       *
+       * An empty or unreadable denylist is the one failure this build must never produce
+       * quietly: the extension would hold the broad pattern and exclude nothing, so Chrome would
+       * inject on banks, patient portals and webmail, and the only thing standing between
+       * that and the user would be a runtime check in a file nobody re-reads. Losing the
+       * rulepack — a bad merge, a renamed file, a JSON typo caught as an empty array — has
+       * to stop the build rather than change the product.
+       */
+      const scripts = m.content_scripts as { exclude_matches?: string[] }[];
+      const excludes = scripts[0]?.exclude_matches ?? [];
+      if (excludes.length === 0) {
+        throw new Error(
+          "The content script ships NO exclude_matches. host_permissions is https://*/* — " +
+            "without the denylist-derived exclusions Chrome would inject on banking, " +
+            "health, government and webmail hosts. Check rulepacks/denylist.v1.json.",
+        );
+      }
+      if (denylist.hostPatterns.length === 0 || denylist.hostSuffixes.length === 0) {
+        throw new Error("rulepacks/denylist.v1.json is empty or lost its shape.");
+      }
+      for (const pattern of excludes) {
+        if (!/^https:\/\/\*\.[a-z0-9.-]+\/\*$/.test(pattern)) {
+          throw new Error(`Generated an invalid exclude_matches pattern: "${pattern}"`);
         }
       }
     },

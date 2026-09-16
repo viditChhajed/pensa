@@ -1,19 +1,19 @@
 /**
  * Injection, CSS isolation and performance in REAL Chromium (plan §7, steps 1e-1g).
  *
- * Uses a test-only copy of the build with one origin promoted into `host_permissions`, so
- * the permission is held at install. That is the ONLY shortcut taken: the native permission
- * dialog cannot be driven by automation. Everything downstream — reconcileRegistrations,
- * registerContentScripts, actual injection, the overlay, layout cost — is the real
- * production code path.
+ * Uses a test-only copy of the build narrowed to the local fixture origins, because the
+ * fixture server speaks plain http and the shipped manifest asks for https. See
+ * `stageLocalBuild` — it widens the declared content script's `matches` as well as the
+ * permission, and deliberately leaves `exclude_matches` untouched.
  *
- * The production build is separately asserted to have EMPTY host_permissions in
+ * Everything downstream of that — the actual injection, the overlay, the layout cost — is
+ * the real production path. The shipped permission set is asserted separately in
  * extension.spec.ts, so this fixture cannot mask a regression there.
  */
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, test } from "@playwright/test";
+import { stageLocalBuild } from "./localBuild";
 
 const BUILD = resolve(".output/chrome-mv3");
 const PAGES = resolve("tests/e2e/pages");
@@ -22,13 +22,10 @@ let context: BrowserContext;
 let testBuild: string;
 
 test.beforeAll(async () => {
-  testBuild = mkdtempSync(join(tmpdir(), "patterns-ext-"));
-  cpSync(BUILD, testBuild, { recursive: true });
-
-  const manifestPath = join(testBuild, "manifest.json");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  manifest.host_permissions = ["http://127.0.0.1/*", "http://localhost/*"];
-  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  testBuild = stageLocalBuild("vero-ext-", [
+    "http://shop.example.com/*",
+    "http://shop.example.com/*",
+  ]);
 
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",
@@ -60,15 +57,24 @@ async function openFixture(name: string) {
     }
     await route.fulfill({ status: 204, body: "" });
   });
-  await page.goto(`http://localhost/${name}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`http://shop.example.com/${name}`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1500);
   return page;
 }
 
-test("registration happens AND the script actually injects", async () => {
+test("the manifest declares the script AND it actually injects", async () => {
+  /**
+   * This used to assert `chrome.scripting.getRegisteredContentScripts()` was non-empty,
+   * because the detector was registered at runtime from the set of granted origins. It is
+   * now declared in the manifest, so that registry is legitimately empty and the old
+   * assertion failed while nothing was wrong.
+   *
+   * Declaration is still not injection (plan §1.3), so both halves are still checked —
+   * only the first half moved.
+   */
   const [sw] = context.serviceWorkers();
-  const scripts = await sw?.evaluate(() => chrome.scripting.getRegisteredContentScripts());
-  expect(scripts?.length, "reconcileRegistrations never registered").toBeGreaterThan(0);
+  const declared = await sw?.evaluate(() => chrome.runtime.getManifest().content_scripts ?? []);
+  expect(declared?.length, "no content script declared in the manifest").toBeGreaterThan(0);
 
   const page = await openFixture("reset-aggressive.html");
   await page.waitForTimeout(2500);
@@ -82,11 +88,11 @@ test("registration happens AND the script actually injects", async () => {
   // means the script ran, classified the page, AND successfully messaged the worker.
   const sawOrigin = await sw?.evaluate(async () => {
     const all = await chrome.storage.session.get(null);
-    return Object.keys(all).some((k) => k.startsWith("ledger:http://localhost"));
+    return Object.keys(all).some((k) => k.startsWith("ledger:http://shop.example.com"));
   });
 
   // Registration succeeding is NOT injection (plan §1.3). Both are asserted separately.
-  expect(sawOrigin, "registered but never injected — the §1.3 silent failure").toBe(true);
+  expect(sawOrigin, "declared but never injected — the §1.3 silent failure").toBe(true);
   await page.close();
 });
 
@@ -104,7 +110,7 @@ test("content script throws nothing into the host page", async () => {
       body: readFileSync(join(PAGES, "reset-aggressive.html"), "utf8"),
     }),
   );
-  await page.goto("http://localhost/x.html", { waitUntil: "domcontentloaded" });
+  await page.goto("http://shop.example.com/x.html", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2000);
   expect(errors, `content script errored: ${errors.join(" | ")}`).toEqual([]);
   await page.close();
