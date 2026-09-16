@@ -209,6 +209,114 @@ describe("scarcity.stock does not read a catalogue dump as a stock claim", () =>
   }
 });
 
+/**
+ * Audit run 2. The same Zappos row, sent back a second time.
+ *
+ * The first fix for this (412f888) was verified against a three-level fixture — the one above
+ * — and reported as "fires before, silent after". It never stopped firing in the field: run 2
+ * has it again, 16 times, byte for byte. The reason is that the fixture was shallow.
+ * `selectorPath` keeps only the deepest 12 levels, so on a real grid tile the badge's path and
+ * its grandparent's path start at DIFFERENT ancestors and share no prefix, and the ancestry
+ * check that fix added cannot fire at all. A three-level fixture is the one DOM shape where
+ * the bug is structurally impossible.
+ *
+ * So this reconstruction is taken from `__scarcity-probe.mjs` against the live page, tags and
+ * depth included: the badge sat at depth 20 inside `<dl aria-hidden>` as `dd:nth-of-type(4)`,
+ * with the product's attribute list — the `<dt>`/`<dd>` pairs that join into "brand name
+ * birkenstock product name birki flow eva clog…" — as its siblings.
+ */
+describe("scarcity.stock survives a real grid tile, where selector paths are truncated", () => {
+  /** Nest deep enough that selectorPath's 12-level cap actually bites, as zappos.com does. */
+  const deep = (html: string, levels = 9) =>
+    `${'<div class="wrap">'.repeat(levels)}${html}${"</div>".repeat(levels)}`;
+
+  const ZAPPOS_TILE = deep(
+    `<article class="card">` +
+      `<a href="/p/birki-flow">Birkenstock - Birki Flow EVA Clog. Color Khaki. $59.95</a>` +
+      `<div class="meta"><dl class="block" aria-hidden="true">` +
+      `<dt>Brand Name</dt><dd>Birkenstock</dd>` +
+      `<dt>Product Name</dt><dd>Birki Flow EVA Clog</dd>` +
+      `<dt>Gender</dt><dd>Unisex</dd>` +
+      `<div class="mt-2"><dt>Price</dt><dd><span class="sr-only">$59.95</span></dd></div>` +
+      `<dd><span role="status">Low Stock</span></dd>` +
+      `</dl></div></article>`,
+  );
+
+  it("claims the Low Stock badge exactly once, and never quotes the attribute list", () => {
+    const hits = claimsOn(ZAPPOS_TILE, "scarcity.stock");
+
+    expect(hits.length, `one Low Stock badge produced ${hits.length} claims`).toBe(1);
+    const quoted = hits[0]?.evidence.textSample ?? "";
+    expect(quoted, `evidence quoted the catalogue text: ${quoted}`).not.toMatch(/brand name/i);
+    expect(quoted).toContain("Low Stock");
+  });
+
+  it("tags the lexeme it matched, which the bogus claim never could", () => {
+    // The tell, asserted so it cannot come back quietly: the audit row for this false positive
+    // was the only scarcity firing with an empty lexeme list, because the pattern was matched
+    // against the parent's text and the lexemes against the node's own. A claim that has to
+    // carry part of the phrase cannot produce that mismatch.
+    const hits = claimsOn(ZAPPOS_TILE, "scarcity.stock");
+    expect(hits[0]?.evidence.matchedLexemes).toContain("low stock");
+  });
+
+  it("still reads a sentence split across sibling spans, which is why the pass exists", () => {
+    // The container pass is not being disabled, only made to prove the node is part of the
+    // sentence. This is the shape it was added for, at the same depth.
+    const hits = claimsOn(
+      deep(`<p class="avail">Only <span class="n">3</span> left in stock</p>`),
+      "scarcity.stock",
+    );
+    expect(hits.length).toBe(1);
+    expect(hits[0]?.evidence.textSample).toContain("Only 3 left in stock");
+  });
+});
+
+/**
+ * Audit run 2, temu.com/login.html: "Low stock items alerts", four times, and it SURFACED.
+ *
+ * The probe shows what it is — a benefit blurb in the sign-in page footer, next to "Faster &
+ * more secure checkout", under `data-tooltip="FooterBenefitItem_lowstock"`. It is an offer to
+ * tell you about low stock later. Nothing on the page is running out.
+ */
+describe("scarcity.stock does not read an offer of stock alerts as a stock claim", () => {
+  it("stays silent on Temu's sign-in footer benefit", () => {
+    const temu =
+      `<div class="tooltipItem" data-tooltip="FooterBenefitItem_lowstock">` +
+      `<img alt=""><div class="text">Low stock items alerts</div></div>`;
+    const hits = claimsOn(temu, "scarcity.stock");
+    expect(hits.map((h) => h.evidence.textSample)).toEqual([]);
+  });
+
+  /**
+   * The point of the rule rather than of the string. A fix that only knew "Low stock items
+   * alerts" would be back on the next site that writes the same offer a different way.
+   */
+  const SILENT = [
+    "Low stock alerts",
+    "Turn on low stock notifications",
+    "Manage your low stock item reminders",
+    "Get notified when items are almost gone",
+    "We'll email you about limited availability items",
+  ];
+  for (const text of SILENT) {
+    it(`generalises, and stays silent on ${JSON.stringify(text)}`, () => {
+      expect(score(text, "scarcity.stock")).toBeLessThan(LOG_THRESHOLD);
+    });
+  }
+
+  /**
+   * The seam, asserted so the trade is visible. A notification feature is named in the plural
+   * — it is a class of mail you can receive — whereas "alert" in the singular is badge
+   * English, an interjection announcing the fact. That distinction is a judgement: nothing in
+   * the labelled corpus exercises either phrasing. If it turns out to be wrong, this is the
+   * test to argue with.
+   */
+  it("keeps a singular badge-style alert, which is announcing the fact, not offering mail", () => {
+    expect(score("Low stock alert!", "scarcity.stock")).toBeGreaterThanOrEqual(LOG_THRESHOLD);
+  });
+});
+
 describe("scarcity in a terms footnote is counted, never surfaced", () => {
   /**
    * The adjudication, argued in scarcity.ts and asserted here.

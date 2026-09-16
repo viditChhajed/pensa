@@ -101,6 +101,35 @@ const VARIANT_EXCLUSIONS: readonly RegExp[] = [
 const DISCLAIMER_CONTEXT =
   /\b(?:exclusions?|restrictions?|terms|conditions)\b[^.]{0,30}\bapply\b|\bterms (?:and|&) conditions\b/;
 
+/**
+ * An offer to be TOLD about scarcity later is not a scarcity claim now.
+ *
+ * ADJUDICATION, live audit run 2, temu.com/login.html. `scarcity.stock` fired four times on
+ * "Low stock items alerts", which the probe shows is a benefit blurb in the sign-in page's
+ * footer, sitting next to "Faster & more secure checkout":
+ *
+ *     <div data-tooltip="FooterBenefitItem_lowstock">
+ *       <img …><div class="text">Low stock items alerts</div></div>
+ *
+ * Nothing on that page is running out. The words "low stock" are the SUBJECT of a
+ * notification feature — the thing they will email you about — not an assertion about any
+ * item's inventory, and it scored 0.75, exactly the surface threshold, so it showed a card.
+ *
+ * The rule is about the construction, not the string, because a blocklist that only knew
+ * "Low stock items alerts" would be back next week on "Back-in-stock alerts" or "Turn on low
+ * stock notifications". Checked against the labelled corpus before shipping: of 4,957
+ * scarcity rows, 31 negatives contain this vocabulary and ZERO of the 24 positives do.
+ *
+ * The seam, stated rather than hidden: "alerts" plural names a feature you subscribe to;
+ * bare singular "alert" is left alone because "Low stock alert!" is badge English — an
+ * interjection announcing the fact, not an offer to send you mail about it. Nothing in the
+ * corpus exercises that case either way, so it is a judgement, not a measurement. Also
+ * deliberately absent: "sign up" and "subscribe", which are far too common in genuine promo
+ * copy ("Sign up and save 20% — while supplies last") to be read as a notification offer.
+ */
+const NOTIFICATION_OFFER =
+  /\balerts\b|\bnotifications?\b|\breminders?\b|\bget notified\b|\b(?:notify|remind|email|text) (?:me|you)\b/;
+
 const LEXEMES = [
   "only",
   "left",
@@ -148,9 +177,62 @@ const WEIGHTS: Record<string, number> = {
  * Copied from urgency.ts, which has the long version of this comment and the same two holes
  * (a path truncated at MAX_PATH_DEPTH or rooted at an id can hide a real ancestry). Both fail
  * open: unrelated paths mean both claims stand, which is what this file did before.
+ *
+ * THE FIRST HOLE IS NOT THEORETICAL, and the previous fix here was built on top of it. See
+ * the note on the container pass below: on a real grid tile every path in sight is truncated
+ * and this function returns false for a genuine grandparent. It is kept because it is free
+ * and it does work on shallow pages, but nothing load-bearing may depend on it.
  */
 function isWithin(child: string, ancestor: string): boolean {
   return child.length > ancestor.length && child.startsWith(`${ancestor}>`);
+}
+
+/** One pattern hit, with where in the text it sat. */
+interface StockMatch {
+  readonly start: number;
+  readonly end: number;
+  /** A counted claim ("only 3 rooms left") rather than a qualitative one ("almost gone"). */
+  readonly numeric: boolean;
+}
+
+/**
+ * Which of `matches` does this node's OWN text actually carry part of?
+ *
+ * The general rule, which is the real answer to the Zappos duplicate: a claim may not be
+ * evidenced by text that does not itself contain the matched phrase. The container pass
+ * exists so that `Only <span>3</span> left` can be read as one sentence — the span "3" is a
+ * FRAGMENT OF the sentence. A sibling that merely shares a parent with the sentence is not,
+ * and attaching the claim to it is how the detector came to quote a catalogue dump.
+ *
+ * Judged by character span, not by substring containment, because a node can hold the head or
+ * the tail of the phrase without holding all of it: in `<b>Only</b> 3 <b>left at this
+ * price</b>` the node "left at this price" is neither inside "only 3 left" nor a superstring
+ * of it, and it is still part of the sentence.
+ *
+ * A node whose own text cannot be located in its parent's joined text at all yields nothing.
+ * That happens when `joinedText` separates on element boundaries one level and `textContent`
+ * does not the next (`<span><b>Low</b><b>Stock</b></span>`), and the honest response to "I
+ * cannot show this node is part of the sentence" is to not claim it. Guessing is the bug.
+ */
+function carriedBy(containerText: string, ownText: string, matches: readonly StockMatch[]) {
+  if (ownText.length === 0) return [];
+  const spans: Array<readonly [number, number]> = [];
+  for (
+    let i = containerText.indexOf(ownText);
+    i !== -1;
+    i = containerText.indexOf(ownText, i + 1)
+  ) {
+    spans.push([i, i + ownText.length]);
+  }
+  return matches.filter((m) => spans.some(([s, e]) => s < m.end && e > m.start));
+}
+
+/** Sub-signal shape for a set of hits: numeric wins the higher weight, qualitative the lower. */
+function tally(matches: readonly StockMatch[]): { numeric: number; qualitative: number } {
+  return {
+    numeric: matches.some((m) => m.numeric) ? 1 : 0,
+    qualitative: matches.some((m) => !m.numeric) ? 1 : 0,
+  };
 }
 
 export const scarcityDetector: Detector = {
@@ -185,17 +267,28 @@ export const scarcityDetector: Detector = {
     /**
      * Has this sentence already been claimed by something in the same nest?
      *
-     * Exact-match was not enough, and the live audit shows the hole precisely. Zappos renders
-     * a grid tile as `<div class=tile><span>a11y description…</span><span>Low Stock</span></div>`.
-     * Pass 1 claims the badge's own path; the a11y span is a leftover whose container is the
-     * TILE, which no one had claimed, so pass 2 matched "Low Stock" a second time in the
-     * tile's joined text and quoted it as "brand name birkenstock product name birki flow eva
-     * clog gender…". One badge, two claims, and the second one evidenced with a catalogue dump
-     * — note it is the only scarcity firing in the audit with no lexeme tag, because the
-     * lexemes were matched against the node's own text and the pattern against its parent's.
+     * Exact path match, plus ancestry in both directions: a container holding an existing
+     * claim adds nothing, and neither does one nested inside a claim already made.
      *
-     * So ancestry, in both directions: a container holding an existing claim adds nothing, and
-     * neither does one nested inside a claim already made.
+     * WHAT THIS DOES NOT CATCH, and the second audit proved it. This was shipped as the fix
+     * for Zappos' duplicate "Low Stock" claim, verified against a three-level fixture, and
+     * declared done. It fired again on the next live run, unchanged. `selectorPath` caps at
+     * MAX_PATH_DEPTH = 12 and truncates from the ROOT end, so two nodes at different depths
+     * inside one tile get paths that begin at different ancestors and share no prefix at all.
+     * The real badge sits at depth 20:
+     *
+     *   badge  section>…>div:nth-of-type(15)>div>article>div>dl>dd:nth-of-type(4)>span
+     *   its dl div:nth-of-type(1)>div>section>…>div:nth-of-type(15)>div>article>div>dl
+     *
+     * `isWithin(badge, dl)` is false. Every claim of ancestry this function makes on a real
+     * product grid is false, and the fixture that said otherwise was shallow enough that no
+     * path was truncated — the fix was tested on the one DOM shape where the bug cannot occur.
+     *
+     * Ancestry is therefore kept only as a cheap first cut. What actually stops the duplicate
+     * is `carriedBy` in the container pass: the a11y `<dt>` whose parent is the `<dl>` does not
+     * contain "low stock" in its own text, so it cannot carry the claim, whatever the paths
+     * say. That the audit row had no lexeme tag was the tell all along — the lexemes were read
+     * off the node and the pattern off its parent, and nobody asked whether they agreed.
      */
     const alreadyClaimed = (path: string): boolean => {
       if (claimedContainers.has(path)) return true;
@@ -205,18 +298,18 @@ export const scarcityDetector: Detector = {
       return false;
     };
 
-    const evaluate = (text: string): { numeric: number; qualitative: number } | null => {
+    const evaluate = (text: string): StockMatch[] | null => {
       if (text.length === 0 || text.length > 160) return null;
       if (VARIANT_EXCLUSIONS.some((re) => re.test(text))) return null;
-      let numeric = 0;
-      let qualitative = 0;
+      // An offer to alert you about scarcity is not scarcity. See NOTIFICATION_OFFER.
+      if (NOTIFICATION_OFFER.test(text)) return null;
+      const matches: StockMatch[] = [];
       for (const re of STOCK_PATTERNS) {
         const m = re.exec(text);
         if (!m) continue;
-        if (m[1] !== undefined) numeric = 1;
-        else qualitative = 1;
+        matches.push({ start: m.index, end: m.index + m[0].length, numeric: m[1] !== undefined });
       }
-      return numeric === 0 && qualitative === 0 ? null : { numeric, qualitative };
+      return matches.length === 0 ? null : matches;
     };
 
     for (const n of visibleCandidates(ctx)) {
@@ -232,7 +325,7 @@ export const scarcityDetector: Detector = {
       // `selectorPath`, so this is what stops pass 2 re-reporting the same sentence from
       // inside it — `Only <b>3</b> left` matched on the div and then again on the bold.
       claimedContainers.add(n.selectorPath);
-      const { numeric, qualitative } = hit;
+      const { numeric, qualitative } = tally(hit);
 
       // A stock bar rendered near the copy: role=progressbar, or a percent-width child.
       const progressBar = n.childIdxs.some((i) => {
@@ -267,6 +360,11 @@ export const scarcityDetector: Detector = {
       if (!container || alreadyClaimed(container)) continue;
       const hit = evaluate(n.containerText);
       if (!hit) continue;
+      // The node must carry part of the phrase it is about to be blamed for. Without this a
+      // sibling of the badge inherits the badge's claim and evidences it with its own text.
+      const carried = carriedBy(n.containerText, n.normalizedText, hit);
+      if (carried.length === 0) continue;
+      const { numeric, qualitative } = tally(carried);
       claimedContainers.add(container);
       seen.add(n.selectorPath);
 
@@ -276,8 +374,8 @@ export const scarcityDetector: Detector = {
           "scarcity.stock",
           n,
           {
-            numericStock: hit.numeric,
-            qualitativeStock: hit.qualitative,
+            numericStock: numeric,
+            qualitativeStock: qualitative,
             // A progress bar is a sibling in this shape, not a child, and this pass has no
             // cheap way to see one. Scoring it 0 understates rather than invents.
             progressBar: 0,
