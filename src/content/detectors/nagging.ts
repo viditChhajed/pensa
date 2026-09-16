@@ -1,7 +1,13 @@
 /**
  * nagging.repeat_interstitial
  *
- * Counts modal/interstitial insertions per origin per page-session and flags at 2 or more.
+ * Counts the modals/interstitials that BECAME VISIBLE per page-session, and flags at 2 or more.
+ *
+ * Visible, not inserted. The observer owns that distinction and the comment on `considerModal`
+ * explains what it cost to learn twice: a cookie banner and the dim scrim behind it are two
+ * elements and one interruption, and at `FLAG_AT = 2` that off-by-one was the entire
+ * difference between this detector staying quiet and calling nearly every shop on the web a
+ * nagger for showing one consent notice.
  *
  * Worth stating plainly: this extension itself shows an interstitial, which is why the
  * sensitivity control ships in v1 rather than v1.1. A tool that flags repeated interruption
