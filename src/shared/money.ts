@@ -34,8 +34,25 @@ const SYMBOL_TO_CURRENCY: Record<string, string> = {
  * The grouped branch requires AT LEAST ONE separator (`+`, not `*`). With `*` it matched a
  * 3-digit prefix and stopped, so `¥1200` parsed as 120 and `$999999999.00` parsed as 999 —
  * which also meant the implausible-value guard below never saw the real number.
+ *
+ * The branch ORDER is the other half of that, and it is load-bearing on real pages. The
+ * harvester joins adjacent DOM text, so a price badge sitting beside a discount badge
+ * arrives as one string: `$184.0074% off`. The grouped branch took `.007` as a thousands
+ * group and reported **$184,007** for a $184 item — and `$3.6010% off` as $3,601.
+ *
+ * So the grouped branch now refuses to end mid-digit, and a plain two-decimal reading is
+ * tried before anything shorter. Guarding alone was not enough: it correctly rejected
+ * $184,007 but then backtracked to a bare `184`, and turned `$3.6010% off` into $3.00 —
+ * a quieter wrong answer is still a wrong answer. Two decimals is what a price looks like,
+ * so `184.00` and `3.60` win even though a digit follows them. A single-decimal or bare
+ * integer still has to end cleanly, or `$184.0074` would come back as `184` again.
+ *
+ * This matters well beyond the detector that found it. `parsePrices` feeds drip
+ * reconciliation and basket-sneak, the two highest-severity patterns, both of which compare
+ * totals across funnel stages — so a three-orders-of-magnitude misread does not produce a
+ * missed claim, it produces a confident and absurd one.
  */
-const NUM = String.raw`\d{1,3}(?:[.,\s]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?`;
+const NUM = String.raw`(?:\d{1,3}(?:[.,\s]\d{3})+(?:[.,]\d{1,2})?(?!\d)|\d+[.,]\d{2}|\d+[.,]\d(?!\d)|\d+(?!\d))`;
 
 const PRICE_RE = new RegExp(
   `(?:(?<sym>[$£€¥₹])\\s?|(?<iso>USD|GBP|EUR|JPY|INR|CAD|AUD)\\s)(?<num1>${NUM})` +

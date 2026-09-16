@@ -184,20 +184,29 @@ describe("the three firings the audit passed were not correct either", () => {
   });
 
   /**
-   * Both SHEIN firings were arithmetic on numbers that do not exist.
+   * Both SHEIN firings WERE arithmetic on numbers that did not exist — and one of them is
+   * now arithmetic on numbers that do.
    *
-   * SHEIN glues price and badge into one text node, and `parsePrices` reads the run
-   * "$3.6010% off" as $3,601.00 and "$184.0074% off" as $184,007.00 — the grouped branch of
-   * the price regex takes the "601" after the dot as a thousands group. So the "27% saving"
-   * the audit passed was computed between $184,007.00 and $10,393.00.
+   * SHEIN glues price and badge into one text node. `parsePrices` used to read the run
+   * "$3.6010% off" as $3,601.00 and "$184.0074% off" as $184,007.00, because the grouped
+   * branch of the price regex took the "601" after the dot as a thousands group. So the
+   * saving the audit passed was computed between $184,007.00 and $10,393.00.
    *
-   * That is a money.ts bug, not a framing one, and it is NOT fixed here — fixing the price
-   * regex touches drip reconciliation and deserves its own change. What this file can do is
-   * record that these two firings were never evidence of anything, so that fixing the parser
-   * later is not mistaken for a recall regression here.
+   * That was a money.ts bug, not a framing one, and fixing it changed the facts here rather
+   * than confirming them. With the parser reading $12.99 and $3.60 correctly, the first
+   * string is a real was/now pair on a sub-$100 item presented as a percentage — which is
+   * the Rule of 100 working exactly as this detector describes it, so it fires, and should.
+   *
+   * The second string still does not fire, and that is the important one: it is TWO
+   * products glued together ("apple $184.00 74% off" / "prettygarden $10.39 32% off").
+   * Pairing the high price of one against the low price of the other is the grid-tile error
+   * this whole file exists to stop, and a correct parser does not excuse it.
    */
-  it("does not fire on SHEIN's glued price-and-badge runs", () => {
-    expect(framingScore("$12.99flash sale$3.6010% off", "browse")).toBeLessThan(LOG_THRESHOLD);
+  it("fires on a real percentage-framed discount once the prices parse correctly", () => {
+    expect(framingScore("$12.99flash sale$3.6010% off", "browse")).toBeGreaterThan(LOG_THRESHOLD);
+  });
+
+  it("does not pair prices belonging to two different products", () => {
     expect(framingScore("apple$184.0074% offprettygarden$10.3932% off", "browse")).toBeLessThan(
       LOG_THRESHOLD,
     );
