@@ -174,6 +174,7 @@ function renderRevoke(pattern: string, hostname: string): void {
   enableBtn.hidden = false;
   enableBtn.textContent = `Stop watching ${hostname}`;
   enableBtn.classList.remove("primary");
+  enableBtn.classList.add("secondary");
   enableBtn.addEventListener(
     "click",
     () => {
