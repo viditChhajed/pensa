@@ -65,6 +65,42 @@ const VARIANT_EXCLUSIONS: readonly RegExp[] = [
   /\b(?:size|colou?r|style) .{0,20}(?:out of stock|unavailable|sold out)\b/,
 ];
 
+/**
+ * Legal boilerplate, not a badge.
+ *
+ * ADJUDICATION, live audit, sephora.com/cart. "While supplies last" fired three times inside
+ * the terms footnotes under the promo tiles:
+ *
+ *     "*Exclusions/terms apply. While supplies last."
+ *     "*Exclusions/terms apply. • While supplies last"
+ *     "a Exclusions/terms apply. While supplies last. † Terms apply."
+ *
+ * The call, and the argument for it. "While supplies last" IS scarcity language — it is a
+ * claim that stock is finite, it is the commonest such phrase in the labelled corpus, and all
+ * three of these are labelled positive there. So it is not a false positive and this does not
+ * silence it. What is wrong is SURFACING it. The pattern is about a claim placed to pressure a
+ * decision; a sentence sitting between "Exclusions apply" and "Terms apply", in footnote type,
+ * behind a dagger, is a lawyer limiting an offer, and it is the same sentence whether the
+ * shopper is hurrying or not. Interrupting someone to ask "what would you do if this weren't
+ * limited?" about a disclaimer spends the one interruption we get on the least persuasive
+ * text on the page — three times over, for what a shopper sees as one footnote.
+ *
+ * So: it counts, it never interrupts. The arithmetic is chosen against the thresholds, not by
+ * feel — boilerplate costs 0.2 and forfeits the `shortText` badge bonus, which puts a
+ * qualitative claim at 0.45 and a numeric one at 0.55, both over the 0.35 log threshold and
+ * under the 0.75 surface threshold even with a progress bar beside them (0.70).
+ *
+ * The limit of this, said plainly: it reads the SENTENCE, not the typography. A promo that
+ * writes "Only 3 left. Terms apply." in 24pt on the hero is downgraded too, and that one is a
+ * real badge. Reading font size and viewport position would settle it properly; that is a
+ * salience change and belongs with the salience gate, not in a lexicon.
+ *
+ * Deliberately NOT here: "while supplies last" on its own, and "see details" — a bare "see
+ * details" link sits under plenty of genuine badges.
+ */
+const DISCLAIMER_CONTEXT =
+  /\b(?:exclusions?|restrictions?|terms|conditions)\b[^.]{0,30}\bapply\b|\bterms (?:and|&) conditions\b/;
+
 const LEXEMES = [
   "only",
   "left",
@@ -102,7 +138,20 @@ const WEIGHTS: Record<string, number> = {
   qualitativeStock: 0.65,
   progressBar: 0.15,
   shortText: 0.1,
+  /** See DISCLAIMER_CONTEXT: enough to keep a terms footnote logged and off the screen. */
+  boilerplate: -0.2,
 };
+
+/**
+ * Is `child` inside `ancestor`, judged on selector paths alone?
+ *
+ * Copied from urgency.ts, which has the long version of this comment and the same two holes
+ * (a path truncated at MAX_PATH_DEPTH or rooted at an id can hide a real ancestry). Both fail
+ * open: unrelated paths mean both claims stand, which is what this file did before.
+ */
+function isWithin(child: string, ancestor: string): boolean {
+  return child.length > ancestor.length && child.startsWith(`${ancestor}>`);
+}
 
 export const scarcityDetector: Detector = {
   id: "scarcity.stock@1",
@@ -132,6 +181,29 @@ export const scarcityDetector: Detector = {
      */
     const claimedContainers = new Set<string>();
     const leftovers: CandidateNode[] = [];
+
+    /**
+     * Has this sentence already been claimed by something in the same nest?
+     *
+     * Exact-match was not enough, and the live audit shows the hole precisely. Zappos renders
+     * a grid tile as `<div class=tile><span>a11y description…</span><span>Low Stock</span></div>`.
+     * Pass 1 claims the badge's own path; the a11y span is a leftover whose container is the
+     * TILE, which no one had claimed, so pass 2 matched "Low Stock" a second time in the
+     * tile's joined text and quoted it as "brand name birkenstock product name birki flow eva
+     * clog gender…". One badge, two claims, and the second one evidenced with a catalogue dump
+     * — note it is the only scarcity firing in the audit with no lexeme tag, because the
+     * lexemes were matched against the node's own text and the pattern against its parent's.
+     *
+     * So ancestry, in both directions: a container holding an existing claim adds nothing, and
+     * neither does one nested inside a claim already made.
+     */
+    const alreadyClaimed = (path: string): boolean => {
+      if (claimedContainers.has(path)) return true;
+      for (const claimed of claimedContainers) {
+        if (isWithin(claimed, path) || isWithin(path, claimed)) return true;
+      }
+      return false;
+    };
 
     const evaluate = (text: string): { numeric: number; qualitative: number } | null => {
       if (text.length === 0 || text.length > 160) return null;
@@ -179,7 +251,10 @@ export const scarcityDetector: Detector = {
             numericStock: numeric,
             qualitativeStock: qualitative,
             progressBar,
-            shortText: t.length < 60 ? 1 : 0,
+            // A disclaimer forfeits the badge bonus: terse legal text is terse because it was
+            // written to be skipped, not because it is a badge.
+            shortText: t.length < 60 && !DISCLAIMER_CONTEXT.test(t) ? 1 : 0,
+            boilerplate: DISCLAIMER_CONTEXT.test(t) ? 1 : 0,
           },
           WEIGHTS,
           matchLexemes(n, LEXEMES),
@@ -189,7 +264,7 @@ export const scarcityDetector: Detector = {
 
     for (const n of leftovers) {
       const container = n.containerPath;
-      if (!container || claimedContainers.has(container)) continue;
+      if (!container || alreadyClaimed(container)) continue;
       const hit = evaluate(n.containerText);
       if (!hit) continue;
       claimedContainers.add(container);
@@ -206,7 +281,9 @@ export const scarcityDetector: Detector = {
             // A progress bar is a sibling in this shape, not a child, and this pass has no
             // cheap way to see one. Scoring it 0 understates rather than invents.
             progressBar: 0,
-            shortText: n.containerText.length < 60 ? 1 : 0,
+            shortText:
+              n.containerText.length < 60 && !DISCLAIMER_CONTEXT.test(n.containerText) ? 1 : 0,
+            boilerplate: DISCLAIMER_CONTEXT.test(n.containerText) ? 1 : 0,
           },
           WEIGHTS,
           matchLexemes(n, LEXEMES),
