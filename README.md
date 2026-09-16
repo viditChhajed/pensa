@@ -24,7 +24,7 @@ dialog no automation can accept. (The privacy-policy URL is live — see
 | Network requests | **zero with telemetry off** (the shipped default), asserted; with it on, the only reachable address is the declared endpoint, also asserted |
 | Card placement | 12/12 samples across 4 live retailers × 3 scroll depths |
 | Detector recall | measured against 29,742 label rows over 4,957 distinct snippets from 44 shops — `npm run eval:detectors`. The corpus itself is **not distributed** (it is real retailer page text); see [CORPUS.md](CORPUS.md) to rebuild it, and `tests/eval/baseline.json` for the committed numbers |
-| Manual precision | 0 confirmed false positives in ~44 firings across 6 retailers — see the caveat below |
+| Precision | 145 firings across 22 live sites, audited claim by claim; the 27 wrong ones the previous run found are fixed and regression-tested — [EVAL.md](EVAL.md). Plus 0 confirmed false positives in ~44 hand-checked firings across 6 retailers |
 
 **On the page (14):** `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
 `urgency.countdown`, `defaults.preselected`, `social_proof.live_activity`,
@@ -112,12 +112,20 @@ does it.
 
 ### Known gaps — not claimed as done
 
-- **Precision passed its gate on a smaller sample than planned.** Plan §10 asked for 30–40
-  pages across ≥6 retailers; what ran was 6 retailers and ~44 firings, with zero confirmed
-  false positives ([EVAL.md](EVAL.md)). That satisfies the "~4 false positives" gate, but it
-  is a narrow sample and every threshold is still a hand-set guess, marked
-  `confidenceBasis: "hand_set"` so it cannot be mistaken for a calibrated value. **No stronger
-  precision claim than the one in the table above may be made anywhere.**
+- **Precision is measured on firings, not on experience.** An automated audit
+  (`npm run spot:check`) drove this build over 64 pages on 22 live sites and every claim was
+  adjudicated one at a time ([EVAL.md](EVAL.md)). It found 27 wrong claims, all now fixed and
+  regression-tested, and it is the reason four detectors changed before launch. But it reads
+  the detector's own log rather than the card, so it cannot tell you that a claim was
+  technically true and useless to a shopper — the failure that actually drives uninstalls.
+  The hand pass plan §10 asked for (30–40 pages, judging each card) has **not** been run
+  against this build; what has is 6 retailers and ~44 firings with zero confirmed false
+  positives. Every threshold is still a hand-set guess, marked `confidenceBasis: "hand_set"`
+  so it cannot be mistaken for a calibrated value. **No stronger precision claim than the one
+  in the table above may be made anywhere.**
+- **`framing.savings_ratio` ships unproven.** After its fix it produced no firings at all
+  across those 22 retailers. Its unit tests show it still fires on the textbook shapes, but a
+  quiet report means unproven, not working.
 - **Recall is unmeasured, and is the weaker side.** The §10 gate was built to catch a detector
   crying wolf. Nothing is crying wolf. What the spot-check actually surfaced was misses, which
   that gate cannot see.

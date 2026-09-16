@@ -1,23 +1,36 @@
-# EVAL — manual spot-check
+# EVAL — precision
 
-**Status: two runs complete, 6 retailers. §10 gate passed. Decisions below.**
+**Status: two hand runs (6 retailers) plus two automated audits (22 sites, 64 pages). The
+§10 gate is met. The §10 HUMAN pass is still outstanding.**
 
 The header used to say precision was unmeasured while the tables below held two runs of
 data — the file contradicted itself, which is the specific failure this document exists to
 prevent. What is true now:
 
-**Measured:** zero confirmed false positives in ~44 firings across six retailers (run 1),
-and zero across five (run 2). That satisfies the §10 gate.
+**Measured by hand:** zero confirmed false positives in ~44 firings across six retailers
+(run 1), and zero across five (run 2).
 
-**Not measured:** recall, and precision at the sample size the plan actually asked for
-(30–40 pages). Six retailers is a narrow sample, and every threshold in the shipped build is
-still a hand-set guess, marked `confidenceBasis: "hand_set"` in the schema so it cannot be
-mistaken for a calibrated value.
+**Measured automatically** — see [Automated precision audit](#automated-precision-audit--2026-09-16)
+at the foot of this file: 170 distinct claims across 22 sites, of which **27 were wrong**;
+after the fixes those 27 forced, 145 claims remain. The automated pass reads the detector's
+log rather than the card, so it measures firings, not experience.
 
-**The claim that may be made**, and no stronger one: *zero confirmed false positives in ~44
-firings across six retailers.* Anything that implies a measured precision rate, a recall
-rate, or performance on sites not in these tables is not supported by this file.
+**Not measured:** what the extension is like to *use*. No human has yet browsed 30–40 pages
+with this build and judged each card, which is the pass MANUAL-VERIFICATION.md §3 describes
+and the only one that catches a claim that was true and useless. Every threshold in the
+shipped build is still a hand-set guess, marked `confidenceBasis: "hand_set"` in the schema
+so it cannot be mistaken for a calibrated value.
 
+**The claims that may be made**, and no stronger ones:
+
+- *Zero confirmed false positives in ~44 hand-checked firings across six retailers.*
+- *145 firings across 22 live sites, with the false positives found in the previous run
+  fixed and regression-tested.*
+
+Anything implying a measured precision RATE, a recall rate, or performance on sites outside
+these tables is not supported by this file. Two detectors are shipping with known,
+documented limits; they are listed under "Known, un-fixed, and shipping" below rather than
+left for a reader to discover.
 ---
 
 ## Protocol (plan §10)
@@ -558,3 +571,96 @@ element, so quadratic. One bottom-up text pass makes it linear.
 now stay inside the 50ms budget entirely. newegg and rei both cap out at MAX_CANDIDATES
 (1200), so what remains is the harvest cap, which is the genuine §18C case — but it is now a
 ~90ms problem, not a 1.8s one, and no longer a correctness risk.
+
+---
+
+# Automated precision audit — 2026-09-16
+
+**This is not the §10 human gate.** `npm run spot:check` loads the real build into Chromium
+with host permissions patched into a temp copy, visits live retailer pages, scrolls, and
+records every firing with the text it matched. It reads the detector's own log, not the card.
+It cannot tell you that a claim was technically true and useless to a shopper — the failure
+that actually drives uninstalls — and it never sees the card, only the firing behind it.
+
+What it can do, and what the labelled corpus cannot, is catch a detector firing on a real
+page that is doing nothing. It did that eight times.
+
+**Run shape.** 22 sites, 64 pages, 6 parallel shards. Claims are deduped by
+`patternId | evidence | site | path`: a detector logs once per pass and a page left open runs
+many, so 1,261 log lines are 170 claims. Counting log lines would make one wrong claim look
+like a catastrophe.
+
+| | Run 1 (before) | Run 2 (after fixes) |
+|---|---|---|
+| Distinct claims | 170 | **145** |
+| Sites producing any | 18 | 17 |
+
+## What the first run caught
+
+| Detector | Run 1 | Wrong | Run 2 | What was wrong |
+|---|---|---|---|---|
+| `framing.savings_ratio` | 19 | **19** | **1** | Every single one. `\boff\b` matched a Zappos colourway called "Off White"; then max/min price across a grid tile paired two different shoes |
+| `nagging.repeat_interstitial` | 3 | **3** | **0** | A cookie banner and the scrim behind it are two elements and one interruption |
+| `urgency.countdown` | 33 | 3 | 31 | Two "Save this event" *buttons* and a sensor part number |
+| `scarcity.stock` | 9 | 2 | 7 | A product-grid blob claimed with evidence containing no scarcity word |
+| `anchoring.reference_price` | 37 | 0 | 35 | — |
+| `pricing.charm` | 28 | 0 | 28 | — |
+| `goal_gradient.threshold` | 28 | 0 | 28 | — |
+| `social_proof.live_activity` | 8 | 0 | 8 | — |
+| `bnpl.installments` | 5 | 0 | 7 | — |
+
+**No detector exceeded §10's "~4 false positives" gate except `framing.savings_ratio`, which
+failed it five times over.** It is fixed rather than disabled, but see the caveat below.
+
+## Three findings worth more than the audit
+
+**1. The framing detector had been "fixed" for this once already.** The earlier change fixed
+*attribution* — which node gets quoted, how many times — and left *recognition* untouched. The
+same tiles fired once each and quoted their container faithfully. Better quoted, still wrong.
+
+**2. Chasing framing's SHEIN firings found a bug in the shared money parser.** `parsePrices`
+read `"$184.0074% off"` as **$184,007.00**, because the grouped branch took the `007` after the
+dot as a thousands group. The harvester joins adjacent DOM text, so a price badge beside a
+discount badge arrives as one string — this is routine, not exotic. `parsePrices` feeds drip
+reconciliation and `basket.sneak`, the two highest-severity patterns in the taxonomy, both of
+which compare totals across funnel stages. A three-orders-of-magnitude misread there does not
+produce a missed claim; it produces a confident, absurd one, where being wrong costs most.
+
+**3. Nagging's off-by-one was structural, and it was everywhere.** OneTrust wraps
+`div.ot-sdk-container[role=dialog]` inside `div#onetrust-banner-sdk` — two elements 2px apart,
+one cookie banner. With `FLAG_AT = 2`, that single duplicate was the whole difference between
+silence and a card, on a consent platform used by a large share of the web.
+
+## What the audit says about detectors it did NOT catch
+
+`anchoring.reference_price` produced 35 claims and none is wrong, but three looked wrong and
+were settled by probing the live DOM rather than by reading the log:
+
+- Ulta's price *ranges* (`"$9.99 - $179.99"`) are genuinely `line-through`, inside a wrapper
+  whose own text begins `listPrice`.
+- Glossier's `"$84 [regular price]"` are real `<s>Regular price $84</s>` nodes.
+
+Worth recording that the evidence is often weak even when the claim is right: a bare
+`"£45.00"` with no lexeme is a true detection that tells a reader nothing. That is a card-copy
+problem, not a precision one, and it is not fixed here.
+
+## Known, un-fixed, and shipping
+
+- **`framing.savings_ratio` is unproven, not proven.** The audit contains no case where it was
+  right. Post-fix it says nothing at all across those 22 retailers. Unit tests show it still
+  fires on the textbook shapes, but a quiet report means **unproven**, not working. It stays
+  enabled because it clears the §10 gate on precision and that gate is about precision, not
+  volume — but nobody should cite it as measured.
+- **Sephora's three "While supplies last" footnotes count but never interrupt.** The phrase is
+  scarcity language and is labelled positive in the corpus, but a sentence wedged between
+  "Exclusions apply" and "Terms apply" is a lawyer bounding an offer, not a badge bounding a
+  decision. They log; they cannot surface. The rule reads the sentence, not the typography, so
+  a genuine 24pt badge ending in "Terms apply" is downgraded too.
+- **Ulta's delivery banner is claimed twice**, once as `urgency.countdown` and once as
+  `goal_gradient.threshold` — `"Free same day delivery over $35. Now thru 9.17."` really does
+  carry a spend threshold and a deadline. Both claims are true. Whether a reader wants two is
+  a digest question, not a detector one.
+- **Evidence is truncated to 60 characters by the audit writer.** That cost real time: three
+  REI firings were flagged as false positives and were not — the same banner appears in the
+  corpus in full, ending "thru 11/12". A deadline was hiding in the truncation.
+

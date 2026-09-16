@@ -301,22 +301,39 @@ be judged. Flipping to Public later is one setting.
 
 ## Pre-submission checklist
 
-- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green — 478 unit + eval, 43 e2e
+- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green — 549 unit + eval, 43 e2e
 - [x] `host_permissions` empty in the built manifest (CI-enforced, checked: `[]`)
 - [x] Icons present at all four sizes
 - [x] Privacy policy URL live and reachable
-- [ ] **Re-run the §10 spot-check against THIS build.** The one in [EVAL.md](EVAL.md) found
-      zero false positives — but it was run against a build whose detectors have since been
-      substantially rewritten, with recall up seven- to eighteen-fold on four of them. Every
-      new rule is a new chance to fire on something it should not, and the corpus precision
-      figures cannot settle it: those labels were produced by a model, and a detector
-      agreeing with a model is not the same as a detector being right. **This is the gate.**
-- [ ] Screenshots captured
-- [ ] **Repo flipped to public** — the listing claims the source is public, and it is
-      private until this is done. Audit the commit history first (EVAL.md holds real
-      browsing sessions).
+- [x] **Spot-check re-run against THIS build.** It was the real gate and it earned that
+      billing. The warning that stood here — that the detectors had been substantially
+      rewritten since the last check, that every new rule is a new chance to fire on
+      something it should not, and that corpus precision could not settle it because a
+      detector agreeing with a model is not the same as a detector being right — turned out
+      to be exactly correct. `npm run spot:check` over 64 pages on 22 live sites found **27
+      wrong claims out of 170**, one detector wrong in every single firing, and a bug in the
+      shared money parser underneath it. All fixed and regression-tested; 145 claims on the
+      re-run. Tally and provenance in [EVAL.md](EVAL.md).
+- [x] Screenshots captured — `npm run screenshots`, four 1280×800 PNGs in `store/screenshots/`,
+      taken from the running build against a live retailer
+- [x] Pre-publication audit of the full history — 89 commits, 496 blobs. No secrets, no
+      personal data, no fixture ever committed unscrubbed, `corpus/` never tracked. The worry
+      recorded here previously ("EVAL.md holds real browsing sessions") was unfounded: that
+      file records short labels, never URLs with query strings. No history rewrite needed.
+- [x] LICENSE added (ISC, matching `package.json`) — a public repo without one grants nobody
+      any rights
 - [x] Version bumped in `wxt.config.ts` — 1.0.0
-- [x] `npm run zip` — `.output/vero-1.0.0-chrome.zip`, 131 KB
+- [x] `npm run zip` — `.output/vero-1.0.0-chrome.zip`
 
-The EVAL.md line is the real gate. Everything else is paperwork; that one is the difference
-between a tool that helps and one that interrupts people with wrong claims.
+### Still yours to do
+
+- [ ] **Chrome Web Store developer account** — $5 one-time, with identity verification
+- [ ] **Flip the repo to public** — the listing says the source is public. The audit above
+      says it is safe to flip; nothing else blocks it
+- [ ] **Decide listing visibility.** Unlisted first is still the recommendation above: fully
+      reviewed, installable by link, not publicly discoverable, one setting to flip later
+
+**What is NOT done, and should not be claimed:** the §10 *human* pass. A person browsing
+30–40 pages and judging each card is the only thing that catches a claim that was true and
+useless, and the automated audit cannot stand in for it — it reads the detector's log, never
+the card. [MANUAL-VERIFICATION.md](MANUAL-VERIFICATION.md) §3 has the protocol.
