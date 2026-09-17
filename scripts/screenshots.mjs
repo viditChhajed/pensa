@@ -78,15 +78,29 @@ const shot = (name) => join(OUT, name);
 const wait = (page, ms) => page.waitForTimeout(ms);
 
 /**
- * Copy the build somewhere writable and patch the copy. `.output` is never touched, so what
- * a user installs still ships an empty `host_permissions` — see spot-check.mjs.
+ * Copy the build somewhere writable and patch the copy. `.output` is never touched.
+ *
+ * The shipped manifest already holds the broad https permission, so a live-retailer run needs no host
+ * permission patched in at all — the screenshots show the permission a user actually grants.
+ * Two patches remain, both for the capture harness rather than the product:
+ *
+ *   `tabs`, because the popup learns its page from `chrome.tabs.query` and in production that
+ *   right comes from `activeTab`, which only a real toolbar click grants.
+ *
+ *   `fixtureOrigin`, for the fallback only. The fixture is served over plain http from a host
+ *   the denylist does not refuse (localhost IS refused, deliberately), so both the permission
+ *   and the declared content script's `matches` have to be widened to it — widening only the
+ *   permission buys the right to read a page nothing is injected into.
  */
-function stageBuild(hostPermissions) {
+function stageBuild(fixtureOrigin) {
   const dir = mkdtempSync(join(tmpdir(), "vero-shots-"));
   cpSync(BUILD, dir, { recursive: true });
   const mp = join(dir, "manifest.json");
   const manifest = JSON.parse(readFileSync(mp, "utf8"));
-  manifest.host_permissions = hostPermissions;
+  if (fixtureOrigin) {
+    manifest.host_permissions = [fixtureOrigin];
+    for (const cs of manifest.content_scripts ?? []) cs.matches = [fixtureOrigin];
+  }
   if (!manifest.permissions.includes("tabs")) manifest.permissions.push("tabs");
   writeFileSync(mp, JSON.stringify(manifest, null, 2));
   return dir;
@@ -313,7 +327,7 @@ async function captureFixtureCard(ctx) {
     }
     await route.fulfill({ status: 204, body: "" });
   });
-  await page.goto(`http://localhost/${name}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`http://shop.example.com/${name}`, { waitUntil: "domcontentloaded" });
   await wait(page, 2500);
   await page.click("#atc");
   await page.waitForFunction(CARD_PRESENT, undefined, { timeout: 20_000 });
@@ -469,8 +483,13 @@ async function sectionTop(page, headingText) {
  *
  * The popup is opened as a BACKGROUND tab on purpose. It learns which site it is being asked
  * about from `chrome.tabs.query({active: true})`, so a popup that is itself the active tab
- * would read its own chrome-extension:// URL and offer nothing. It is brought to the front
- * only after `init()` has already resolved and the offer is on screen.
+ * would read its own chrome-extension:// URL. It is brought to the front only after `init()`
+ * has resolved and the verdict line is on screen.
+ *
+ * It is shot on the SAME shop the card fired on, so it shows the real state: running, and
+ * checking this page. It used to be shot on a second, ungranted site to show an "Enable on
+ * this site" button — a button that no longer exists, so the old image depicted a product
+ * that is not the one being submitted.
  */
 async function capturePopup(ctx, sw, extensionId, shopUrl) {
   const shop = await ctx.newPage();
@@ -485,7 +504,7 @@ async function capturePopup(ctx, sw, extensionId, shopUrl) {
     extensionId,
   );
   const popup = await opened;
-  await popup.waitForSelector("#enable:not([hidden])", { timeout: 20_000 });
+  await popup.waitForSelector(".detail.score", { timeout: 20_000 });
 
   await popup.bringToFront();
   // A clip cannot reach past the viewport, so a flat 2x zoom silently chopped the footer
@@ -523,12 +542,7 @@ async function capturePopup(ctx, sw, extensionId, shopUrl) {
 
 mkdirSync(OUT, { recursive: true });
 
-/**
- * Resolve the live site BEFORE launching, because the grant has to name it.
- *
- * `host_permissions` is baked into the build copy at launch, so the site has to be known
- * first. A candidate that cannot even name a product is not worth a browser.
- */
+/** Resolve a live product URL before launching: a candidate that cannot name one is not worth a browser. */
 const candidates = args.site ? [String(args.site)] : LIVE_CANDIDATES;
 const targets = [];
 if (!args.fixture) {
@@ -543,16 +557,16 @@ let ctx = null;
 let sw = null;
 let extensionId = null;
 let cardSource = null;
-/** The popup must be offered a site that is NOT granted, or it says "Watching …" instead. */
+/** Where the popup is shot: the shop the card fired on, so it reports Vero as running. */
 let popupSite = null;
 
 for (const { site, url } of targets) {
   console.log(`trying ${url}`);
-  const staged = await launch(stageBuild([`https://*.${site}/*`]));
+  const staged = await launch(stageBuild());
   if (await captureLiveCard(staged.ctx, url)) {
     ({ ctx, sw, extensionId } = staged);
     cardSource = `live retailer — ${url}`;
-    popupSite = `https://www.${candidates.find((c) => c !== site) ?? "glossier.com"}/`;
+    popupSite = url;
     break;
   }
   // One browser at a time: the machine is already running the spot-check fleet.
@@ -561,11 +575,11 @@ for (const { site, url } of targets) {
 
 if (!ctx) {
   if (targets.length > 0) console.log("no live retailer cooperated — falling back to the fixture");
-  const staged = await launch(stageBuild(["http://localhost/*"]));
+  const staged = await launch(stageBuild("http://shop.example.com/*"));
   ({ ctx, sw, extensionId } = staged);
   await captureFixtureCard(ctx);
-  cardSource = "FIXTURE — tests/e2e/pages/cart-drawer.html over http://localhost";
-  popupSite = `https://www.${candidates[0] ?? "glossier.com"}/`;
+  cardSource = "FIXTURE — tests/e2e/pages/cart-drawer.html over http://shop.example.com";
+  popupSite = "http://shop.example.com/cart-drawer.html";
 }
 
 try {
@@ -599,4 +613,4 @@ for (const file of ["01-card.png", "02-popup.png", "03-today.png", "04-settings.
   console.log(`  ${file}  ${(statSync(shot(file)).size / 1024).toFixed(0)} KB`);
 }
 console.log(`\n  01-card.png  ${cardSource}`);
-console.log(`  02-popup.png  the enable offer for ${new URL(popupSite).hostname}`);
+console.log(`  02-popup.png  running on ${new URL(popupSite).hostname}`);

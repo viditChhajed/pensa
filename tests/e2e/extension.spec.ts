@@ -67,7 +67,6 @@ test.describe("extension runtime", () => {
     expect(manifest?.optional_host_permissions ?? []).toEqual([]);
     expect(manifest?.permissions).toEqual([
       "storage",
-      "scripting",
       "activeTab",
       // Added late, after the round-trip test revealed both alarms had been silent no-ops
       // for the whole build. It shows no install warning and grants no page or data access.

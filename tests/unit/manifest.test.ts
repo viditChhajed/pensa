@@ -62,7 +62,10 @@ describe("built manifest", () => {
     // when a lit icon meant "you can turn Vero on here". Nothing is turned on per site any
     // more, the action is enabled everywhere, and the popup opens on every page — so the
     // page rules decided nothing.
-    expect(manifest?.permissions).toEqual(["storage", "scripting", "activeTab", "alarms"]);
+    //
+    // `scripting` is gone too: it survived only to unregister a script left by the per-site
+    // grant model, which never shipped, so no installed copy can have one.
+    expect(manifest?.permissions).toEqual(["storage", "activeTab", "alarms"]);
   });
 
   it.skipIf(!available)("declares `alarms`, because the code has always assumed it", () => {

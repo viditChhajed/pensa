@@ -78,7 +78,7 @@ export default defineConfig({
     // Vero on here". Vero is now on everywhere it is allowed to be, the action is enabled
     // by default, and the popup opens on every page and says which state applies — so the
     // page rules decided nothing and the permission bought nothing.
-    permissions: ["storage", "scripting", "activeTab", "alarms"],
+    permissions: ["storage", "activeTab", "alarms"],
 
     /**
      * REQUIRED, granted at install, and the install warning says so: "Read and change all

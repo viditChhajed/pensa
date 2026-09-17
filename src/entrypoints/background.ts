@@ -18,7 +18,7 @@ import {
   saveLedger,
 } from "@/background/sessionLedger";
 import { discardQueue, flush, pendingRecords } from "@/background/telemetry";
-import { DETECTOR_SCRIPT_ID, TELEMETRY_ENDPOINT } from "@/shared/constants";
+import { TELEMETRY_ENDPOINT } from "@/shared/constants";
 import { matchesPattern } from "@/shared/domain";
 import type { ShowDigest } from "@/shared/messages";
 import { Message } from "@/shared/messages.schema";
@@ -29,22 +29,22 @@ import { decodePriceSnapshot } from "@/shared/wire";
  *
  *   1. Own the session ledger and the digest decision, because both outlive any one page.
  *   2. Answer the popup's "are you actually running here?" question.
- *   3. Clean up after the permission model this build replaced (see dropLegacyRegistration).
- *
- * What it no longer does: register the content script. The manifest declares it, matching
+ *  *
+ * What it does not do: register the content script, and so it needs no `scripting`
+ * permission. An earlier draft kept that permission solely to unregister a script left over
+ * from the per-site grant model — but that model never shipped, so no installed copy can
+ * have one, and a permission requested for a user who cannot exist is a permission a store
+ * reviewer is right to reject. The manifest declares it, matching
  * the required https host permission and excluding what the denylist can express, so there
  * is nothing to keep in sync at runtime and nothing that can silently fail to register. It
  * also no longer installs declarativeContent page rules — the action is enabled everywhere
  * and the popup opens on every page, so there was nothing for a page rule to decide.
  */
 export default defineBackground(() => {
-  chrome.runtime.onInstalled.addListener(() => {
-    void dropLegacyRegistration();
-  });
+  chrome.runtime.onInstalled.addListener(() => {});
 
   // Service workers die. Anything assumed to persist has to be re-derived on wake.
   chrome.runtime.onStartup.addListener(() => {
-    void dropLegacyRegistration();
     void housekeeping();
   });
 
@@ -106,39 +106,6 @@ async function flushTelemetry(): Promise<void> {
     }
   } catch (err) {
     console.error("[vero] telemetry flush failed", err);
-  }
-}
-
-/**
- * Remove the runtime content-script registration left behind by an earlier permission model.
- *
- * Builds before this one registered the detector with `chrome.scripting`, per granted
- * origin, with `persistAcrossSessions: true`. Those registrations SURVIVE an extension
- * update. On an upgraded install the manifest entry and the stale runtime entry would both
- * match, so the script would be injected twice (harmless — the injection flag catches the
- * second) and, far worse, the stale entry carries whatever matches the old model had
- * accumulated, with no exclude_matches on it at all. A user who once granted a bank
- * subdomain would keep being injected there, invisibly, forever.
- *
- * This is the only reason the `scripting` permission is still requested. It is a migration,
- * and it is cheap enough to run on every wake rather than trying to remember whether it has
- * already happened.
- */
-async function dropLegacyRegistration(): Promise<void> {
-  try {
-    const existing = await chrome.scripting.getRegisteredContentScripts({
-      ids: [DETECTOR_SCRIPT_ID],
-    });
-    if (existing.length === 0) return;
-    await chrome.scripting.unregisterContentScripts({ ids: [DETECTOR_SCRIPT_ID] });
-    console.info(
-      `[vero] removed a legacy runtime registration (${existing[0]?.matches?.length ?? 0} ` +
-        "match patterns); the manifest declares the content script now",
-    );
-  } catch (err) {
-    // Surface it. A failure here means the old registration is still live alongside the new
-    // manifest one, which is exactly the state that looks fine and is not.
-    console.error("[vero] could not drop the legacy content-script registration", err);
   }
 }
 

@@ -87,27 +87,31 @@ The card is small, appears in a corner, and stays until you close it — it does
 while you are reading it. It is never placed over a form field, a submit button, or anything
 on the purchase path; it may sit over an ordinary link, which one click uncovers.
 
-PRIVACY
+PRIVACY AND PERMISSIONS
 
-There is no account, and no advertising or analytics company is involved at any point.
+Chrome will tell you Vero can read the websites you visit, and that is accurate: it needs to,
+because these techniques turn up on small and new shops as often as on big ones, and no list
+of sites would cover them. What it does with that access is narrow:
 
-Out of the box the extension makes no network requests whatsoever, and you can check that
-yourself: open DevTools, go to the Network tab, and browse.
+• It reads a page and decides whether it is a shop first. On anything else — email, news,
+  documents, chat — it stops, records nothing, and stays out of the way.
+• It never runs on banking, health, government or webmail sites.
+• There is no account, and no advertising or analytics company is involved at any point.
+• Out of the box it makes no network requests at all. You can check: open DevTools, go to
+  the Network tab, and browse.
 
-There is one optional setting, off by default and not pre-ticked, that shares anonymous
-counts of which techniques appear where. If you turn it on, a count says "someone saw a
-countdown, on a travel site, in this hour" — no web address, no page content, no prices, no
-identifiers, no precise time. Counts are held back until at least 20 other reports share the
-same shape, because a count only you could have produced is not anonymous. You can read the
-exact records waiting to be sent, before any of them are, in Settings.
+Everything it notices stays on your device and is deleted after 30 days. You can export it
+or erase it at any time from Settings.
 
-Everything it notices stays on your device and is deleted after 30 days. You can erase it
-all at any time from Settings, and that includes any anonymous counts still waiting to be
-sent.
+OPTIONAL: HELP MEASURE THESE TECHNIQUES
 
-It asks for no site access when you install it. You grant one site at a time, from the
-toolbar, and you can revoke any of them whenever you like. It will never offer to run on
-banking, health, government or webmail sites.
+One setting, off by default and not pre-ticked, shares which shops use which techniques so
+their prevalence can be measured. It does name the shop: a report says "someone saw a
+countdown on shein.com today." It never sends the page, the product, your searches, page
+text, prices, your account, anything that identifies you, or any time more precise than the
+day. Reports go out in batches, not at the moment something is found, and you can read the
+exact reports waiting to be sent before any of them are. Turning it off deletes anything not
+yet sent.
 
 CONTROLS
 
@@ -148,60 +152,51 @@ Copy each into the corresponding field. These are the answers a reviewer is look
 
 **`storage`**
 ```
-Stores your per-site choices, your interruption-frequency setting, and a local log of what
-was noticed, so the extension can show you a summary. All of it stays on the device and is
-deleted after 30 days.
-```
-
-**`scripting`**
-```
-Registers the detection script at runtime, but only for sites you have explicitly enabled
-from the toolbar. No content script is declared in the manifest, so the extension has no
-page access at install time.
+Stores the user's settings (which techniques to watch for, how often to be interrupted, any
+sites they have turned Vero off for) and a local log of what was noticed, so the extension
+can show a summary and let the user export or delete it. Stored on the device; detections
+are deleted after 30 days by default.
 ```
 
 **`activeTab`**
 ```
-Lets the popup read the current tab's address so it can offer to enable that specific site.
-Used only while the popup is open.
+Lets the popup read the address of the tab the user is looking at, so it can say whether
+Vero is running on that page, is idle because the page is not a shop, or never runs there
+(banking, health, government and webmail sites). Used only while the popup is open.
 ```
 
 **`alarms`**
 ```
-Runs two scheduled jobs: deleting locally stored detections older than 30 days, and sending
-the optional anonymous counts on a timer rather than at the moment something is found. This
-permission shows no warning at install and grants no access to pages or data.
+Runs two scheduled jobs: deleting locally stored detections older than the retention period,
+and, only if the user has switched on sharing, sending reports in batches every six hours
+rather than at the moment something is found. It grants no access to pages or data.
 ```
 
-**`declarativeContent`**
-```
-Highlights the toolbar icon on URLs that look like shopping pages. This is evaluated by the
-browser from the URL alone — it grants no page access and reads no page content.
-```
+**Host permission: `https://*/*`**
 
-**`optional_host_permissions` (~150 named shopping origins, plus `https://*/*`)**
-
-> Read the manifest before submitting this one. It declares ~150 named origins AND the broad
-> `https://*/*` pattern, and a justification that mentions only the named list will not match
-> what the reviewer is looking at. The broad pattern is there because shopping happens on
-> sites no list contains; nothing about it is granted at install.
+> Chrome shows "Read and change all your data on all websites" for this. The justification
+> has to explain why a fixed list will not do, and has to describe the real limits — reviewers
+> look hardest at broad host permissions, and a vague answer here is the likeliest rejection.
 
 ```
-Nothing here is granted at install — this is the optional list, not the required one, so the
-extension has no site access when it is added and the install prompt asks for none.
+Vero detects persuasion techniques — countdown timers, limited-stock claims, crossed-out
+reference prices, preselected add-ons, fees added at checkout — on the shopping pages a user
+visits, and asks them a question about what was on screen before they buy.
 
-Access is requested one site at a time, by clicking a button in the popup while you are on
-that site, and Chrome shows its own prompt for that single site each time. Any site can be
-revoked from Settings, and revoking it immediately unregisters the script.
+It needs to read pages on sites that cannot be listed in advance. These techniques appear on
+small independent stores, regional retailers and new storefronts as much as on large
+retailers, and a fixed list would leave users unprotected exactly where a list is least
+likely to reach.
 
-The list includes https://*/* because a fixed list of shopping sites is always wrong: people
-shop on small independent stores, regional retailers, and sites that did not exist when the
-list was written, and a user who wants the extension on one of those should be able to grant
-it. The extension never requests this pattern. It only ever requests the single site you are
-looking at when you press the button.
-
-The extension will not offer to run on banking, health, government or webmail sites. That
-denylist is checked before anything else, and on those sites the button is not shown at all.
+What limits it:
+- It reads each page and decides whether it is a shop before doing anything else. On a page
+  that is not selling something it stops, records nothing, and checks again only rarely.
+- It never runs on banking, health, government or webmail sites. Those hosts are excluded
+  from the content script's match patterns, so Chrome does not inject it there, and the
+  script also refuses to run on them at startup.
+- https only.
+- By default it makes no network requests at all. The only data that can leave the device is
+  an optional, off-by-default report described in the privacy practices section.
 ```
 
 **Single purpose statement**
@@ -279,7 +274,7 @@ committed policy disagree. Re-check the page after any edit to PRIVACY.md.
 **Suggested screenshots**, in order of usefulness to a reviewer:
 
 1. The card on a real product page, showing one question.
-2. The popup with **Enable on this site**, showing the near-empty permission ask.
+2. The popup on a shopping page, saying Vero is running there and showing today's summary.
 3. Settings → *What was noticed today*, showing the Noticed / Shown split.
 4. Settings → *What to watch for*, showing a switch per technique and the frequency control.
    This is the screenshot that answers "can I turn it down?", which is the first thing a
