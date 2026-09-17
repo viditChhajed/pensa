@@ -75,6 +75,8 @@
 
         <p class="muted small">
           This helps build a public picture of how common these techniques are, shop by shop.
+          Reports cover what shops show you as you browse, not only what you saw when adding to
+          your cart.
           <strong>It does name the shop.</strong> A report says
           <em>“someone saw a countdown on shein.com today.”</em>
         </p>
@@ -97,8 +99,21 @@
       <section>
         <h2>Your data</h2>
         <p class="muted">
-          Everything stays on this device. There are no network requests. You can check that
-          yourself in DevTools → Network.
+          Everything below stays on this device. With sharing off, Vero makes no network
+          requests at all — you can check that in DevTools → Network.
+        </p>
+        <label class="row">
+          <span>Keep detections for</span>
+          <select id="retention">
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+            <option value="90">90 days</option>
+            <option value="365">1 year</option>
+          </select>
+        </label>
+        <p class="muted small">
+          Product history, used to spot countdowns that reset and "was" prices that are never
+          charged, is kept up to 90 days whatever this is set to.
         </p>
         <button type="button" id="export">Export my data (JSONL)</button>
         <button type="button" id="clear">Delete all my data</button>

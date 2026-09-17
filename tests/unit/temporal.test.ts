@@ -31,6 +31,20 @@ function obs(patch: Partial<OfferObservation> = {}): OfferObservation {
 const HASH = "a".repeat(64);
 
 describe("evergreen countdown", () => {
+  it("does NOT flag a daily cutoff seen at the same time on consecutive days", () => {
+    // "Order within 3h for same-day shipping": the end moves forward exactly a day per day.
+    expect(
+      detectEvergreenCountdown(
+        obs({
+          timerSightings: [
+            { ts: 14 * HOUR, containerPathHash: HASH, observedEndEpoch: 17 * HOUR },
+            { ts: DAY + 14 * HOUR, containerPathHash: HASH, observedEndEpoch: DAY + 17 * HOUR },
+          ],
+        }),
+      ),
+    ).toBeNull();
+  });
+
   it("flags a deadline that advances with the clock", () => {
     // Seen 2 hours apart; the deadline moved forward by 2 hours. That is not a fixed point.
     const c = detectEvergreenCountdown(
@@ -147,40 +161,77 @@ describe("stock monotonicity", () => {
     ).toBeNull();
   });
 
-  it("flags a count frozen at the same value for over a week", () => {
+  it("flags a low count frozen for a fortnight across four visits", () => {
     const c = detectStockAnomaly(
       obs({
         stockSightings: [
           { ts: 0, n: 3 },
           { ts: 5 * DAY, n: 3 },
-          { ts: 11 * DAY, n: 3 },
+          { ts: 10 * DAY, n: 3 },
+          { ts: 15 * DAY, n: 3 },
         ],
       }),
     );
     expect(c).not.toBeNull();
     expect(c?.subSignals.frozenLong).toBe(1);
   });
+
+  it("does NOT flag a slow seller whose count simply held for a week", () => {
+    // Was flagged at 7 days and 3 visits. An ordinary item can sit unsold that long.
+    expect(
+      detectStockAnomaly(obs({ stockSightings: [0, 5, 11].map((d) => ({ ts: d * DAY, n: 3 })) })),
+    ).toBeNull();
+  });
+
+  it("does NOT treat a large held count as a scarcity claim", () => {
+    expect(
+      detectStockAnomaly(
+        obs({ stockSightings: [0, 5, 10, 15].map((d) => ({ ts: d * DAY, n: 40 })) }),
+      ),
+    ).toBeNull();
+  });
+
+  it("does NOT flag restocks", () => {
+    // 2 -> 40 twice is inventory arriving, not a counter that will not settle.
+    expect(
+      detectStockAnomaly(
+        obs({
+          stockSightings: [
+            { ts: 0, n: 2 },
+            { ts: DAY, n: 40 },
+            { ts: 2 * DAY, n: 1 },
+            { ts: 3 * DAY, n: 38 },
+          ],
+        }),
+      ),
+    ).toBeNull();
+  });
 });
 
 describe("reference price grounding", () => {
-  it("flags a was-price never observed as the actual price", () => {
-    const c = detectUngroundedReference(
-      obs({
-        firstSeen: 0,
-        lastSeen: 30 * DAY,
-        observedPrices: [
-          { ts: 0, minor: 4999n, currency: "USD" },
-          { ts: 15 * DAY, minor: 4999n, currency: "USD" },
-          { ts: 30 * DAY, minor: 4999n, currency: "USD" },
-        ],
-        observedReferencePrices: [
-          { ts: 0, minor: 9999n },
-          { ts: 30 * DAY, minor: 9999n },
-        ],
-      }),
-    );
+  const perpetual = (days: number[], withRefOn = days) =>
+    obs({
+      firstSeen: 0,
+      lastSeen: Math.max(...days) * DAY,
+      observedPrices: days.map((d) => ({ ts: d * DAY, minor: 4999n, currency: "USD" })),
+      observedReferencePrices: withRefOn.map((d) => ({ ts: d * DAY, minor: 9999n })),
+    });
+
+  it("flags a was-price shown on every visit for four weeks and never charged", () => {
+    const c = detectUngroundedReference(perpetual([0, 15, 30]));
     expect(c).not.toBeNull();
     expect(c?.patternId).toBe("temporal.reference_price_ungrounded");
+  });
+
+  it("does NOT flag a genuine sale that lasted ten days", () => {
+    // The old rule fired here: a week-plus sale whose struck price never equalled the sale
+    // price. That describes every honest markdown.
+    expect(detectUngroundedReference(perpetual([0, 5, 10]))).toBeNull();
+  });
+
+  it("does NOT flag if any visit showed the item without a was-price", () => {
+    // Seen at its ordinary price on day 15, so the reference has an observed basis.
+    expect(detectUngroundedReference(perpetual([0, 15, 30], [0, 30]))).toBeNull();
   });
 
   it("does NOT flag when the price has actually moved", () => {

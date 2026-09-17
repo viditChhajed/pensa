@@ -1,3 +1,4 @@
+import { getDomain } from "tldts";
 /**
  * Registrable-domain helper.
  *
@@ -12,40 +13,23 @@
  * the popup shows a person for the site they are on.
  */
 
-/** Public suffixes that take three labels rather than two. Not exhaustive; covers the allowlist. */
-const TWO_PART_SUFFIXES = new Set([
-  "co.uk",
-  "org.uk",
-  "ac.uk",
-  "gov.uk",
-  "me.uk",
-  "com.au",
-  "net.au",
-  "org.au",
-  "co.nz",
-  "co.za",
-  "com.br",
-  "com.mx",
-  "com.ar",
-  "co.jp",
-  "co.in",
-  "com.sg",
-  "com.hk",
-  "com.tr",
-  "co.kr",
-]);
-
-/** `www.booking.com` -> `booking.com`; `tjmaxx.tjx.com` -> `tjx.com`; `a.co.uk` -> `a.co.uk`. */
+/**
+ * The shop a hostname belongs to: `us.shein.com` -> `shein.com`, `a.co.uk` -> `a.co.uk`,
+ * `cool-shop.myshopify.com` -> `cool-shop.myshopify.com`.
+ *
+ * Backed by the Public Suffix List (via tldts), INCLUDING its private section. This used to be
+ * "the last two labels unless they appear in a list of fourteen suffixes", which recorded
+ * jumia.com.ng as the site `com.ng`, noon.com.sa as `com.sa`, and folded every store on
+ * Shopify's default domain into one site called `myshopify.com`. For a dataset whose whole
+ * purpose is per-site prevalence, that merged unrelated shops and invented sites that do not
+ * exist. Private suffixes matter here: a store at cool-shop.myshopify.com is its own shop.
+ *
+ * Falls back to the lowercased hostname for anything the list cannot parse (IP addresses,
+ * single-label hosts), so callers always get a string.
+ */
 export function registrableDomain(hostname: string): string {
   const host = hostname.toLowerCase().replace(/\.$/, "");
-  const parts = host.split(".");
-  if (parts.length <= 2) return host;
-
-  const lastTwo = parts.slice(-2).join(".");
-  if (TWO_PART_SUFFIXES.has(lastTwo)) {
-    return parts.slice(-3).join(".");
-  }
-  return lastTwo;
+  return getDomain(host, { allowPrivateDomains: true }) ?? host;
 }
 
 /**

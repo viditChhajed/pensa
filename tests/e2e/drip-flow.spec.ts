@@ -14,13 +14,12 @@
  * green that hid the problem: the ledger it was given could not be produced by the code
  * that was supposed to produce it.
  */
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
 import { stageLocalBuild } from "./localBuild";
 
-const BUILD = resolve(".output/chrome-mv3");
+const _BUILD = resolve(".output/chrome-mv3");
 const PAGES = resolve("tests/e2e/pages");
 
 let context: BrowserContext;

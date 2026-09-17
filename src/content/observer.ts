@@ -17,6 +17,16 @@ const MAX_HISTORY = 12;
 const EPHEMERAL_WINDOW_MS = 15_000;
 
 /**
+ * Ceiling on how many elements the text-history and ephemeral maps may hold.
+ *
+ * Both are `Map<Element, …>` and nothing used to remove from either, so on a long-lived page —
+ * a chat app, a feed, anything that rewrites itself for hours — they grew without bound and
+ * kept every detached element alive. When a map passes this size, disconnected elements past
+ * their useful window go first, then the oldest entries, down to three quarters of the cap.
+ */
+const MAX_TRACKED_ELEMENTS = 2000;
+
+/**
  * A modal counts once, when it becomes visible. If it is hidden and shown AGAIN after this
  * long, that is a second interruption and counts again — the same newsletter popup coming
  * back is the literal shape of nagging. The floor is there because modals flicker while they
@@ -83,6 +93,17 @@ export class PageObserver {
   private mo: MutationObserver | null = null;
   private scheduled = false;
 
+  /**
+   * Whether page text and insertion times are kept at all.
+   *
+   * Off until the detector has confirmed the page is a shop. Before that, the observer still
+   * notices that the page changed (so a storefront that renders late gets re-checked) and
+   * still tracks modal appearances (timestamps and element references only, capped), but it
+   * holds no text. On a page that never turns out to be a shop — a chat, an inbox, a document
+   * — nothing it displayed is ever copied into memory by Vero.
+   */
+  private recording = false;
+
   /** Every modal-shaped element this page has shown us, and what we have seen it do. */
   private readonly modalWatch = new Map<Element, ModalWatch>();
   private lastWatchSweepAt = 0;
@@ -90,6 +111,11 @@ export class PageObserver {
   private lastGestureAt: number | null = null;
 
   constructor(private readonly onDirty: () => void) {}
+
+  /** Begin keeping text histories and insertion times. Called once the page is a shop. */
+  startRecording(): void {
+    this.recording = true;
+  }
 
   start(root: Node = document.body): void {
     if (!root) return;
@@ -156,7 +182,7 @@ export class PageObserver {
         for (const node of r.addedNodes) {
           if (node.nodeType !== 1) continue;
           const el = node as Element;
-          this.state.ephemeral.set(el, { insertedAt: now, removedAt: null });
+          if (this.recording) this.state.ephemeral.set(el, { insertedAt: now, removedAt: null });
           this.state.dirtyRoots.add(el);
           this.recordText(el, now);
 
@@ -193,6 +219,7 @@ export class PageObserver {
     }
 
     if (sawAttributes) this.sweepWatched(now);
+    this.prune(now);
 
     if (!this.scheduled && this.state.dirtyRoots.size > 0) {
       this.scheduled = true;
@@ -485,7 +512,40 @@ export class PageObserver {
     }
   }
 
+  /** See MAX_TRACKED_ELEMENTS. Cheap when under the cap, which is almost always. */
+  private prune(now: number): void {
+    const target = Math.floor(MAX_TRACKED_ELEMENTS * 0.75);
+
+    const histories = this.state.textHistories;
+    if (histories.size > MAX_TRACKED_ELEMENTS) {
+      for (const el of histories.keys()) {
+        if (histories.size <= target) break;
+        if (!el.isConnected) histories.delete(el);
+      }
+      for (const el of histories.keys()) {
+        if (histories.size <= target) break;
+        histories.delete(el);
+      }
+    }
+
+    const ephemeral = this.state.ephemeral;
+    if (ephemeral.size > MAX_TRACKED_ELEMENTS) {
+      // A removed toast is still evidence for EPHEMERAL_WINDOW_MS after it goes, so only
+      // disconnected entries older than that window are safe to drop first.
+      for (const [el, rec] of ephemeral) {
+        if (ephemeral.size <= target) break;
+        const since = rec.removedAt ?? rec.insertedAt;
+        if (!el.isConnected && now - since > EPHEMERAL_WINDOW_MS) ephemeral.delete(el);
+      }
+      for (const el of ephemeral.keys()) {
+        if (ephemeral.size <= target) break;
+        ephemeral.delete(el);
+      }
+    }
+  }
+
   private recordText(el: Element, t: number): void {
+    if (!this.recording) return;
     const text = (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
     if (!text || text.length > 120) return;
     // Only worth tracking things that could plausibly be a clock.

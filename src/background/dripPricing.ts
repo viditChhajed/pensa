@@ -12,6 +12,7 @@
 
 import { createHash } from "@/content/detectors/hash";
 import { reconcile } from "@/content/priceSummary";
+import { addonKeysOf } from "@/shared/addons";
 import { formatMinor } from "@/shared/money";
 import {
   type DetectionCandidate,
@@ -20,7 +21,7 @@ import {
   type LineItem,
   type SessionLedger,
 } from "@/shared/schema";
-import { firstDisclosureStage, orderedStages } from "./sessionLedger";
+import { firstDisclosureStage, orderedStages, userChoseAddon } from "./sessionLedger";
 
 export const DRIP_DETECTOR_ID = "pricing.drip@1";
 export const SNEAK_DETECTOR_ID = "basket.sneak@1";
@@ -62,7 +63,11 @@ export function detectDrip(ledger: SessionLedger): DripFinding | null {
   for (const fee of latest.fees) {
     if (fee.kind === "discount") continue;
     // A charge the shopper explicitly opted into is not drip pricing.
-    if (fee.kind === "optional_addon" && fee.userAttributed) continue;
+    // Add-ons are basket.sneak's question, not drip's. Drip is mandatory charges disclosed
+    // late (taxonomy: "Mandatory charges disclosed after the first price"). This used to skip
+    // only add-ons flagged `userAttributed` — a flag that was always false — so every add-on,
+    // including ones the shopper picked, was counted as a drip fee AND as a sneaked item.
+    if (fee.kind === "optional_addon") continue;
     if (known.has(fee.labelHash)) continue;
 
     const disclosedAt = firstDisclosureStage(ledger, fee.labelHash) ?? latestStage;
@@ -154,10 +159,17 @@ export function detectSneak(ledger: SessionLedger): DetectionCandidate | null {
   const snapshot = ledger.stages[cartStage]?.priceSnapshot;
   if (!snapshot) return null;
 
-  const addedHashes = new Set(ledger.userInitiatedAdds.map((a) => a.labelHash));
-
+  /**
+   * An add-on line is the shopper's own if they ticked or clicked a control for that add-on
+   * family this session, and did not undo it.
+   *
+   * The previous check compared hashes of ADD-TO-CART BUTTON labels ("add to bag") with hashes
+   * of CART LINE labels ("accident protection plan"). Those can never be equal, and the other
+   * half of the test was a flag hardcoded false, so every add-on in every cart was reported as
+   * unrequested — including a gift wrap the shopper had just chosen.
+   */
   const unattributed: LineItem[] = snapshot.fees.filter(
-    (f) => f.kind === "optional_addon" && !f.userAttributed && !addedHashes.has(f.labelHash),
+    (f) => f.kind === "optional_addon" && !userChoseAddon(ledger, addonKeysOf(f.labelSample ?? "")),
   );
   if (unattributed.length === 0) return null;
 

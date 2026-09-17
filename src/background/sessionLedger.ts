@@ -16,6 +16,7 @@ import {
   type FunnelStage,
   type PriceSnapshot,
   type SessionLedger,
+  type UserChoice,
   type UserInitiatedAdd,
 } from "@/shared/schema";
 
@@ -53,6 +54,7 @@ function emptyLedger(sessionId: string, origin: string): SessionLedger {
     origin,
     stages: {},
     userInitiatedAdds: [],
+    userChoices: [],
     events: [],
     digestsShown: [],
   };
@@ -67,7 +69,9 @@ export async function loadLedger(sessionId: string, origin: string): Promise<Ses
   const decoded = decodeBigInts(stored) as SessionLedger;
   // A ledger from a previous session id is not this session's; start fresh.
   if (decoded.sessionId !== sessionId) return emptyLedger(sessionId, origin);
-  return decoded;
+  // A ledger written before `userChoices` existed has no such field. Stored data is not
+  // re-parsed here, so default it rather than let `undefined` reach the attribution check.
+  return { ...decoded, userChoices: decoded.userChoices ?? [] };
 }
 
 export async function saveLedger(ledger: SessionLedger): Promise<void> {
@@ -110,6 +114,29 @@ export function noteStage(
 
 export function noteUserAdd(ledger: SessionLedger, add: UserInitiatedAdd): SessionLedger {
   return { ...ledger, userInitiatedAdds: [...ledger.userInitiatedAdds, add].slice(-50) };
+}
+
+export function noteUserChoice(ledger: SessionLedger, choice: UserChoice): SessionLedger {
+  return { ...ledger, userChoices: [...(ledger.userChoices ?? []), choice].slice(-64) };
+}
+
+/**
+ * Did the shopper opt in to any of these add-on families themselves, as of their most recent
+ * action on it?
+ *
+ * The LATEST choice per key wins: ticking gift wrap and then unticking it means a gift-wrap
+ * line still sitting in the cart was not their choice.
+ */
+export function userChoseAddon(ledger: SessionLedger, keys: readonly UserChoice["key"][]): boolean {
+  const choices = ledger.userChoices ?? [];
+  for (const key of keys) {
+    let latest: UserChoice | undefined;
+    for (const c of choices) {
+      if (c.key === key && (!latest || c.ts >= latest.ts)) latest = c;
+    }
+    if (latest?.selected) return true;
+  }
+  return false;
 }
 
 export function noteEvents(ledger: SessionLedger, events: DetectionEvent[]): SessionLedger {

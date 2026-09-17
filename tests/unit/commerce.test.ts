@@ -122,3 +122,65 @@ describe("the verdict explains itself", () => {
     expect(v.reasons).toEqual([]);
   });
 });
+
+describe("selling without a cart", () => {
+  /**
+   * The gate was built around retail cart furniture and scored booking.com, kayak.com,
+   * eventbrite.com and ticketmaster.com at exactly ZERO — Vero was silent on the whole travel
+   * and ticketing category, which is where drip pricing lives most heavily.
+   */
+  const listing = (n: number, price = "$189") =>
+    Array.from(
+      { length: n },
+      (_, i) => `<a href="/h/${i}"><span>Hotel ${i}</span><span>${price}</span></a>`,
+    ).join("");
+
+  it("treats a page full of prices as a shop", () => {
+    const v = verdict(`<main>${listing(25)}</main>`, "https://www.booking.com/searchresults");
+    expect(v.isCommerce, v.reasons.join(" | ")).toBe(true);
+  });
+
+  it("treats per-night pricing as a shop", () => {
+    const v = verdict(
+      `<main><a href="/h/1">Seaside Inn <span>$189 / night</span></a></main>`,
+      "https://www.booking.com/hotel/seaside",
+    );
+    expect(v.isCommerce, v.reasons.join(" | ")).toBe(true);
+  });
+
+  it("treats a booking control beside priced rows as a shop", () => {
+    const v = verdict(
+      `<div><div>Total $412.00</div><div>Taxes and fees $38.00</div>
+       <button>Reserve now</button></div>`,
+      "https://www.hotelexample.com/book",
+    );
+    expect(v.isCommerce, v.reasons.join(" | ")).toBe(true);
+  });
+
+  it("still refuses an article that quotes a handful of prices", () => {
+    // nytimes.com's home page shows 6 price strings; the threshold sits far above that.
+    const v = verdict(
+      `<article><h1>Inflation report</h1><p>Eggs $6.99, milk $4.49, bread $3.29,
+       butter $7.10, coffee $12.00, rice $2.99.</p></article>`,
+      "https://news.example.com/inflation",
+    );
+    expect(v.isCommerce, v.reasons.join(" | ")).toBe(false);
+  });
+});
+
+describe("page-wide signals read the whole page", () => {
+  it("sees a price far below the first 400 characters", () => {
+    /**
+     * `collapse()` caps text at 400 characters, and the document-wide scan used it — so
+     * `bodyText` held only the page header. Booking.com reported ZERO prices while showing 105,
+     * and the step-indicator signal had only ever seen the top of a page.
+     */
+    const filler = `<p>${"lorem ipsum dolor sit amet ".repeat(60)}</p>`;
+    const v = verdict(
+      `<main>${filler}<div>Subtotal $42.00</div><div>Order total $48.00</div>
+       <button>Place order</button></main>`,
+      "https://shop.example.com/checkout",
+    );
+    expect(v.isCommerce, v.reasons.join(" | ")).toBe(true);
+  });
+});

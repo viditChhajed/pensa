@@ -69,6 +69,51 @@ function isChecked(n: CandidateNode): boolean {
   return n.attrs.checked === "true" || n.attrs.checked === "" || n.attrs["aria-checked"] === "true";
 }
 
+/**
+ * Word-bounded lexeme test. These used to be substring matches, so "tip" matched "mul-TIP-le"
+ * and a pre-ticked "Ship to multiple addresses" box read as a pre-ticked tip.
+ */
+const COSTLY_RES = COSTLY_LEXEMES.map(
+  (l) => [l, new RegExp(`\\b${l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`)] as const,
+);
+
+/** One option's price, read from its own row. Null if absent or ambiguous. */
+function optionPrice(n: CandidateNode): bigint | null {
+  for (const scope of [n.rowText, n.containerText]) {
+    if (!scope || scope.length > 160) continue;
+    const prices = parsePrices(scope);
+    if (prices.length === 1) return (prices[0] as { amount: bigint }).amount;
+    if (prices.length === 0 && /\bfree\b/i.test(scope)) return 0n;
+  }
+  return null;
+}
+
+/**
+ * Is this checked radio dearer than the cheapest option in its own group?
+ *
+ * The signal was called `nonCheapestRadio` and scored every checked radio near a cost word,
+ * without looking at a single price — so a default "Standard shipping" radio whose container
+ * also mentioned "Express shipping" was reported as a costly preselection. This compares the
+ * group's prices and returns false whenever they cannot be read unambiguously, because
+ * "we could not tell" must not become "it was the expensive one".
+ */
+function isNonCheapestInGroup(n: CandidateNode, ctx: PageContext): boolean {
+  const name = n.attrs.name;
+  if (!name) return false;
+  const mine = optionPrice(n);
+  if (mine === null) return false;
+  let cheapest: bigint | null = null;
+  let siblings = 0;
+  for (const c of ctx.candidates) {
+    if (c.tagName !== "INPUT" || c.attrs.type !== "radio" || c.attrs.name !== name) continue;
+    siblings++;
+    const p = optionPrice(c);
+    if (p === null) continue;
+    if (cheapest === null || p < cheapest) cheapest = p;
+  }
+  return siblings >= 2 && cheapest !== null && mine > cheapest;
+}
+
 export const defaultsDetector: Detector = {
   id: "defaults.preselected@1",
   patternId: "defaults.preselected",
@@ -83,6 +128,9 @@ export const defaultsDetector: Detector = {
       const isRadio = n.tagName === "INPUT" && n.attrs.type === "radio";
       if (!isCheckbox && !isRadio) continue;
       if (!isChecked(n)) continue;
+      // The shopper set this one. Whatever it says, it was not chosen for them.
+      if (n.attrs.userTouched === "true") continue;
+      if (isRadio && !isNonCheapestInGroup(n, ctx)) continue;
 
       // The control itself almost never holds its own label — a <label> wrapper carries no
       // qualifying text so it is not a candidate, which is what `containerText` is for.
@@ -94,7 +142,7 @@ export const defaultsDetector: Detector = {
 
       if (BENIGN.some((b) => context.includes(b))) continue;
 
-      const hits = COSTLY_LEXEMES.filter((l) => context.includes(l));
+      const hits = COSTLY_RES.filter(([, re]) => re.test(context)).map(([l]) => l);
       if (hits.length === 0) continue;
 
       const prices = parsePrices(n.containerText || n.text);

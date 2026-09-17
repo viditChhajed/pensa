@@ -18,13 +18,12 @@
  * (`DOM.getDocument` with `pierce`), which is debugger-level access and available to nothing
  * on the page. The closed root is intact; the test simply is not a web page.
  */
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
 import { stageLocalBuild } from "./localBuild";
 
-const BUILD = resolve(".output/chrome-mv3");
+const _BUILD = resolve(".output/chrome-mv3");
 const PAGES = resolve("tests/e2e/pages");
 const OUT = resolve("test-results/card");
 

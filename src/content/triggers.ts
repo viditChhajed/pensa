@@ -1,12 +1,20 @@
 /**
  * Add-to-cart and checkout-intent triggers (plan §6, T16).
  *
- * Capture-phase listener on `document`, and deliberately NO monkey-patching of `fetch` —
- * patching it breaks host pages and reads as hostile in store review. Day 1 uses accessible
- * names only; the PerformanceObserver confirmation step lands Day 2.
+ * A capture-phase click listener on `document`, and deliberately NO monkey-patching of
+ * `fetch` — patching it breaks host pages and reads as hostile in store review.
  *
- * Debounce is the difference between a useful tool and an uninstall: one digest per origin
- * per funnel stage per session, maximum.
+ * What this does NOT do, stated plainly because an earlier comment promised otherwise: it does
+ * not confirm the add succeeded. A click on "Add to cart" that the page then rejects (no size
+ * chosen, out of stock) still counts as a trigger. The "PerformanceObserver confirmation step"
+ * that was meant to follow was never built.
+ *
+ * Debounce: at most one trigger per kind per funnel stage PER PAGE LOAD — the set below lives on
+ * this instance and a reload starts it empty. The once-per-session limit on actually SHOWING a
+ * card is enforced separately in the worker (`shouldShowDigest`).
+ *
+ * The listener is only attached once the page has been confirmed as a shop; see
+ * `onCommerceConfirmed` in the detector entrypoint.
  */
 import type { FunnelStage } from "@/shared/schema";
 
@@ -14,7 +22,38 @@ const ATC_NAME = /\badd to (cart|bag|basket|order)\b|\badd item\b|\bbuy now\b|\b
 const CHECKOUT_NAME =
   /\bcheckout\b|\bcheck out\b|\bplace order\b|\bcontinue to payment\b|\bproceed to\b|\bpay now\b|\bcomplete (order|purchase)\b|\bi'?ll reserve\b|\breserve (?:now|tickets?|room)\b|\bbook now\b|\bconfirm (?:and pay|booking|reservation)\b/i;
 
-const ATC_ATTR_TOKENS = ["add-to-cart", "addtocart", "add_to_cart", "add-to-bag", "atc"];
+/**
+ * Attribute values that name an add-to-cart control, matched as WHOLE TOKENS.
+ *
+ * These were substring matches, so the short token "atc" matched `watch-video`, `match-card`,
+ * `batch-select`, `catch-all` and `patch-notes`, and a click on any of them counted as adding
+ * to cart. Values are split on non-alphanumerics and camelCase boundaries and compared token
+ * by token; the multi-word forms are compared as joined token runs.
+ */
+const ATC_ATTR_PHRASES: readonly (readonly string[])[] = [
+  ["add", "to", "cart"],
+  ["add", "to", "bag"],
+  ["add", "to", "basket"],
+  ["addtocart"],
+  ["addtobag"],
+  ["atc"],
+];
+
+function tokensOf(value: string): string[] {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+function hasPhrase(tokens: readonly string[], phrase: readonly string[]): boolean {
+  outer: for (let i = 0; i + phrase.length <= tokens.length; i++) {
+    for (let j = 0; j < phrase.length; j++) if (tokens[i + j] !== phrase[j]) continue outer;
+    return true;
+  }
+  return false;
+}
 
 export type TriggerKind = "add_to_cart" | "checkout_intent";
 
@@ -52,14 +91,16 @@ function actionableAncestor(start: EventTarget | null): Element | null {
 
 function matchesAtcAttrs(el: Element): boolean {
   for (const attr of ["data-testid", "data-action", "data-test", "id", "name"]) {
-    const v = el.getAttribute(attr)?.toLowerCase();
-    if (v && ATC_ATTR_TOKENS.some((t) => v.includes(t))) return true;
+    const v = el.getAttribute(attr);
+    if (!v) continue;
+    const tokens = tokensOf(v);
+    if (ATC_ATTR_PHRASES.some((p) => hasPhrase(tokens, p))) return true;
   }
   return false;
 }
 
 export class TriggerWatcher {
-  /** `${stage}` values already digested this session, for the debounce. */
+  /** `${kind}:${stage}` keys already fired on this page load, for the debounce. */
   private readonly fired = new Set<string>();
 
   constructor(
@@ -88,7 +129,7 @@ export class TriggerWatcher {
     this.onTrigger({ kind, label: name, ts: Date.now() });
   }
 
-  /** One digest per stage per session. Returns false if this stage already fired. */
+  /** One trigger per kind per stage per page load. Returns false if it already fired. */
   claim(kind: TriggerKind): boolean {
     const key = `${kind}:${this.currentStage()}`;
     if (this.fired.has(key)) return false;

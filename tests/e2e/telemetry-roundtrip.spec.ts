@@ -13,10 +13,7 @@
  * rejects anything else with a 422.
  */
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, test } from "@playwright/test";
 import { MIN_BATCH } from "@/shared/constants";
 import { type CountRow, handle } from "../../server/handler";

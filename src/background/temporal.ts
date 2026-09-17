@@ -25,6 +25,8 @@ import type { DetectionCandidate, OfferObservation } from "@/shared/schema";
 export const MIN_SIGHTINGS = 2;
 /** Chi-square needs samples before it means anything (plan §18A). */
 export const MIN_VIEWER_SAMPLES = 20;
+/** Counts at or below this read as a scarcity claim rather than a stock level. */
+const LOW_STOCK = 10;
 
 function evidence(summary: string, path = "(temporal)") {
   return {
@@ -67,6 +69,17 @@ export function detectEvergreenCountdown(obs: OfferObservation): DetectionCandid
       if (!prev || !cur) continue;
       const dObserved = cur.ts - prev.ts;
       if (dObserved < 60_000) continue; // same page view; nothing to learn
+      /**
+       * A genuine recurring cutoff — "order within 3h for same-day shipping" — moves its end
+       * forward by exactly one day each day. Visited at the same time on consecutive days, it
+       * advances by the elapsed time and is indistinguishable from a timer that resets. So a
+       * gap within 90 minutes of a whole number of days proves nothing and is skipped. A timer
+       * whose end still tracks elapsed time across a gap of, say, 5 hours is not a daily
+       * cutoff; it is restarting from the visit.
+       */
+      const DAY = 86_400_000;
+      const offDay = dObserved % DAY;
+      if (Math.min(offDay, DAY - offDay) < 90 * 60_000) continue;
       const dEnd = cur.observedEndEpoch - prev.observedEndEpoch;
       comparisons++;
       // Ratio near 1 means the deadline moved forward exactly as much as the clock did.
@@ -108,14 +121,21 @@ export function detectStockAnomaly(obs: OfferObservation): DetectionCandidate | 
   for (let i = 1; i < s.length; i++) {
     const prev = s[i - 1];
     const cur = s[i];
-    if (prev && cur && cur.n > prev.n) increases++;
+    // Only rises between two low counts. A jump from 0 or 2 to 40 is a restock.
+    if (prev && cur && cur.n > prev.n && cur.n <= LOW_STOCK && prev.n <= LOW_STOCK) increases++;
   }
 
   const values = s.map((x) => x.n);
   const first = values[0] as number;
   const allSame = values.every((v) => v === first);
   const spanDays = ((s[s.length - 1]?.ts ?? 0) - (s[0]?.ts ?? 0)) / 86_400_000;
-  const frozenLong = allSame && spanDays >= 7 && s.length >= 3;
+  /**
+   * Both signals were too eager. A restock is an increase, so any two restocks fired; and an
+   * ordinary slow-selling item can sit at the same count for a week. What distinguishes a
+   * scarcity claim that is not tracking real inventory is a SMALL number that will not settle:
+   * "only 4 left" rising to 6 and back to 3, or "only 3 left" unchanged for a fortnight.
+   */
+  const frozenLong = allSame && first <= LOW_STOCK && spanDays >= 14 && s.length >= 4;
 
   if (increases < 2 && !frozenLong) return null;
 
@@ -134,38 +154,61 @@ export function detectStockAnomaly(obs: OfferObservation): DetectionCandidate | 
 }
 
 /**
- * Reference-price grounding.
+ * A "was" price that, across a long run of visits, was never the price actually charged.
  *
- * A "was $X / now $Y" where $Y is the only price ever observed means the higher number has
- * no observed basis — which is precisely what FTC pricing guidance and the UK CMA's
- * reference-pricing rules concern themselves with, and the reason this is the detector most
- * directly useful to a policy write-up.
+ * WHAT THIS USED TO CHECK, and why it could not be right: "over 7+ days the sale price never
+ * changed and never equalled the struck price". Every genuine sale that lasts a week satisfies
+ * that — the struck price is by definition not the sale price — so the highest-severity
+ * temporal claim fired on honest markdowns.
  *
- * Stated carefully: we can say we never observed it, not that it never happened.
+ * What it checks now is what can actually be observed:
+ *   - at least MIN_REFERENCE_VISITS separate visits, spanning at least MIN_REFERENCE_SPAN_DAYS;
+ *   - on EVERY visit where a price was read, a "was" price was shown beside it — a single
+ *     visit showing the item without a reference means it was seen at its ordinary price,
+ *     and the claim is withdrawn;
+ *   - the live price never reached the reference on any visit.
+ *
+ * That is a perpetual sale: a comparison price displayed continuously for four weeks and never
+ * observed as a real price. It remains a statement about what these visits saw, not about the
+ * retailer's pricing history before the first one, and the summary says exactly that.
  */
+const MIN_REFERENCE_VISITS = 3;
+const MIN_REFERENCE_SPAN_DAYS = 28;
+
 export function detectUngroundedReference(obs: OfferObservation): DetectionCandidate | null {
-  const refs = obs.observedReferencePrices;
-  const prices = obs.observedPrices;
-  if (refs.length < MIN_SIGHTINGS || prices.length < MIN_SIGHTINGS) return null;
+  // Each observation stamps its prices and reference prices with the same `ts`, so a
+  // timestamp is a visit.
+  const priceVisits = new Set(obs.observedPrices.map((p) => p.ts));
+  const refVisits = new Set(obs.observedReferencePrices.map((r) => r.ts));
+  if (priceVisits.size < MIN_REFERENCE_VISITS) return null;
 
-  const spanDays = (obs.lastSeen - obs.firstSeen) / 86_400_000 || 0;
-  if (spanDays < 7) return null; // too short a window to claim anything
+  for (const ts of priceVisits) {
+    if (!refVisits.has(ts)) return null; // seen without a "was" price at least once
+  }
 
-  const distinctSale = new Set(prices.map((p) => p.minor.toString()));
-  if (distinctSale.size !== 1) return null; // the price has moved; the anchor may be real
+  const times = [...priceVisits].sort((a, b) => a - b);
+  const spanDays = ((times[times.length - 1] ?? 0) - (times[0] ?? 0)) / 86_400_000;
+  if (spanDays < MIN_REFERENCE_SPAN_DAYS) return null;
 
-  const sale = prices[0]?.minor ?? 0n;
-  // Was the reference price ever actually charged?
-  const everCharged = refs.some((r) => r.minor === sale);
-  if (everCharged) return null;
+  const highestLive = obs.observedPrices.reduce((m, p) => (p.minor > m ? p.minor : m), 0n);
+  const lowestRef = obs.observedReferencePrices.reduce(
+    (m, r) => (m === null || r.minor < m ? r.minor : m),
+    null as bigint | null,
+  );
+  if (lowestRef === null || highestLive >= lowestRef) return null;
 
-  const summary = `reference price not observed in ${Math.round(spanDays)} days of visits`;
-
+  const summary =
+    `"was" price shown on all ${priceVisits.size} visits over ${Math.round(spanDays)} days, ` +
+    "and never observed as the price";
   return {
     detectorId: "temporal.reference_price_ungrounded@1",
     patternId: "temporal.reference_price_ungrounded",
-    rawScore: Math.min(0.95, 0.6 + Math.min(0.3, spanDays / 60)),
-    subSignals: { spanDays, priceSamples: prices.length, refSamples: refs.length },
+    rawScore: Math.min(0.95, 0.6 + Math.min(0.3, (spanDays - MIN_REFERENCE_SPAN_DAYS) / 60)),
+    subSignals: {
+      spanDays,
+      visits: priceVisits.size,
+      refSamples: obs.observedReferencePrices.length,
+    },
     evidence: evidence(summary),
     nodeRef: "(temporal)",
   };

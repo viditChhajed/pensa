@@ -92,6 +92,39 @@ export function classifyCommerce(meta: DocumentMeta): CommerceVerdict {
   if (meta.placeOrderCtaCount > 0) add(1, "a place-order control");
   if (meta.hasStepIndicator && meta.checkoutCtaCount > 0) add(1, "a checkout step indicator");
 
+  /**
+   * Selling without a cart.
+   *
+   * Everything above assumes a retail cart: a product page, priced rows with steppers, an order
+   * summary. Travel, lodging and ticketing have none of those, and the first version of this gate
+   * scored booking.com, kayak.com, eventbrite.com and ticketmaster.com at exactly ZERO — Vero was
+   * silent on all four, which is where drip pricing and dated urgency live most heavily.
+   *
+   * A booking control plus a price is the equivalent structure; per-unit pricing ("$189/night")
+   * is enough on its own, being specific enough that prose quoting a price cannot produce it.
+   */
+  if (meta.perUnitPriceRows > 0) add(1, "prices quoted per night, person or ticket");
+
+  /**
+   * A page full of prices is a shop window, whatever furniture it lacks.
+   *
+   * Measured before choosing the numbers, because the whole risk here is calling a news site a
+   * shop: booking.com's home page shows 105 price strings and an Eventbrite city listing 105,
+   * while nytimes.com shows 6 (its own subscription offers) and a Wikipedia article on "Price"
+   * shows none. Twenty is far above the prose band and far below the listing band.
+   */
+  if (meta.pricedTextCount >= 20) add(1, "a page full of prices");
+  else if (meta.pricedTextCount >= 8) add(0.5, "several prices");
+  /**
+   * A booking control counts only beside money. On its own it was worth half a signal, which
+   * added to the half already given for a checkout control — so a travel ARTICLE with a "Book
+   * now" button and a "Proceed to the next article" link scored exactly 1.0 and was judged a
+   * shop. Two weak signals that are both just button wording are not evidence of a shop.
+   */
+  if (meta.bookingCtaCount > 0 && (meta.moneySummaryRows > 0 || meta.pricedTextCount >= 4)) {
+    add(1, "a booking control beside prices");
+  }
+
   // --- Need company -------------------------------------------------------------------
   // An add-to-cart control is strong, but the phrase appears in blog posts about commerce
   // and in nav chrome on marketing sites, so on its own it is half a signal.

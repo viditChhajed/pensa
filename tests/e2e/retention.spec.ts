@@ -1,21 +1,3 @@
-/**
- * The local prevalence store: does it accumulate, can it be read, and does it actually expire?
- *
- * Both halves were untested, and one of them had never executed at all. `pruneEvents` is the
- * only thing enforcing the 30-day retention promised in PRIVACY.md and the store listing,
- * and it is called from a `chrome.alarms` handler that was a silent no-op for the whole
- * build because the `alarms` permission was never declared. So the retention claim rested on
- * a function that had literally never run in a browser.
- *
- * A promise about deletion is the kind that has to be demonstrated rather than reviewed: it
- * is invisible when it works and invisible when it fails, and nobody notices for 30 days.
- *
- * Real Chromium, real IndexedDB, and the real alarm — not a direct call to the function,
- * because "the function works" was never the doubt. Whether anything ever CALLS it was.
- */
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
 import { stageLocalBuild } from "./localBuild";
 

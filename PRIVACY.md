@@ -1,6 +1,6 @@
 # Privacy Policy — Vero
 
-**Last updated: 2026-09-16**
+**Last updated: 2026-09-17**
 
 ## The short version
 
@@ -31,26 +31,55 @@ not a list it holds; they are simply the pages where these techniques appear.
 
 ## What it stores, and where
 
-Locally on your device, in your browser's extension storage:
+Everything below is stored only on your device, in your browser's extension storage, and only
+for pages Vero has decided are shops. A page that is not a shop is never recorded.
 
-- Which sites you have turned it off for, if any.
-- A record of patterns it noticed: the pattern type, a confidence number, how long the
-  element was on screen, the funnel stage, the site's origin (for example
-  `https://www.example.com`), and a redacted path shape (for example `/products/:slug`).
-- A one-way hash of matched text, plus a short text excerpt used only to show you what was
-  matched.
-- Settings you choose.
+**Detections** — kept 30 days by default (adjustable in Settings):
 
-Default retention is 30 days. You can delete everything at any time from the extension's
-Settings page ("Delete all my data").
+- The pattern type, a confidence number, how long the element was on screen and how much of the
+  screen it filled, and the stage of checkout you were at.
+- The site's origin (for example `https://www.example.com`) and a redacted path shape (for
+  example `/products/:slug`).
+- A one-way hash of the matched text, plus a short excerpt of that text (up to 240 characters) so
+  you can see what was matched. On a checkout page, text near a matched element can include
+  whatever that page displays, so an excerpt could in principle contain details shown there.
+
+These are recorded as you browse shops — when Vero notices something, it writes down what the
+page displayed — and again when you add something to your cart or head to checkout, which is
+when it may also show you a card. Each distinct piece of copy is recorded once per page, not
+once per second, and a page it finds nothing on produces nothing.
+
+**Product history** — kept up to 90 days, at most 5,000 products:
+
+- For products you view on shops: an identifier for the product (its SKU or barcode where the
+  page provides one, otherwise a one-way hash of its address and title), the prices and "was"
+  prices shown, stock counts, countdown end times and viewer counts, each with the time seen.
+- This is what lets Vero notice a countdown that resets, a stock count that goes back up, or a
+  "was" price that is never actually charged. It is a record of which products you looked at on
+  which shops, and it never leaves your device.
+
+**This browsing session** — cleared when you close the browser:
+
+- For each shop: which checkout stages you reached, and the prices on each — item price,
+  subtotal, shipping, tax, total, and fee or add-on lines with their labels.
+- The label of any add-to-cart button you clicked, and which kinds of add-on you chose or
+  declined yourself (for example "gift wrap: chosen"). This is what stops Vero reporting an
+  add-on you picked as one you did not.
+
+**Settings** you choose, until you change them.
+
+You can export or delete everything from the Settings page ("Export my data", "Delete all my
+data").
 
 ## What it never stores or transmits
 
 - Full URLs or query strings.
-- Anything you type, including search terms, addresses, and payment details.
-- Cart contents, order totals, or prices you paid.
-- Names, email addresses, phone numbers, or any account identifier.
-- Browsing history. It keeps no list of pages you visited, and no record at all of a page where it found nothing.
+- Anything you type into a page — searches, addresses, messages, payment details.
+- Your name, email, phone number, or any account identifier, other than where one appears in
+  on-page text near a matched element, as described above.
+- Anything at all about pages that are not shops.
+- Any of the above, off your device, unless you switch on sharing — and even then only the
+  fields listed in that section.
 
 ## Site permissions
 
@@ -79,12 +108,14 @@ does with it, and that is public and testable:
 - **It sends nothing anywhere unless you switch sharing on.** Broad read access and network
   access are separate questions. With the default settings there are zero outbound requests,
   asserted against the compiled bundles by an automated test, not merely stated here.
-- **It records nothing about a page where it found nothing.** Access to read a page is not a
-  record of having read it.
+- **It records nothing about a page that is not a shop.** Access to read a page is not a
+  record of having read it. On shops, what it keeps is listed under "What it stores".
 
-You can turn Vero off for any individual site, or entirely, from its Settings page. You can
-also remove the permission wholesale by uninstalling, and Chrome lets you restrict any
-extension's site access from its own extension settings, independently of anything Vero says.
+Vero itself has no per-site off switch. You can turn detection off entirely, or switch off any
+individual technique, from its Settings page. To keep Vero off particular sites, use Chrome's
+own control: open `chrome://extensions`, choose Vero's Details, and set Site access to "On
+specific sites" — Chrome then enforces that regardless of anything Vero does. Uninstalling
+removes the permission entirely.
 
 ## Optional: helping measure these techniques
 
@@ -125,8 +156,13 @@ The limits, each enforced in code rather than promised here:
 - **The day, not the time.** A shop plus an exact time is far easier to tie to one person's
   browsing than a shop plus a date, and measuring how common a technique is needs no more
   than the date.
-- **Sent on a timer, never at the moment something is found.** Reports go out in batches every
-  six hours, so the timing of a request does not reveal when you were shopping.
+- **Sent on a timer, never at the moment something is found.** Vero checks every six hours and
+  sends once at least 25 reports are waiting, or once the oldest has waited a day. So the
+  timing of a request does not reveal when you were shopping.
+- **One request carries one person's batch.** A batch can hold reports from several shops over
+  up to a day, sent together from your browser, so while it is in transit and being counted it
+  is a short list of shops one browser reported. The service adds each report into its running
+  totals immediately and keeps nothing that links the reports in a batch to each other or to you.
 - **The server stores counts, not reports.** Incoming reports are added into running totals
   keyed by shop, technique and day. No individual report is kept, and there is no column that
   could hold who sent it.

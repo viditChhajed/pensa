@@ -27,7 +27,6 @@ export interface WireLineItem {
   amount: WireMoney;
   kind: LineItem["kind"];
   kindConfidence: number;
-  userAttributed: boolean;
 }
 
 export interface WirePriceSnapshot {
@@ -61,7 +60,6 @@ export function encodePriceSnapshot(s: PriceSnapshot): WirePriceSnapshot {
       amount: encodeMoney(f.amount),
       kind: f.kind,
       kindConfidence: f.kindConfidence,
-      userAttributed: f.userAttributed,
     })),
     capturedAt: s.capturedAt,
   };
@@ -80,7 +78,6 @@ export function decodePriceSnapshot(w: WirePriceSnapshot): PriceSnapshot {
       amount: decodeMoney(f.amount),
       kind: f.kind,
       kindConfidence: f.kindConfidence,
-      userAttributed: f.userAttributed,
     })),
     capturedAt: w.capturedAt,
   };

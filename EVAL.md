@@ -695,3 +695,94 @@ the whole time: the lexemes were matched against the node's own text and the pat
 its parent's, and nothing checked that the two agreed. The rule now is general — a claim may
 not be evidenced by text that does not itself contain the matched phrase.
 
+---
+
+# Code audit and repair — 2026-09-17
+
+A line-by-line read of the whole repo, in data-flow order, looking for logic that does not do
+what its name or comment claims. It found more than the live audits had, because the live audits
+can only see what fires — they cannot see a check that never fires, or a column that is always
+the same value.
+
+## Defects that were changing the product's claims
+
+| Defect | Effect |
+|---|---|
+| `userAttributed` hardcoded `false` (`priceSummary.ts`), and `basket.sneak` comparing hashes of add-to-cart BUTTON labels against cart LINE labels | Every add-on in every cart was reported as unrequested — a gift wrap the shopper had just chosen included. Both are severity 0.95 patterns. Add-ons were also double-counted as drip fees |
+| `session.ts` matched digest decisions back to candidates by `patternId` | With two or more matches of one pattern on a page, every event carried the FIRST match's text and confidence. Counts right, evidence wrong |
+| `salience.viewportFraction` / `scrollDepthAtFirstView` hardcoded to 0 | Two exported columns were constant and meaningless |
+| `nonCheapestRadio` compared no prices | A preselected "Standard shipping" radio was reported as a costly preselection whenever the word "express" appeared nearby |
+| `defaults.preselected` read the live `checked` state | A box the shopper ticked themselves was indistinguishable from one the page ticked for them |
+| `temporal.reference_price_ungrounded` asked only whether the sale price ever equalled the struck price | True of every honest markdown lasting a week. A severity-1.0 claim |
+| `framing.savings_ratio` never compared the CLAIMED discount with the computed one | "10% off" beside a 72% markdown fired as percent framing of that markdown |
+| `collapse()` capping page text at 400 characters, used for the document-wide scan | **The most consequential one.** `bodyText` held only the page header, so the step-indicator signal had only ever seen the top of a page and the new price counts read 0 on a page showing 105 prices |
+| The trigger listener attached on every page, and `onTrigger` never checked the commerce verdict | "Book now" or "Proceed to…" on an ordinary article messaged the worker and wrote a ledger entry holding the button's label |
+| `"atc"` matched as a substring in `id`/`data-testid` | `watch-video`, `match-card`, `batch-select`, `catch-all`, `patch-notes` all counted as add-to-cart |
+| `registrableDomain` using a 14-entry suffix list | `jumia.com.ng` recorded as the site `com.ng`; every store on Shopify's default domain merged into `myshopify.com` |
+| Retention was a stored, honoured setting with no control anywhere | PRIVACY.md said it was adjustable in Settings. It now is |
+
+Each is fixed with a test written to fail against the old code (`tests/unit/auditFixes.test.ts`,
+plus additions to `drip`, `temporal`, `commerce` and `framingPrecision`).
+
+## The blind spot the repair exposed
+
+Adding the commerce gate had made Vero **silent on every travel and ticketing site** — booking,
+kayak, eventbrite, ticketmaster all scored exactly 0. Measured, not guessed: the diagnostic line
+now prints the signal counts, and it read `prices 0, atc 0, checkout 0, booking 0, cartRows 0`
+on pages that visibly show a hundred prices.
+
+Two causes, both fixed:
+
+- **The 400-character truncation above.** The page-wide scan was reading the header.
+- **Judging too early, then backing off.** The verdict was taken ~300 ms after `document_idle`
+  and the next looks came at 0.9s, 2.1s, 4.5s, 9.3s. A travel search that paints its results at
+  three seconds was judged on an empty skeleton. The interval now stays flat at 1.5 s for the
+  first 15 seconds of a page's life.
+
+The gate also learned to recognise selling without a cart — per-unit pricing ("$189 / night"), a
+booking control beside prices, and price density. The thresholds were measured before being
+chosen: booking.com's home page shows 105 price strings and an Eventbrite city listing 105,
+against 6 on nytimes.com and none on a Wikipedia article. A travel ARTICLE with a "Book now"
+button and a "Proceed to the next article" link initially scored exactly 1.0 and was judged a
+shop; a standalone booking control is now worth nothing without prices beside it.
+
+## Recording while browsing, not only at add-to-cart
+
+Detections reached the event log **only when a trigger fired**, so the local summary, the export
+and the prevalence dataset all measured what shoppers saw at the moment they added to cart, and
+said nothing about what shops display to someone who looks and leaves. `recordPassive` now writes
+what a page showed as it is browsed: one row per distinct piece of copy per page, `surfaced:
+false`, reason `passive_scan`, salience as measured. No card, no frequency state, no cross-stage
+or temporal claims (those are statements about a journey, and re-deriving them every pass would
+write the same claim repeatedly).
+
+`tests/e2e/passive-record.spec.ts` asserts both halves: rows appear from browsing alone, and they
+do not multiply while the page sits open.
+
+## The live audit, re-run against the repaired build
+
+**157 distinct claims across 17 of 22 sites**, 64 pages. Travel and ticketing are represented
+again: booking 4, kayak 4, ticketmaster 2, eventbrite 9, temu 11.
+
+| Detector | Claims | Notes |
+|---|---|---|
+| `anchoring.reference_price` | 41 | |
+| `urgency.countdown` | 35 | |
+| `goal_gradient.threshold` | 28 | |
+| `pricing.charm` | 27 | |
+| `scarcity.stock` | 12 | includes the three Sephora footnotes, which log and can never surface |
+| `bnpl.installments` | 7 | |
+| `social_proof.live_activity` | 6 | |
+| `nagging.repeat_interstitial` | 1 | |
+| `framing.savings_ratio` | **0** | still unproven in the field — see below |
+
+Reading all 157: one is poor rather than wrong — Zappos' accessibility description for a tile
+genuinely contains "Low Stock", so the claim is correct and the quoted evidence is a whole product
+description. No new false positives were found. That is not the same as there being none; it is
+one pass over 22 sites, adjudicated by reading the log.
+
+**`framing.savings_ratio` has now produced zero firings in two consecutive audits.** Its unit
+tests show it still fires on the textbook shapes, but a quiet detector is unproven, not working.
+It stays enabled because it clears the §10 gate on precision and that gate is about precision
+rather than volume — but nobody should cite it as measured.
+

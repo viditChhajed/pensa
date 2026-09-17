@@ -202,8 +202,16 @@ describe("the three firings the audit passed were not correct either", () => {
    * Pairing the high price of one against the low price of the other is the grid-tile error
    * this whole file exists to stop, and a correct parser does not excuse it.
    */
-  it("fires on a real percentage-framed discount once the prices parse correctly", () => {
-    expect(framingScore("$12.99flash sale$3.6010% off", "browse")).toBeGreaterThan(LOG_THRESHOLD);
+  it("does not fire when the stated percentage is not the discount between the prices", () => {
+    // $12.99 -> $3.60 is a 72% drop; "10% off" is an extra coupon, not a framing of it. This
+    // test previously asserted the opposite, because the detector never compared the claimed
+    // figure with the computed one.
+    expect(framingScore("$12.99flash sale$3.6010% off", "browse")).toBeLessThan(LOG_THRESHOLD);
+  });
+
+  it("fires when the stated percentage is the discount between the prices", () => {
+    // $12.99 -> $3.90 is 69.98%, stated as 70% off.
+    expect(framingScore("$12.99flash sale$3.9070% off", "browse")).toBeGreaterThan(LOG_THRESHOLD);
   });
 
   it("does not pair prices belonging to two different products", () => {

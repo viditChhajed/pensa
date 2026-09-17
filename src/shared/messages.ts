@@ -10,6 +10,7 @@
  * `messages.schema.ts` has a compile-time assertion that the schemas still match these types,
  * so the two files cannot drift apart silently.
  */
+import type { AddonKey } from "./addons";
 import type { DetectionCandidate, FunnelStage, Salience, Settings } from "./schema";
 import { findUnserializable, type WirePriceSnapshot } from "./wire";
 
@@ -41,6 +42,11 @@ export interface CandidatesPayload {
    * so the event log records what was actually shown rather than what it hoped to show.
    */
   placement?: { maxCardItems: number; pillFits: boolean };
+  /**
+   * `digest` (default) asks the worker to decide whether to show a card. `record` says these
+   * were found while browsing: write them to the log and show nothing.
+   */
+  intent?: "digest" | "record";
 }
 
 export interface TriggerPayload {
@@ -51,6 +57,17 @@ export interface TriggerPayload {
   kind: "add_to_cart" | "checkout_intent";
   labelHash: string;
   labelSample?: string;
+}
+
+/**
+ * An add-on the shopper opted into or out of, with their own click or toggle.
+ *
+ * Carries a family key and a boolean — never the label text. See src/content/interactions.ts.
+ */
+export interface ChoicePayload {
+  type: "choice";
+  origin: string;
+  choices: { key: AddonKey; selected: boolean }[];
 }
 
 /** A page's contribution to the §18A temporal history, keyed by resolved offer identity. */
@@ -139,6 +156,7 @@ export type Message =
   | ObservationPayload
   | CandidatesPayload
   | TriggerPayload
+  | ChoicePayload
   | GetSummary
   | DiagnoseRegistration
   | ExportEvents

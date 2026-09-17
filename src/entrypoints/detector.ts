@@ -26,6 +26,7 @@ import {
   invalidateStyles,
   readDocumentMeta,
 } from "@/content/harvest";
+import { type AddonChoice, watchInteractions } from "@/content/interactions";
 import { extractObservations, isEmpty } from "@/content/observations";
 import { PageObserver } from "@/content/observer";
 import { resolveOffer } from "@/content/offerKey";
@@ -37,7 +38,7 @@ import type { PageContext } from "@/content/types";
 import { DigestCard, measureCapacity } from "@/content/ui/card";
 import { BUILD_STAMP, INJECTION_FLAG } from "@/shared/constants";
 import { type ShowDigest, send } from "@/shared/messages";
-import type { DetectionCandidate, FunnelStage } from "@/shared/schema";
+import type { DetectionCandidate, FunnelStage, Settings } from "@/shared/schema";
 import { isDenied, originOf, pathTemplate } from "@/shared/urlScore";
 import { encodePriceSnapshot } from "@/shared/wire";
 
@@ -175,6 +176,15 @@ export default defineUnlistedScript(() => {
    * flapping would mean a detection recorded on one pass and silently dropped on the next.
    */
   let commerceConfirmed = false;
+  /**
+   * `patternId|textHash` of everything already written to the log for this page, so browsing
+   * records each piece of copy once rather than once per pass. Cleared on navigation.
+   */
+  let reported = new Set<string>();
+  /** Add-on choices made before the page was confirmed as a shop. Keys only, capped. */
+  const pendingChoices: AddonChoice[] = [];
+  /** Detectors the shopper switched off in Settings. Refreshed on confirmation and per trigger. */
+  let disabledDetectors: ReadonlySet<string> = new Set();
   let notCommercePasses = 0;
 
   /**
@@ -183,6 +193,22 @@ export default defineUnlistedScript(() => {
    * which renders late is still picked up within a few seconds of settling.
    */
   const NOT_COMMERCE_CEILING_MS = 20_000;
+  /**
+   * How long to keep looking properly before backing off, and how often.
+   *
+   * Geometric backoff from the first pass was wrong, and the cost was measured: on booking.com
+   * and kayak.com the verdict was taken ~300ms after document_idle, when the page had rendered
+   * ZERO prices — "prices 0, atc 0, booking 0, cartRows 0" — and the next looks came at 0.9s,
+   * 2.1s, 4.5s, 9.3s. A travel search that paints its results at three seconds was judged on an
+   * empty skeleton and, with nothing else to trigger a re-read, stayed judged. Vero went silent
+   * on every travel and ticketing site in the audit.
+   *
+   * So for the first stretch of a page's life the interval stays flat and short; only after that
+   * does it grow. A steady 1.5s meta read for 15 seconds is a cost worth paying to not be blind
+   * on an entire category of shop.
+   */
+  const NOT_COMMERCE_EAGER_MS = 15_000;
+  const NOT_COMMERCE_EAGER_INTERVAL_MS = 1_500;
 
   async function pass(): Promise<void> {
     const started = performance.now();
@@ -211,8 +237,32 @@ export default defineUnlistedScript(() => {
         // first paint, so this has to stay willing to look again — but a blog must not cost
         // a DOM read every second forever, and mutation-driven passes come through the same
         // debounce, so raising it here quiets both.
+        // Mutations still mark subtrees dirty so a late-rendering storefront gets looked at
+        // again, but nothing consumes that set until a pass builds a context. Drained here, or
+        // a chat or feed that never becomes a shop accumulates element references for hours.
+        observer.takeDirtyRoots();
+        // Said once, at default log level. "Vero did nothing here" has two very different
+        // causes — the page is not a shop, or the page is a shop the classifier cannot see —
+        // and without the score and the signals there is no way to tell them apart. That
+        // distinction is exactly what a silent travel or ticketing site turns on.
+        // A page that renders late may also stop mutating before it is judged, and the pass
+        // loop is otherwise driven by mutations. Keep one timer alive through the eager window.
+        if (performance.now() < NOT_COMMERCE_EAGER_MS) void schedulePass();
+        if (notCommercePasses === 0) {
+          const m = readDocumentMeta(document, location.href);
+          console.info(
+            `[vero] not a shop (score ${verdict.score}) :: ` +
+              (verdict.reasons.length > 0 ? verdict.reasons.join(" | ") : "no commerce signals") +
+              ` — prices ${m.pricedTextCount}, atc ${m.addToCartCtaCount}, checkout ` +
+              `${m.checkoutCtaCount}, booking ${m.bookingCtaCount}, perUnit ${m.perUnitPriceRows}, ` +
+              `cartRows ${m.cartLineItems}, moneyRows ${m.moneySummaryRows}, jsonLd ${m.jsonLd.length}`,
+          );
+        }
         notCommercePasses++;
-        debounceMs = Math.min(NOT_COMMERCE_CEILING_MS, PASS_DEBOUNCE_MS * 2 ** notCommercePasses);
+        debounceMs =
+          performance.now() < NOT_COMMERCE_EAGER_MS
+            ? NOT_COMMERCE_EAGER_INTERVAL_MS
+            : Math.min(NOT_COMMERCE_CEILING_MS, PASS_DEBOUNCE_MS * 2 ** notCommercePasses);
         return;
       }
       commerceConfirmed = true;
@@ -220,6 +270,7 @@ export default defineUnlistedScript(() => {
       console.info(
         `[vero] commerce page (score ${verdict.score}) :: ${verdict.reasons.join(" | ")}`,
       );
+      onCommerceConfirmed();
     }
 
     const ctx = buildContext();
@@ -240,7 +291,9 @@ export default defineUnlistedScript(() => {
     const seenText = new Set<string>();
     let duplicates = 0;
 
-    const detectorCpuMs = await drainAcrossIdle(runDetectors(ctx), (run) => {
+    // Switched-off detectors do not run at all. They used to run here and be discarded later
+    // in the worker, which cost page time for work the shopper had asked not to have done.
+    const detectorCpuMs = await drainAcrossIdle(runDetectors(ctx, disabledDetectors), (run) => {
       for (const c of run.candidates) {
         if (c.rawScore < LOG_THRESHOLD) continue;
         const key = `${c.patternId}|${c.evidence.textHash}`;
@@ -299,6 +352,52 @@ export default defineUnlistedScript(() => {
           (duplicates > 0 ? ` (+${duplicates} repeat(s) of the same copy)` : "") +
           ` — ${summary}`,
       );
+    }
+
+    /**
+     * Record what this page is showing, as it is browsed.
+     *
+     * Detections used to reach the worker only when add-to-cart or checkout was clicked, so
+     * everything a shop displayed to someone who looked and left was never written down — the
+     * local summary and the prevalence dataset both described the moment of adding to cart and
+     * nothing else.
+     *
+     * Sent once per distinct piece of copy per page, not once per pass: a page runs many passes
+     * and Glossier repeats a price row thirteen times, so without this key the log would grow
+     * without bound while the page sat open. Keyed on pattern plus hashed text, so two genuinely
+     * different scarcity claims still count twice.
+     *
+     * Salience is sent as measured. A badge that was never on screen long enough is still worth
+     * recording — it is what the page showed — and the row says so rather than pretending it
+     * was seen.
+     */
+    const unreported = collected.filter(
+      ({ candidate: c }) => !reported.has(`${c.patternId}|${c.evidence.textHash}`),
+    );
+    if (unreported.length > 0) {
+      for (const { candidate: c } of unreported) {
+        reported.add(`${c.patternId}|${c.evidence.textHash}`);
+      }
+      await send({
+        type: "candidates",
+        origin: pageOrigin,
+        pathTemplate: pathTemplate(location.href),
+        stage,
+        intent: "record",
+        items: unreported.slice(0, 200).map(({ candidate, salienceKey }) => {
+          const rec = salience.get(salienceKey);
+          return {
+            candidate,
+            salience: {
+              visibleMs: rec.visibleMs,
+              viewportFraction: rec.viewportFraction,
+              scrollDepthAtFirstView: rec.scrollDepthAtFirstView,
+              ephemeral: rec.ephemeral,
+            },
+            passedGate: salience.passesGate(salienceKey),
+          };
+        }),
+      });
     }
 
     // §18A: resolve this page's offer identity and contribute one observation per visit.
@@ -436,7 +535,37 @@ export default defineUnlistedScript(() => {
     });
   }
 
+  /**
+   * Everything that should only happen on a page Vero has decided is a shop.
+   *
+   * The add-to-cart listener used to be attached at boot, on every non-denied https page, and
+   * `onTrigger` never checked the verdict — so a "Book now" or "Proceed to…" button on a page
+   * that sells nothing still messaged the worker, wrote a session ledger holding the button's
+   * label, and made the popup claim the page was being checked. Now the listener does not
+   * exist until the page is confirmed, and text recording starts at the same moment.
+   */
+  function onCommerceConfirmed(): void {
+    observer.startRecording();
+    triggers.attach();
+    void refreshDisabled();
+    if (pendingChoices.length > 0) {
+      const buffered = pendingChoices.splice(0);
+      void send({ type: "choice", origin: pageOrigin, choices: buffered.slice(-16) });
+    }
+  }
+
+  async function refreshDisabled(): Promise<void> {
+    const settings = await send<Settings>({ type: "get-settings" });
+    if (settings?.disabledDetectors) disabledDetectors = new Set(settings.disabledDetectors);
+  }
+
   async function onTrigger(kind: string, label: string): Promise<void> {
+    // Belt and braces: the listener is only attached once the page is confirmed, but a
+    // stage-change trigger arrives through a different path.
+    if (!commerceConfirmed) return;
+    // A setting changed in another tab should apply to the digest being built right now.
+    await refreshDisabled();
+
     // Re-scan first. A click on add-to-cart usually changes the page (a drawer opens, a
     // count updates), and `latest` is otherwise whatever the last backed-off pass saw.
     // Then wait again, so what the drawer just revealed can accrue real on-screen time
@@ -561,7 +690,16 @@ export default defineUnlistedScript(() => {
   console.info(`[vero] active on ${pageOrigin} — build ${BUILD_STAMP}`);
 
   observer.start();
-  triggers.attach();
+  // Attached at boot so a toggle made in the first moments is not missed, but choices are only
+  // REPORTED from a confirmed shop — until then they wait here, as family keys and booleans.
+  watchInteractions((choices) => {
+    if (commerceConfirmed) {
+      void send({ type: "choice", origin: pageOrigin, choices: choices.slice(0, 16) });
+    } else {
+      pendingChoices.push(...choices);
+      if (pendingChoices.length > 16) pendingChoices.splice(0, pendingChoices.length - 16);
+    }
+  });
 
   /**
    * A resize re-evaluates every media query and every relative unit on the page, and no
@@ -581,12 +719,17 @@ export default defineUnlistedScript(() => {
   // `history.pushState` patching — it breaks host pages and reads as hostile (plan §14.6).
   const nav = (globalThis as { navigation?: EventTarget }).navigation;
   if (nav) {
-    nav.addEventListener("navigate", () => void schedulePass(true));
+    nav.addEventListener("navigate", () => {
+      // A new page is a new set of copy; the previous page's keys must not suppress it.
+      reported = new Set();
+      void schedulePass(true);
+    });
   } else {
     let lastUrl = location.href;
     setInterval(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
+        reported = new Set();
         void schedulePass(true);
       }
     }, 800);

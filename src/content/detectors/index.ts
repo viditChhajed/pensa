@@ -51,8 +51,6 @@ export const DETECTORS: readonly Detector[] = [
   exitIntentDetector,
 ];
 
-export const DETECTORS_BY_ID = new Map(DETECTORS.map((d) => [d.id, d]));
-
 export function detectorsForStage(stage: FunnelStage): Detector[] {
   return DETECTORS.filter((d) => d.stages.includes(stage));
 }

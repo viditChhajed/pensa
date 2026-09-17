@@ -73,8 +73,12 @@ export const LineItem = z.object({
   amount: Money,
   kind: LineItemKind,
   kindConfidence: z.number().min(0).max(1),
-  /** Matched to a `userInitiatedAdds` entry. False on a cart line = basket.sneak candidate. */
-  userAttributed: z.boolean(),
+  /*
+   * No `userAttributed` flag. It used to live here, was set by the content script, and was
+   * hardcoded false — the page cannot know which add-ons the shopper chose, because that
+   * choice may have been made on an earlier page. Attribution is now computed in the worker
+   * against the session ledger's `userChoices`, where that history actually exists.
+   */
 });
 export type LineItem = z.infer<typeof LineItem>;
 
@@ -160,6 +164,14 @@ export const SuppressionReason = z.enum([
   "digest_full",
   /** Ranked in, but no on-screen placement was free of interactive controls. */
   "placement_suppressed",
+  /**
+   * Found while browsing rather than at add-to-cart, so no card was ever due.
+   *
+   * Detections used to reach the log ONLY when a trigger fired, which made the local record —
+   * and the prevalence dataset built on it — a measure of what shoppers saw at the moment they
+   * added to cart, not of what shops display. These rows are the rest of that picture.
+   */
+  "passive_scan",
 ]);
 export type SuppressionReason = z.infer<typeof SuppressionReason>;
 
@@ -201,6 +213,33 @@ export const UserInitiatedAdd = z.object({
 });
 export type UserInitiatedAdd = z.infer<typeof UserInitiatedAdd>;
 
+/**
+ * An add-on the shopper themselves ticked, unticked or clicked.
+ *
+ * Recorded page-side from real `change`/`click` events on controls whose label names an
+ * add-on family (see src/shared/addons.ts), and kept per origin for the session. This is
+ * what lets `basket.sneak` and `pricing.drip` tell "a warranty appeared in the cart" apart
+ * from "the shopper added a warranty" — a distinction the previous code claimed to make and
+ * never did.
+ */
+export const UserChoice = z.object({
+  ts: z.number().int(),
+  key: z.enum([
+    "protection",
+    "warranty",
+    "insurance",
+    "gift_wrap",
+    "tip",
+    "donation",
+    "carbon_offset",
+    "expedited",
+    "signature",
+  ]),
+  /** The control's state after the shopper acted: true = opted in. */
+  selected: z.boolean(),
+});
+export type UserChoice = z.infer<typeof UserChoice>;
+
 export const StageRecord = z.object({
   enteredAt: z.number().int(),
   priceSnapshot: PriceSnapshot.optional(),
@@ -212,6 +251,7 @@ export const SessionLedger = z.object({
   /** Sparse: most sessions never reach `payment`. */
   stages: z.partialRecord(FunnelStage, StageRecord),
   userInitiatedAdds: z.array(UserInitiatedAdd).default([]),
+  userChoices: z.array(UserChoice).default([]),
   events: z.array(DetectionEvent).default([]),
   digestsShown: z
     .array(
@@ -380,7 +420,15 @@ export type DenylistFile = z.infer<typeof DenylistFile>;
 
 // --------------------------------- settings ---------------------------------
 
-export const DigestFrequency = z.enum(["every_checkout", "once_per_site", "weekly_only", "off"]);
+/**
+ * `never_interrupt` was stored as `weekly_only`, a name promising a weekly recap that never
+ * existed; the setting has always meant "record, but never show a card". Settings saved under
+ * the old name are read as the new one rather than failing to parse and resetting everything.
+ */
+export const DigestFrequency = z.preprocess(
+  (v) => (v === "weekly_only" ? "never_interrupt" : v),
+  z.enum(["every_checkout", "once_per_site", "never_interrupt", "off"]),
+);
 export type DigestFrequency = z.infer<typeof DigestFrequency>;
 
 export const Settings = z.object({

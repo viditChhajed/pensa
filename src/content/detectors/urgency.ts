@@ -51,12 +51,14 @@ const DEADLINE_COPY = new RegExp(
      * narrow as a copy rule gets without a list of specific strings — and a list of specific
      * strings would have known about "Save this event" and nothing about "Save this listing".
      */
-    /\b(?:sale|offer|deal|discount|promo(?:tion)?|price|event|coupon)\b[^.:;!?|•]{0,24}?\b(?:ends?|ending|expires?|expiring|closes?|runs)\b/,
+    // `runs` only with an end attached: "event runs 9/20–10/3" is a deadline, "our event runs weekly" is not.
+    /\b(?:sale|offer|deal|discount|promo(?:tion)?|price|event|coupon)\b[^.:;!?|•]{0,24}?\b(?:ends?|ending|expires?|expiring|closes?|runs (?:through|thru|until|till|\d))\b/,
     // "ends soon", "expires in 3 days", "ends 9/16/26", "ending tomorrow".
     /\b(?:ends?|ending|expires?|expiring)\s+(?:soon|today|tonight|tomorrow|shortly|in\b|on\b|\d)/,
     // "thru Sep 17", "through September 17", "valid thru 9.30.26" — Ulta and Sephora write
     // almost every promotion this way, and it was the single largest family of misses.
-    /\b(?:thru|through)\s+(?:\d|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/,
+    // A date must follow, not any digit: "walk through 3 steps" and "pay through 4 installments" matched.
+    /\b(?:thru|through)\s+(?:\d{1,2}[/.]\d{1,2}\b|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*\d{1,2}\b|(?:mon|tues|wednes|thurs|fri|satur|sun)day\b|tonight\b|midnight\b)/,
     // "book by Jan 7", "buy by 9/16/26" — a purchase deadline hidden in terms text.
     /\b(?:book|buy|order|shop)\s+by\s+(?:\d|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/,
     /\blimited[-\s]time\b/,
@@ -93,7 +95,7 @@ const DEADLINE_COPY = new RegExp(
  * still be a good buy on Monday?") only makes sense when there is a Monday to point at.
  */
 const DEADLINE_IS_SPECIFIC =
-  /\b(?:mon|tues|wednes|thurs|fri|satur|sun)day\b|\b(?:mon|tue|wed|thu|fri|sat|sun)\b|\b\d{1,2}\/\d{1,2}\b|\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\bin \d+ (?:hours?|days?|minutes?)\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2}\b/i;
+  /\b(?:mon|tues|wednes|thurs|fri|satur|sun)day\b|\b(?:mon|tue|wed|thu|fri|sat|sun)\.?,?\s+\d{1,2}\b|\b\d{1,2}\/\d{1,2}\b|\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\bin \d+ (?:hours?|days?|minutes?)\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2}\b/i;
 
 const LEXEMES = [
   "ends in",

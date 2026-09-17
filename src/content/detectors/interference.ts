@@ -18,8 +18,15 @@ import { contrastRatio } from "../contrast";
 import type { CandidateNode, Detector, PageContext } from "../types";
 import { candidate, visibleCandidates } from "./util";
 
+/**
+ * Opt-in wording. `add`, `apply` and `start` are gone: they made a quick-view modal's "Add to
+ * bag" beside its "Close" link read as a manipulative accept/decline pair, when that is ordinary
+ * primary-versus-tertiary button design. Asymmetry is a finding when the page is asking for
+ * CONSENT or an opt-in, not when it is offering the thing the shopper came to buy.
+ */
 const ACCEPT =
-  /\b(?:accept|allow|agree|continue|yes|ok|got it|sounds good|sign me up|subscribe|get \d+% off|claim|unlock|apply|add|save now|start)\b/;
+  /\b(?:accept|allow|agree|continue|yes|ok|got it|sounds good|sign me up|subscribe|get \d+% off|claim|unlock|save now)\b/;
+const PURCHASE_CTA = /\b(?:add to (?:cart|bag|basket)|buy now|check ?out|place order|pay now)\b/;
 
 const DECLINE =
   /\b(?:decline|no thanks?|no thank you|not now|maybe later|skip|dismiss|cancel|reject|opt out|continue without|not interested|close)\b/;
@@ -84,7 +91,9 @@ export const interferenceDetector: Detector = {
     for (const [, group] of byContainer) {
       if (group.length < 2 || group.length > 6) continue;
 
-      const accepts = group.filter((n) => ACCEPT.test(labelOf(n)));
+      const accepts = group.filter(
+        (n) => ACCEPT.test(labelOf(n)) && !PURCHASE_CTA.test(labelOf(n)),
+      );
       const declines = group.filter((n) => {
         const l = labelOf(n);
         return DECLINE.test(l) && !GLYPH_ONLY.test(l) && l.length > 1;

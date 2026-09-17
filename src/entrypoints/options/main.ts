@@ -17,6 +17,7 @@ import { PATTERN_GROUPS } from "./groups";
 const sitesEl = document.getElementById("sites") as HTMLUListElement;
 const clearBtn = document.getElementById("clear") as HTMLButtonElement;
 const exportBtn = document.getElementById("export") as HTMLButtonElement;
+const retentionEl = document.getElementById("retention") as HTMLSelectElement;
 const exportedEl = document.getElementById("exported") as HTMLParagraphElement;
 const clearedEl = document.getElementById("cleared") as HTMLParagraphElement;
 const frequencyEl = document.getElementById("frequency") as HTMLDivElement;
@@ -29,7 +30,7 @@ const pendingWrap = document.getElementById("pendingWrap") as HTMLDetailsElement
 const FREQUENCY_CHOICES: { value: DigestFrequency; label: string }[] = [
   { value: "every_checkout", label: "Every time I reach checkout" },
   { value: "once_per_site", label: "Once per site, per browsing session" },
-  { value: "weekly_only", label: "Never interrupt me — I will check the summary" },
+  { value: "never_interrupt", label: "Never interrupt me — I will check the summary" },
   { value: "off", label: "Turn detection off entirely" },
 ];
 
@@ -324,6 +325,18 @@ exportBtn.addEventListener("click", async () => {
   }
 });
 
+/**
+ * Retention was a real setting — stored, validated, and applied by the worker's prune — with no
+ * control anywhere to change it, while PRIVACY.md said it was adjustable in Settings. Now it is.
+ * Pruning runs on the housekeeping alarm, so a shorter window takes effect within hours.
+ */
+retentionEl.addEventListener("change", () => {
+  const days = Number(retentionEl.value);
+  if (Number.isInteger(days) && days >= 1 && days <= 365) {
+    void send({ type: "set-settings", patch: { retentionDays: days } });
+  }
+});
+
 clearBtn.addEventListener("click", async () => {
   await send({ type: "clear-data" });
   clearedEl.hidden = false;
@@ -334,6 +347,13 @@ async function init(): Promise<void> {
   const settings = await send<Settings>({ type: "get-settings" });
   renderFrequency(settings?.digestFrequency ?? "every_checkout");
   telemetryEl.checked = settings?.telemetryConsent ?? false;
+  const days = String(settings?.retentionDays ?? 30);
+  if (![...retentionEl.options].some((o) => o.value === days)) {
+    // A value set some other way (an older build, a test) is shown rather than silently
+    // replaced by whichever option happens to be first.
+    retentionEl.add(new Option(`${days} days`, days));
+  }
+  retentionEl.value = days;
   disabled = new Set(settings?.disabledDetectors ?? []);
   renderPatterns();
   renderSites();

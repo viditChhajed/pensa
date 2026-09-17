@@ -136,6 +136,12 @@ export interface DocumentMeta {
   readonly addToCartCtaCount: number;
   readonly checkoutCtaCount: number;
   readonly placeOrderCtaCount: number;
+  /** "Book now", "Select room", "Get tickets" — selling without a cart. */
+  readonly bookingCtaCount: number;
+  /** Prices quoted per night, per person, per ticket or one-way. */
+  readonly perUnitPriceRows: number;
+  /** How many price-shaped strings appear anywhere on the page. */
+  readonly pricedTextCount: number;
   readonly hasProductJsonLd: boolean;
 }
 

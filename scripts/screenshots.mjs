@@ -560,7 +560,7 @@ let cardSource = null;
 /** Where the popup is shot: the shop the card fired on, so it reports Vero as running. */
 let popupSite = null;
 
-for (const { site, url } of targets) {
+for (const { url } of targets) {
   console.log(`trying ${url}`);
   const staged = await launch(stageBuild());
   if (await captureLiveCard(staged.ctx, url)) {

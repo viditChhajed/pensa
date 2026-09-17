@@ -155,7 +155,9 @@ describe("shouldShowDigest", () => {
     expect(shouldShowDigest("off", "https://a.com", "checkout", empty).show).toBe(false);
   });
 
-  it("weekly_only suppresses the in-page digest", () => {
-    expect(shouldShowDigest("weekly_only", "https://a.com", "checkout", empty).show).toBe(false);
+  it("never_interrupt suppresses the in-page digest", () => {
+    expect(shouldShowDigest("never_interrupt", "https://a.com", "checkout", empty).show).toBe(
+      false,
+    );
   });
 });

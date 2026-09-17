@@ -9,13 +9,12 @@
  *
  * So this asserts the OUTCOME — a card host in the DOM — and not any intermediate step.
  */
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
 import { stageLocalBuild } from "./localBuild";
 
-const BUILD = resolve(".output/chrome-mv3");
+const _BUILD = resolve(".output/chrome-mv3");
 const PAGES = resolve("tests/e2e/pages");
 
 let context: BrowserContext;

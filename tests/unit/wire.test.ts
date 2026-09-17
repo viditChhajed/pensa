@@ -27,7 +27,6 @@ const SNAPSHOT: PriceSnapshot = {
       amount: money(1800n),
       kind: "mandatory_fee",
       kindConfidence: 0.7,
-      userAttributed: false,
     },
   ],
   capturedAt: 1_700_000_000_000,

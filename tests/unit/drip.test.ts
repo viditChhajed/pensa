@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { detectDrip, detectSneak, dripCandidate } from "@/background/dripPricing";
-import { noteStage, noteUserAdd } from "@/background/sessionLedger";
+import { noteStage, noteUserAdd, noteUserChoice } from "@/background/sessionLedger";
 import { createHash } from "@/content/detectors/hash";
 import { classifyLineItem, extractPriceSnapshot, reconcile } from "@/content/priceSummary";
 import type { LineItem, PriceSnapshot, SessionLedger } from "@/shared/schema";
@@ -20,7 +20,6 @@ function fee(label: string, minor: bigint, kind: LineItem["kind"] = "mandatory_f
     amount: usd(minor),
     kind,
     kindConfidence: 0.7,
-    userAttributed: false,
   };
 }
 
@@ -35,6 +34,7 @@ function ledgerWith(stages: Partial<Record<string, PriceSnapshot>>): SessionLedg
     origin: ORIGIN,
     stages: {},
     userInitiatedAdds: [],
+    userChoices: [],
     events: [],
     digestsShown: [],
   };
@@ -131,11 +131,18 @@ describe("detectDrip", () => {
     expect(detectDrip(ledger)).toBeNull();
   });
 
-  it("does NOT flag an add-on the shopper chose", () => {
-    const chosen: LineItem = { ...fee("Gift wrap", 500n, "optional_addon"), userAttributed: true };
+  it("never counts an add-on as a drip fee — chosen or not", () => {
+    // Drip is MANDATORY charges disclosed late. Add-ons are basket.sneak's question. This
+    // used to skip only add-ons flagged `userAttributed`, a flag that was always false, so a
+    // gift wrap the shopper picked was reported as a fee added behind their back.
     const ledger = ledgerWith({
       pdp: { subtotal: usd(10_000n), fees: [], capturedAt: 1 },
-      checkout: { subtotal: usd(10_000n), fees: [chosen], total: usd(10_500n), capturedAt: 2 },
+      checkout: {
+        subtotal: usd(10_000n),
+        fees: [fee("Gift wrap", 500n, "optional_addon")],
+        total: usd(10_500n),
+        capturedAt: 2,
+      },
     });
     expect(detectDrip(ledger)).toBeNull();
   });
@@ -215,14 +222,41 @@ describe("detectSneak", () => {
     expect(detectSneak(ledger)).toBeNull();
   });
 
-  it("does not flag an item the shopper added", () => {
-    const chosen: LineItem = {
-      ...fee("Protection plan", 1299n, "optional_addon"),
-      userAttributed: true,
-    };
-    let ledger = ledgerWith({ cart: { subtotal: usd(10_000n), fees: [chosen], capturedAt: 2 } });
-    ledger = noteUserAdd(ledger, { ts: 1, labelHash: hashOf("shirt"), confirmed: true });
+  const protectionCart = () =>
+    noteUserAdd(
+      ledgerWith({
+        cart: {
+          subtotal: usd(10_000n),
+          fees: [fee("Accident Protection Plan", 1299n, "optional_addon")],
+          capturedAt: 2,
+        },
+      }),
+      { ts: 1, labelHash: hashOf("add to cart"), confirmed: true },
+    );
+
+  it("does not flag an add-on the shopper opted into", () => {
+    // Attribution is by add-on FAMILY: ticking "Add 2-year protection" on the product page
+    // makes the cart's "Accident Protection Plan" line the shopper's own.
+    const ledger = noteUserChoice(protectionCart(), { ts: 5, key: "protection", selected: true });
     expect(detectSneak(ledger)).toBeNull();
+  });
+
+  it("DOES flag it if the shopper opted in and then back out", () => {
+    // Latest choice wins. Unticking protection and still finding it in the cart is the finding.
+    let ledger = noteUserChoice(protectionCart(), { ts: 5, key: "protection", selected: true });
+    ledger = noteUserChoice(ledger, { ts: 9, key: "protection", selected: false });
+    expect(detectSneak(ledger)).not.toBeNull();
+  });
+
+  it("does not let a choice about one add-on excuse a different one", () => {
+    const ledger = noteUserChoice(protectionCart(), { ts: 5, key: "gift_wrap", selected: true });
+    expect(detectSneak(ledger)).not.toBeNull();
+  });
+
+  it("is not fooled by the add-to-cart button label, which names no add-on", () => {
+    // The old check compared this hash with the cart line's hash. They can never match, which
+    // is why every add-on in every cart was reported as unrequested.
+    expect(detectSneak(protectionCart())).not.toBeNull();
   });
 });
 

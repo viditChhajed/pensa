@@ -11,6 +11,7 @@
  */
 
 import { originOf, pathTemplate } from "@/shared/urlScore";
+import { wasTouchedByUser } from "./interactions";
 import {
   type BoxSnapshot,
   type CandidateNode,
@@ -302,6 +303,20 @@ export function collapse(raw: string): string {
   return raw.replace(/\s+/g, " ").trim().slice(0, MAX_TEXT);
 }
 
+/**
+ * Whole-page text, for the signals that ask "does this page contain X anywhere".
+ *
+ * `collapse` caps at MAX_TEXT, which is right for one node's text and catastrophic for the
+ * document's: it left `bodyText` holding only the first few hundred characters — the header.
+ * `hasStepIndicator` has therefore only ever seen the top of a page, and the price counts added
+ * for the commerce gate read 0 on a Eventbrite listing that plainly showed "From $221.98".
+ * The cap here exists only to bound the regex work on a pathological page.
+ */
+const MAX_BODY_TEXT = 400_000;
+function collapseBody(raw: string): string {
+  return raw.replace(/\s+/g, " ").trim().slice(0, MAX_BODY_TEXT);
+}
+
 /** Depth-capped, nth-of-type CSS path. Stable enough to re-find a node; short enough to store. */
 export function selectorPath(el: Element): string {
   const parts: string[] = [];
@@ -354,6 +369,9 @@ function attrSubset(el: Element): Record<string, string> {
     out.checked = String(el.checked);
     out.type = el.type;
     if (el.name) out.name = el.name;
+    // Whether the shopper changed this control themselves. `checked` alone cannot say: a box
+    // the page ticked and a box the shopper ticked read identically. See interactions.ts.
+    if (wasTouchedByUser(el)) out.userTouched = "true";
   }
   return out;
 }
@@ -450,7 +468,13 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
     acceptNode(node: Node): number {
       const el = node as Element;
       const tag = el.tagName;
-      if (tag === "SCRIPT" || tag === "STYLE" || tag === "NOSCRIPT" || tag === "SVG") {
+      if (
+        tag === "SCRIPT" ||
+        tag === "STYLE" ||
+        tag === "NOSCRIPT" ||
+        tag === "svg" ||
+        tag === "SVG"
+      ) {
         return NodeFilter.FILTER_REJECT;
       }
       // Interactive controls are always candidates — defaults/confirmshaming need them.
@@ -842,6 +866,9 @@ function readStructuralSignals(doc: Document) {
   let addToCartCtaCount = 0;
   let checkoutCtaCount = 0;
   let placeOrderCtaCount = 0;
+  let bookingCtaCount = 0;
+  let perUnitPriceRows = 0;
+  let pricedTextCount = 0;
 
   // Quantity controls: a number input, a qty-named select, or a stepper pair.
   if (
@@ -870,6 +897,22 @@ function readStructuralSignals(doc: Document) {
     }
     if (/\bplace order\b|\bpay now\b|\bcomplete (order|purchase)\b|\bsubmit order\b/.test(name)) {
       placeOrderCtaCount++;
+    }
+    /**
+     * Travel, lodging and ticketing sell without a cart.
+     *
+     * A hotel, flight or event page has no add-to-cart control, no quantity stepper and no
+     * cart rows, so the commerce gate scored booking.com, kayak.com, eventbrite.com and
+     * ticketmaster.com at ZERO and Vero went silent on all four — measured, not guessed.
+     * Those are the categories with the worst drip pricing in the taxonomy, which made this
+     * the most expensive blind spot available.
+     */
+    if (
+      /\bbook now\b|\breserve (now|room|table|seat)\b|\bselect (room|flight|fare|seats?|tickets?)\b|\bchoose (room|flight|dates?)\b|\b(see|check) availability\b|\b(get|buy|find) tickets?\b|\bview deal\b|\bbook (?:this )?(?:room|flight|trip|stay)\b/.test(
+        name,
+      )
+    ) {
+      bookingCtaCount++;
     }
   }
 
@@ -964,11 +1007,33 @@ function readStructuralSignals(doc: Document) {
   }
 
   // Step chrome: "Cart > Place Order > Pay > Order Complete".
-  const bodyText = collapse(doc.body?.textContent ?? "").toLowerCase();
+  const bodyText = collapseBody(doc.body?.textContent ?? "").toLowerCase();
   // Any breadcrumb-ish sequence of two funnel words. The previous version enumerated exact
   // pairs and matched none of the four flows in the spot-check.
   const STEP_WORD =
     "(cart|bag|basket|flights?|bundle|seats?|extras|shipping|delivery|details|review|payment|checkout|place order|confirm)";
+  /**
+   * Per-unit pricing: "$189 / night", "£420 per person", "from $59 a night".
+   *
+   * The other half of selling without a cart. A lodging or fare listing prices by night, person
+   * or leg, and that phrasing is specific enough that a news article mentioning a price does not
+   * produce it.
+   */
+  /**
+   * How many price-shaped strings the page shows at all.
+   *
+   * A listing or search-results page sells without any cart furniture: twenty prices beside
+   * twenty links is a shop window. An article quoting a price or two is not, so this only
+   * counts in combination below.
+   */
+  pricedTextCount = (bodyText.match(/[$£€¥₹]\s?\d[\d.,]*/g) ?? []).length;
+
+  perUnitPriceRows = (
+    bodyText.match(
+      /[$£€¥₹]\s?[\d.,]+\s*(?:\/|per|a)\s*(?:night|person|adult|guest|traveller|traveler|way|leg|ticket)\b/g,
+    ) ?? []
+  ).length;
+
   const hasStepIndicator = new RegExp(
     `${STEP_WORD}\\s*[>\u203a\u00bb\u2192|\u2022]\\s*${STEP_WORD}`,
   ).test(bodyText);
@@ -983,6 +1048,9 @@ function readStructuralSignals(doc: Document) {
     addToCartCtaCount: Math.min(addToCartCtaCount, 50),
     checkoutCtaCount: Math.min(checkoutCtaCount, 20),
     placeOrderCtaCount: Math.min(placeOrderCtaCount, 20),
+    bookingCtaCount: Math.min(bookingCtaCount, 50),
+    perUnitPriceRows: Math.min(perUnitPriceRows, 50),
+    pricedTextCount: Math.min(pricedTextCount, 200),
     hasProductJsonLd: hasProductSchema(doc),
   };
 }

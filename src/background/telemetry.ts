@@ -38,11 +38,11 @@
  * the `counts_public` view refuses cohorts below it.
  */
 import { getDb } from "@/background/db";
+import { ALLOWLIST_VERSION, categoryForOrigin } from "@/shared/category";
 import { MAX_BATCH_AGE_MS, MIN_BATCH, QUEUE_CAP, TELEMETRY_ENDPOINT } from "@/shared/constants";
 import { registrableDomain } from "@/shared/domain";
 import type { DetectionEvent, Settings } from "@/shared/schema";
 import { TelemetryRecord } from "@/shared/schema";
-import { ALLOWLIST_VERSION, categoryForOrigin } from "@/shared/urlScore";
 
 export { MAX_BATCH_AGE_MS, MIN_BATCH, QUEUE_CAP, TELEMETRY_ENDPOINT };
 

@@ -10,7 +10,7 @@
  */
 import type { DetectionCandidate } from "@/shared/schema";
 import type { Detector, PageContext } from "../types";
-import { candidate, matchLexemes, visibleCandidates } from "./util";
+import { candidate, visibleCandidates } from "./util";
 
 const EXIT_COPY = [
   "wait",
@@ -25,6 +25,10 @@ const EXIT_COPY = [
   "still thinking",
   "don't miss",
 ] as const;
+
+const EXIT_COPY_RES = new Map<string, RegExp>(
+  EXIT_COPY.map((l) => [l, new RegExp(`\\b${l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`)]),
+);
 
 const WEIGHTS: Record<string, number> = {
   modalOnExit: 0.6,
@@ -50,7 +54,8 @@ export const exitIntentDetector: Detector = {
       );
       if (!insideExitModal) continue;
 
-      const hits = matchLexemes(n, EXIT_COPY);
+      // Word-bounded: a substring "wait" matched "waitlist" and "awaiting".
+      const hits = EXIT_COPY.filter((l) => EXIT_COPY_RES.get(l)?.test(n.normalizedText));
       const hasOffer = /\b\d{1,2}%\s*off\b|\bfree shipping\b|\bcoupon\b|\bdiscount\b/.test(
         n.normalizedText,
       );

@@ -95,7 +95,7 @@ test.describe("extension runtime", () => {
     // refused by Chrome itself, before a line of Vero's code runs on them.
     for (const host of ["chase.com", "bankofamerica.com", "irs.gov"]) {
       expect(
-        excludes.includes(`https://*.${host}/` + "*"),
+        excludes.includes(`https://*.${host}/*`),
         `${host} is not excluded from injection`,
       ).toBe(true);
     }
@@ -182,7 +182,7 @@ test.describe("grant -> register -> INJECT", () => {
     await page.waitForTimeout(2000);
 
     const injected = await page.evaluate(
-      () => (globalThis as Record<string, unknown>).__patternsDetectorInjected__ === true,
+      () => (globalThis as Record<string, unknown>).__veroDetectorInjected__ === true,
     );
     expect(injected, "script registered but never injected — the §1.3 silent failure").toBe(true);
     await page.close();

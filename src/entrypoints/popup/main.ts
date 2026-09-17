@@ -17,7 +17,6 @@
  */
 
 import { BUILD_STAMP } from "@/shared/constants";
-import { registrableDomain } from "@/shared/domain";
 import type { RegistrationReport } from "@/shared/messages";
 import { send } from "@/shared/messages";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
@@ -83,7 +82,10 @@ async function init(): Promise<void> {
     return;
   }
 
-  const domain = registrableDomain(parsed.hostname);
+  // The hostname as the shopper reads it, minus a leading "www.". The popup used to call
+  // registrableDomain here, which now pulls in the Public Suffix List — ~100 KB to open a
+  // popup, for a label the address bar already shows.
+  const domain = parsed.hostname.replace(/^www\./, "");
   statusEl.textContent = `Vero is running on ${domain}.`;
   detailEl.textContent = "Patterns found on this page will appear when you add to cart.";
 

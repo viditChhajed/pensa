@@ -15,7 +15,7 @@ import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, test } from "@playwright/test";
 import { stageLocalBuild } from "./localBuild";
 
-const BUILD = resolve(".output/chrome-mv3");
+const _BUILD = resolve(".output/chrome-mv3");
 const PAGES = resolve("tests/e2e/pages");
 
 let context: BrowserContext;
@@ -80,7 +80,7 @@ test("the manifest declares the script AND it actually injects", async () => {
   await page.waitForTimeout(2500);
 
   // NOTE: injection CANNOT be checked from page.evaluate. Content scripts run in an
-  // isolated world, so `__patternsDetectorInjected__` is invisible to the main world —
+  // isolated world, so `__veroDetectorInjected__` is invisible to the main world —
   // which is the point of setting it there. An earlier version of this test asserted
   // against the main world and reported a false failure.
   //

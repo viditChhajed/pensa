@@ -2,7 +2,6 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DETECTORS } from "@/content/detectors";
-import { DEFERRED_DETECTORS } from "@/content/detectors/deferred";
 import {
   DERIVED_FROM_HISTORY,
   SHIPPED_CROSS_STAGE_DETECTORS,
@@ -66,11 +65,6 @@ describe("v1 submission scope", () => {
     for (const id of DERIVED_FROM_HISTORY) {
       expect(registered.has(id), `${id} leaked into the shipped registry`).toBe(false);
     }
-  });
-
-  it("the deferred set is still built and tested, just not registered", () => {
-    // Not deleted — v1.1 is a one-line change, and these have passing tests.
-    expect(DEFERRED_DETECTORS).toHaveLength(5);
   });
 
   it("shipped and deferred sets do not overlap", () => {

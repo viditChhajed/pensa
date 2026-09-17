@@ -218,6 +218,31 @@ export const framingDetector: Detector = {
       const showsAbsolute = ABSOLUTE_CLAIM.test(t) && !showsPercent;
       if (!showsPercent && !showsAbsolute) continue;
 
+      /**
+       * The claim has to describe THIS markdown.
+       *
+       * The detector's premise is "the page chose whichever framing of this discount looks
+       * bigger", and that premise only holds if the stated number is the discount between the
+       * two prices it found. It never checked. SHEIN's "$12.99 → $3.60, 10% off" fired as
+       * percent framing of a 72% drop — but that "10% off" is an extra coupon, not a framing of
+       * the markdown at all. A claimed figure that does not match the computed one is about
+       * something else, and says nothing about how this discount was framed.
+       */
+      if (showsPercent) {
+        const m = PERCENT_CLAIM.exec(t);
+        const claimed = Number(m?.[1] ?? m?.[2]);
+        if (!Number.isFinite(claimed) || Math.abs(claimed - percentSaving) > 3) continue;
+      } else {
+        const m = ABSOLUTE_CLAIM.exec(t);
+        const claimedPrice = m
+          ? parsePrices(t.slice(m.index, m.index + m[0].length + 12))[0]
+          : undefined;
+        if (claimedPrice) {
+          const claimed = Number(claimedPrice.amount) / 100;
+          if (Math.abs(claimed - absoluteSaving) > Math.max(1, absoluteSaving * 0.05)) continue;
+        }
+      }
+
       // The Rule of 100: below $100, the percentage reads larger; above, the dollar amount does.
       const percentFlatters = percentSaving > absoluteSaving * FLATTER_FACTOR;
       const absoluteFlatters = absoluteSaving > percentSaving * FLATTER_FACTOR;

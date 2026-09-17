@@ -25,7 +25,8 @@ const QUANTITY_PATTERNS: readonly RegExp[] = [
   /\b(\d{1,3})\s*(?:years?|yrs?)\b/,
   /\b(\d{1,4})\s*(?:pack|count|ct|pcs|pieces|items|units|bars|cans|bottles|servings|meals)\b/,
   /\bpack of\s*(\d{1,4})\b/,
-  /\b(\d{1,4})\s*[x×]\b/,
+  // No bare "4x" pattern. It matched product specs ("4x zoom", "2x faster") beside a price and
+  // read them as pack quantities; the pack, count and "pack of" forms above cover real bundles.
 ];
 
 const WEIGHTS: Record<string, number> = {

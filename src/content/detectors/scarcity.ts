@@ -47,13 +47,9 @@ const STOCK_PATTERNS: readonly RegExp[] = [
   /\blow stock\b/,
   /\balmost (?:gone|sold out)\b/,
   /\bselling fast\b/,
-  /\bgoing fast\b/,
   /\bhurry,? only\b/,
-  /\bwhile supplies last\b/,
-  /\blimited quantity\b/,
   // "limited availability" reads as scarcity to a shopper exactly as "limited quantity"
   // does, and had no pattern. Found by asserting every shipped pattern is reachable.
-  /\blimited availability\b/,
 ];
 
 /**

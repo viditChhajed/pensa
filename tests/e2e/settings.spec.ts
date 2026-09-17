@@ -1,20 +1,3 @@
-/**
- * The off switch, driven from the control the user actually sees.
- *
- * `disabledDetectors` was honoured by the digest from the day it was written, and for that
- * whole time no UI could set it: the §10 escape hatch — "raise thresholds or default-disable
- * anything noisy" — existed only in code nobody could reach. `tests/unit/settingsCoverage`
- * proves every shipped pattern is OFFERED a switch. This proves the switch is CONNECTED, and
- * that turning it off means what the settings page says it means: not shown, and not
- * recorded either.
- *
- * The distinction is the point. A control that merely hides a finding while a local database
- * keeps accumulating rows for it would be, from the user's side, the same kind of thing this
- * extension exists to point out.
- */
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
 import { PATTERN_GROUPS } from "@/entrypoints/options/groups";
 import { stageLocalBuild } from "./localBuild";

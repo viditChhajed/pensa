@@ -10,6 +10,7 @@
  * All arithmetic is bigint minor units. Reconciliation is `total - Σ(items)`, and in float
  * that residual accumulates error and manufactures phantom fees.
  */
+import { ADDON_REGEXES } from "@/shared/addons";
 import { type ParsedPrice, parsePrices } from "@/shared/money";
 import type { LineItem, LineItemKind, Money, PriceSnapshot } from "@/shared/schema";
 import { createHash } from "./detectors/hash";
@@ -62,22 +63,9 @@ const KIND_LEXICON: readonly (readonly [LineItemKind, readonly RegExp[]])[] = [
       /\bcarrier fee\b/,
     ],
   ],
-  [
-    "optional_addon",
-    [
-      /\bprotection plan\b/,
-      /\bwarranty\b/,
-      /\binsurance\b/,
-      /\bgift wrap\b/,
-      /\btip\b/,
-      /\bgratuity\b/,
-      /\bdonation\b/,
-      /\bcarbon offset\b/,
-      /\bexpedited\b/,
-      /\bpriority\b/,
-      /\bsignature confirmation\b/,
-    ],
-  ],
+  // Shared with the page's choice listener and the worker's attribution check, so all three
+  // agree on what an add-on is. See src/shared/addons.ts.
+  ["optional_addon", ADDON_REGEXES],
 ];
 
 const SUBTOTAL_RE = /\bsub-?total\b|\bitems? total\b|\bmerchandise\b|\bbag total\b/;
@@ -211,7 +199,6 @@ export function extractPriceSnapshot(ctx: PageContext, capturedAt = Date.now()):
           amount: money(price),
           kind,
           kindConfidence: confidence,
-          userAttributed: false,
         });
       }
     }

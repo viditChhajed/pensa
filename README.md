@@ -22,14 +22,14 @@ unlisted listing is the honest place to be while that is still true.
 | | |
 |---|---|
 | Patterns shipped | **20** — 14 on-page + 2 cross-stage + 4 derived from visit history |
-| Unit tests | 577 |
-| Real-browser e2e | 45 passing, 3 skipped (sites unreachable from this network) |
-| Bundle | 119 KB gzipped across all bundles; 31 KB is the content script, which is the number that matters on every page load |
+| Unit tests | 608 |
+| Real-browser e2e | 48 passing, 3 skipped (sites unreachable from this network) |
+| Bundle | 225 KB gzipped across all bundles, but the number that matters is the content script on every page load: **31 KB**. The service worker is 182 KB, most of it the Public Suffix List that names shops correctly, loaded once per worker wake and never in a page |
 | `host_permissions` | `https://*/*`, granted at install, with banking/health/government/webmail excluded in two layers |
 | Network requests | **zero with telemetry off** (the shipped default), asserted; with it on, the only reachable address is the declared endpoint, also asserted |
 | Card placement | 12/12 samples across 4 live retailers × 3 scroll depths |
 | Detector recall | measured against 29,742 label rows over 4,957 distinct snippets from 44 shops — `npm run eval:detectors`. The corpus itself is **not distributed** (it is real retailer page text); see [CORPUS.md](CORPUS.md) to rebuild it, and `tests/eval/baseline.json` for the committed numbers |
-| Precision | 143 firings across 22 live sites, audited claim by claim over two runs; 29 wrong ones found and fixed, each with a regression test — [EVAL.md](EVAL.md). Plus 0 confirmed false positives in ~44 hand-checked firings across 6 retailers |
+| Precision | 157 firings across 22 live sites, read claim by claim, most recently against the post-audit build — [EVAL.md](EVAL.md). Across three runs 29 wrong claims were found and fixed, each with a regression test. Plus 0 confirmed false positives in ~44 hand-checked firings across 6 retailers |
 
 **On the page (14):** `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
 `urgency.countdown`, `defaults.preselected`, `social_proof.live_activity`,

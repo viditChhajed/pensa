@@ -9,12 +9,13 @@ import {
   writeSettings,
 } from "@/background/db";
 import { recordObservation } from "@/background/recordOffer";
-import { currentSessionId, decideDigest } from "@/background/session";
+import { currentSessionId, decideDigest, recordPassive } from "@/background/session";
 import {
   clearLedgers,
   loadLedger,
   noteStage,
   noteUserAdd,
+  noteUserChoice,
   saveLedger,
 } from "@/background/sessionLedger";
 import { discardQueue, flush, pendingRecords } from "@/background/telemetry";
@@ -29,7 +30,7 @@ import { decodePriceSnapshot } from "@/shared/wire";
  *
  *   1. Own the session ledger and the digest decision, because both outlive any one page.
  *   2. Answer the popup's "are you actually running here?" question.
- *  *
+ *
  * What it does not do: register the content script, and so it needs no `scripting`
  * permission. An earlier draft kept that permission solely to unregister a script left over
  * from the per-site grant model — but that model never shipped, so no installed copy can
@@ -41,8 +42,6 @@ import { decodePriceSnapshot } from "@/shared/wire";
  * and the popup opens on every page, so there was nothing for a page rule to decide.
  */
 export default defineBackground(() => {
-  chrome.runtime.onInstalled.addListener(() => {});
-
   // Service workers die. Anything assumed to persist has to be re-derived on wake.
   chrome.runtime.onStartup.addListener(() => {
     void housekeeping();
@@ -94,13 +93,12 @@ export default defineBackground(() => {
   });
 });
 
-/** Send whatever is both consented to and past the k-anonymity floor. Logs its own outcome. */
+/** Send whatever is consented to and ready to go. Logs its own outcome. */
 async function flushTelemetry(): Promise<void> {
   try {
     const result = await flush(await readSettings());
-    // Every branch is worth seeing. "Nothing was sent" has six different causes and they
-    // have six different fixes — an unset endpoint is not the same as a failed request, and
-    // neither is the same as a batch correctly held back for being too identifying.
+    // Every branch is worth seeing. "Nothing was sent" has several causes with different
+    // fixes: no consent, no endpoint compiled in, too few records yet, or a failed request.
     if (result.reason !== "no_consent" || result.sent > 0) {
       console.info(`[vero] telemetry: ${result.reason}, ${result.sent} sent, ${result.held} held`);
     }
@@ -169,7 +167,32 @@ async function handleMessage(raw: unknown): Promise<unknown> {
       return { ok: true };
     }
 
+    case "choice": {
+      // Recorded per origin for the session, so an add-on chosen on a product page is still
+      // the shopper's own when it shows up on the cart page two navigations later.
+      const sessionId = await currentSessionId();
+      let ledger = await loadLedger(sessionId, msg.origin);
+      const ts = Date.now();
+      for (const c of msg.choices) {
+        ledger = noteUserChoice(ledger, { ts, key: c.key, selected: c.selected });
+      }
+      await saveLedger(ledger);
+      return { ok: true };
+    }
+
     case "candidates": {
+      if (msg.intent === "record") {
+        const { recorded } = await recordPassive(
+          msg.origin,
+          msg.pathTemplate,
+          msg.stage,
+          msg.items,
+        );
+        return { type: "show-digest", items: [], mode: "suppressed", recorded } satisfies ShowDigest & {
+          recorded: number;
+        };
+      }
+
       // `decideDigest` returns { items, mode }. This used to assign that whole object to the
       // reply's `items` field, so the content script read `reply.items.length` on an object
       // (undefined) and `reply.mode` one level too high — and the card never rendered, on
@@ -252,7 +275,9 @@ async function handleMessage(raw: unknown): Promise<unknown> {
       let active = false;
       try {
         const all = await chrome.storage.session.get(null);
-        active = Object.keys(all).some((k) => k.startsWith("ledger:") && k.includes(url.origin));
+        // The exact key, not a substring: `includes("https://shop.co")` also matched the
+        // ledger for https://shop.com, reporting one site as active because of another.
+        active = `ledger:${url.origin}` in all;
       } catch {
         // Session storage being unavailable is not worth failing the whole report over.
       }

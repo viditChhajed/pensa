@@ -48,7 +48,6 @@ const WirePriceSnapshot = z.object({
           "unknown",
         ]),
         kindConfidence: z.number().min(0).max(1),
-        userAttributed: z.boolean(),
       }),
     )
     .max(40),
@@ -72,9 +71,34 @@ export const CandidatesPayload = z.object({
     .array(z.object({ candidate: DetectionCandidate, salience: Salience, passedGate: z.boolean() }))
     .max(200),
   offerKey: z.string().max(128).optional(),
+  intent: z.enum(["digest", "record"]).optional(),
   placement: z
     .object({ maxCardItems: z.number().int().min(0).max(4), pillFits: z.boolean() })
     .optional(),
+});
+
+export const ChoicePayload = z.object({
+  type: z.literal("choice"),
+  origin: Origin,
+  choices: z
+    .array(
+      z.object({
+        key: z.enum([
+          "protection",
+          "warranty",
+          "insurance",
+          "gift_wrap",
+          "tip",
+          "donation",
+          "carbon_offset",
+          "expedited",
+          "signature",
+        ]),
+        selected: z.boolean(),
+      }),
+    )
+    .min(1)
+    .max(16),
 });
 
 export const TriggerPayload = z.object({
@@ -127,6 +151,7 @@ export const Message = z.discriminatedUnion("type", [
   ObservationPayload,
   CandidatesPayload,
   TriggerPayload,
+  ChoicePayload,
   GetSummary,
   DiagnoseRegistration,
   ExportEvents,

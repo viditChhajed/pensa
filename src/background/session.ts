@@ -7,6 +7,7 @@
  * telemetry record shape entirely.
  */
 
+import { ALLOWLIST_VERSION } from "@/shared/category";
 import { DETECTOR_VERSION } from "@/shared/constants";
 import { pickPrompt } from "@/shared/copy/prompts";
 import type {
@@ -17,7 +18,6 @@ import type {
   SessionLedger,
 } from "@/shared/schema";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
-import { ALLOWLIST_VERSION } from "@/shared/urlScore";
 import { putEvents, readOffer, readSettings } from "./db";
 import { buildDigest, type RankInput, shouldShowDigest } from "./digest";
 import { detectDrip, detectSneak, dripCandidate } from "./dripPricing";
@@ -131,6 +131,80 @@ export interface CandidateInput {
  * surfaced gap is the prevalence measurement, so discarding the suppressed ones would throw
  * away the more interesting half of the data.
  */
+/**
+ * Write what a page showed, without asking whether to show a card.
+ *
+ * Detections used to reach the event log only when a trigger fired, so the local record — and
+ * the prevalence dataset built from it — described what shoppers saw at the moment of adding to
+ * cart, and nothing about what shops display while you browse. This is that missing half.
+ *
+ * Deliberately narrower than `decideDigest`: no cross-stage or temporal claims (those are
+ * statements about a journey or a history, and re-deriving them on every pass would write the
+ * same claim repeatedly), no frequency state, no prompt rotation, and no card. Every row lands
+ * as `surfaced: false`; a candidate that WOULD have been shown is marked `passive_scan` rather
+ * than borrowing a suppression reason that did not happen.
+ *
+ * The content script only sends candidates it has not sent before for this page, so the volume
+ * here is one row per distinct piece of copy per page, not one per pass.
+ */
+export async function recordPassive(
+  origin: string,
+  pathTemplate: string,
+  stage: FunnelStage,
+  inputs: CandidateInput[],
+): Promise<{ recorded: number }> {
+  if (inputs.length === 0) return { recorded: 0 };
+  const sessionId = await currentSessionId();
+  const settings = await readSettings();
+  const disabled = new Set(settings.disabledDetectors);
+
+  const now = Date.now();
+  const events: DetectionEvent[] = [];
+  for (const input of inputs) {
+    const c = input.candidate;
+    // A pattern switched off in Settings is not recorded at all, here as everywhere else.
+    if (disabled.has(c.detectorId) || disabled.has(c.patternId)) continue;
+    events.push({
+      id: crypto.randomUUID(),
+      sessionId,
+      origin,
+      pathTemplate,
+      detectorId: c.detectorId,
+      patternId: c.patternId,
+      confidence: c.rawScore,
+      confidenceBasis: "hand_set",
+      // As measured. Low dwell is information, not a reason to drop the row: the question a
+      // prevalence dataset asks is what the page displayed, and an analysis that cares about
+      // what was probably SEEN can filter on visibleMs itself.
+      salience: input.salience,
+      surfaced: false,
+      /**
+       * Always `passive_scan`, never a card-suppression reason.
+       *
+       * The first version ran these through `buildDigest`, so rows came back marked
+       * `below_salience_gate` or `dedup_family` — reasons describing why a card was not shown,
+       * when no card was ever due. Ranking is also the wrong operation here: family dedup would
+       * drop the second distinct scarcity message on a page, which is exactly the kind of thing
+       * a prevalence count wants to keep.
+       */
+      suppressionReason: "passive_scan",
+      funnelStage: stage,
+      evidence: c.evidence,
+      rulepackVersion: ALLOWLIST_VERSION,
+      detectorVersion: DETECTOR_VERSION,
+      ts: now,
+    });
+  }
+
+  await putEvents(events);
+  try {
+    await enqueue(events, settings);
+  } catch (err) {
+    console.error("[vero] telemetry enqueue failed", err);
+  }
+  return { recorded: events.length };
+}
+
 export async function decideDigest(
   origin: string,
   pathTemplate: string,
@@ -148,6 +222,7 @@ export async function decideDigest(
     candidate: i.candidate,
     visibleMs: i.salience.visibleMs,
     passedGate: i.passedGate,
+    salience: i.salience,
   }));
 
   const dripFinding = detectDrip(ledger);
@@ -219,7 +294,7 @@ export async function decideDigest(
   const events: DetectionEvent[] = [];
 
   for (const decision of result.decisions) {
-    const source = pool.find((p) => p.candidate.patternId === decision.patternId);
+    const source = pool[decision.inputIndex];
     if (!source) continue;
     // A pattern the user switched off is not recorded at all, not merely withheld from the
     // card. The settings page promises exactly that, and a local database quietly
@@ -241,7 +316,10 @@ export async function decideDigest(
       patternId: source.candidate.patternId,
       confidence: source.candidate.rawScore,
       confidenceBasis: "hand_set",
-      salience: {
+      // As measured on the page. These three were hardcoded to zero/false, so the exported
+      // viewportFraction and scrollDepthAtFirstView columns were constant and meaningless.
+      // Cross-stage and temporal findings have no on-screen node, and say so with zeros.
+      salience: source.salience ?? {
         visibleMs: source.visibleMs,
         viewportFraction: 0,
         scrollDepthAtFirstView: 0,
@@ -295,7 +373,7 @@ export async function decideDigest(
     used.add(prompt);
     // The matched text, trimmed to something a card can hold. A checkbox has no text of its
     // own, so fall back to its accessible name via the lexemes that matched it.
-    const src = pool.find((p) => p.candidate.patternId === ranked.patternId);
+    const src = pool[ranked.inputIndex];
     const sample = (src?.candidate.evidence.textSample ?? "").replace(/\s+/g, " ").trim();
     const lexemes = src?.candidate.evidence.matchedLexemes ?? [];
     const evidence =

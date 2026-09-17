@@ -1,18 +1,3 @@
-/**
- * IndexedDB round-trip in REAL Chromium (closing the gap the review flagged).
- *
- * `src/background/db.ts` and `recordOffer.ts` had ZERO coverage. Every §18A test to date was
- * synthetic replay of pure functions — `mergeObservation` then `temporalCandidates` — which
- * proves the arithmetic and nothing about persistence. The real accumulation path
- * (IndexedDB write -> read-back -> claim) is the part likeliest to break in a browser, and
- * it is the only place BigInt money is stored rather than passed.
- *
- * jsdom cannot cover this: it has no real IndexedDB and no structured-clone semantics for
- * BigInt. It has to run here.
- */
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, test } from "@playwright/test";
 import { stageLocalBuild } from "./localBuild";
 

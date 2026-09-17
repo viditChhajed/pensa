@@ -51,7 +51,9 @@ const SELF_DEPRECATION: readonly RegExp[] = [
   /\bi\s*(?:will|'?ll|am going to)\s+pay\s+(?:the\s+)?(?:full|more|retail|extra)\b/,
   /\b(?:don'?t|do not)\s+(?:want|like|need)\s+(?:my|the|this|your|any)\s+\w+/,
   /\bi'?ll (?:risk it|take my chances|pass on)\b/,
-  /\bmiss(?:ing)? out\b/,
+  // First-person only. A bare "miss out" matched ordinary calls to action — a "Don't miss
+  // out, shop now" button scored 0.8 and was shown as loaded decline wording, which it is not.
+  /\b(?:i'?ll|i will|i'?d rather|i don'?t mind|i'?m (?:ok|okay|fine|happy)(?: with)?)\s+miss(?:ing)? out\b/,
   // A second shape of the same mechanism, found on flyfrontier: declining the upsell
   // requires TICKING A BOX that asserts something costly about your own choice —
   // "Basic Fare works for me. I understand purchasing options separately may result in a

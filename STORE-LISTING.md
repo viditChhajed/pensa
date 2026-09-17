@@ -100,8 +100,9 @@ of sites would cover them. What it does with that access is narrow:
 • Out of the box it makes no network requests at all. You can check: open DevTools, go to
   the Network tab, and browse.
 
-Everything it notices stays on your device and is deleted after 30 days. You can export it
-or erase it at any time from Settings.
+Everything it notices stays on your device. Detections are deleted after 30 days; the
+product history that lets it spot a countdown that resets or a "was" price that is never
+charged is kept up to 90 days. You can export or erase all of it at any time from Settings.
 
 OPTIONAL: HELP MEASURE THESE TECHNIQUES
 
@@ -152,10 +153,10 @@ Copy each into the corresponding field. These are the answers a reviewer is look
 
 **`storage`**
 ```
-Stores the user's settings (which techniques to watch for, how often to be interrupted, any
-sites they have turned Vero off for) and a local log of what was noticed, so the extension
-can show a summary and let the user export or delete it. Stored on the device; detections
-are deleted after 30 days by default.
+Stores the user's settings (which techniques to watch for, how often to be interrupted, how
+long to keep detections), a local log of what was noticed so the extension can show a summary
+and let the user export or delete it, and a short per-session record of checkout stages and
+add-on choices. Stored on the device; detections are deleted after 30 days by default.
 ```
 
 **`activeTab`**
@@ -296,7 +297,7 @@ be judged. Flipping to Public later is one setting.
 
 ## Pre-submission checklist
 
-- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green — 559 unit + eval, 43 e2e
+- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green — 608 unit + eval, 48 e2e
 - [x] `host_permissions` empty in the built manifest (CI-enforced, checked: `[]`)
 - [x] Icons present at all four sizes
 - [x] Privacy policy URL live and reachable
@@ -307,9 +308,11 @@ be judged. Flipping to Public later is one setting.
       detector agreeing with a model is not the same as a detector being right — turned out
       to be exactly correct. `npm run spot:check` over 64 pages on 22 live sites found **27
       wrong claims out of 170**, one detector wrong in every single firing, and a bug in the
-      shared money parser underneath it. A second run over the same 22 sites found 2 more.
-      All 29 are fixed and regression-tested, and 143 claims stand. Tally and provenance in
-      [EVAL.md](EVAL.md).
+      shared money parser underneath it. Two further runs found 2 more, and a line-by-line code
+      audit then found a dozen defects the live runs could not see — including add-on
+      attribution that had never worked and a 400-character text cap that made Vero silent on
+      every travel and ticketing site. All are fixed and regression-tested; 157 claims stand on
+      the repaired build. Tally and provenance in [EVAL.md](EVAL.md).
 - [x] Screenshots captured — `npm run screenshots`, four 1280×800 PNGs in `store/screenshots/`,
       taken from the running build against a live retailer
 - [x] Pre-publication audit of the full history — 89 commits, 496 blobs. No secrets, no

@@ -14,51 +14,54 @@ import type { DetectionCandidate } from "@/shared/schema";
 import type { Detector, PageContext } from "../types";
 import { candidate, matchLexemes, visibleCandidates } from "./util";
 
-const PROVIDERS = [
-  "klarna",
-  "affirm",
-  "afterpay",
-  "sezzle",
-  "zip",
-  "quadpay",
-  "clearpay",
-  "splitit",
-  "paypal pay in 4",
-  "shop pay installments",
-] as const;
+/**
+ * Provider names, word-bounded. `zip` was a substring, so "Enter your zip code" counted as
+ * naming a BNPL provider.
+ */
+const PROVIDER_NAMES =
+  /\b(?:klarna|affirm|afterpay|sezzle|quadpay|clearpay|splitit|paypal pay in 4|shop pay installments)\b|\bzip\b(?!\s*(?:code|postal|file|tie|lock|per))/;
 
 const PROVIDER_HOSTS =
   /(?:klarna|affirm|afterpay|sezzle|quadpay|clearpay|splitit|zip)\.(?:com|co|io|net)/i;
 
+/** Installment wording that cannot mean anything else. */
 const INSTALLMENT_PATTERNS: readonly RegExp[] = [
   /\b(\d)\s*(?:interest[- ]free\s+)?(?:payments?|installments?|instalments?)\s+of\b/,
   /\bpay in (\d)\b/,
-  /**
-   * "Buy now, pay later" — the category's own name, and it scored ZERO.
-   *
-   * Every pattern here required a digit: a count of payments, an amount, or a monthly
-   * figure. The plainest possible statement of the technique has none of those, which is the
-   * shape of blind spot a lexicon written from examples reliably produces.
-   */
   /\bbuy now,?\s*pay later\b/,
-  /\bpay (?:over time|later)\b/,
-  /** "Pay in full or in installments" — the choice framed, with no count and no amount. */
-  // `instal?ments` matches "instalments" but NOT "installments" — the l is doubled, not
-  // optional. My own typo, and it silently made the rule unreachable on the US spelling.
+  /\bpay over time\b/,
   /\bin instal{1,2}ments\b/,
   /\bor\s+\d\s*x\s*[$£€]/,
-  /\bas low as\s*[$£€]?\s*[\d.,]+\s*\/\s*(?:mo|month)\b/,
-  /\bfrom\s*[$£€]\s*[\d.,]+\s*\/\s*(?:mo|month)\b/,
   /\bsplit (?:it )?into \d+ payments\b/,
-  /**
-   * "Get the Apple Watch Series 11 starting at $38/mo." — Target's framing, and five of the
-   * seven instalment messages in the labelled corpus. No provider name, no "interest-free",
-   * no "4 payments of": just a monthly figure standing in for the price.
-   */
-  /\bstarting at\s*[$£€]\s*[\d.,]+\s*\/\s*mo\b/,
-  /\b(?:from|only)\s*[$£€]\s*[\d.,]+\s*(?:a|per|\/)\s*(?:mo|month)\b/,
   /\b\d+ (?:bi-?weekly|fortnightly|monthly) payments\b/,
 ];
+
+/**
+ * Monthly-price wording, which is ALSO how every subscription is priced.
+ *
+ * "Plans from $9.99/mo" or a gym membership at "$10/month" is not installment framing — there is
+ * no larger purchase being split. So monthly wording counts UNLESS the same text reads as a
+ * subscription. The first draft of this went the other way — requiring a provider name or a
+ * financing word — and dropped labelled recall from 1.00 to 0.55: Target writes "Get the Apple
+ * Watch SE 3 starting at $24/mo." with neither, and that is financing a device. What separates
+ * the two in practice is the subscription vocabulary, not the financing vocabulary.
+ */
+const MONTHLY_PATTERNS: readonly RegExp[] = [
+  /\bas low as\s*[$£€]?\s*[\d.,]+\s*\/\s*(?:mo|month)\b/,
+  /\bfrom\s*[$£€]\s*[\d.,]+\s*\/\s*(?:mo|month)\b/,
+  /\bstarting at\s*[$£€]\s*[\d.,]+\s*\/\s*mo\b/,
+  /\b(?:from|only)\s*[$£€]\s*[\d.,]+\s*(?:a|per|\/)\s*(?:mo|month)\b/,
+];
+const SUBSCRIPTION_CONTEXT =
+  /\bplans?\b|\bsubscri(?:be|ption)\b|\bmembership\b|\bbilled\b|\bcancel anytime\b|\bfree trial\b|\bper (?:user|seat)\b|\brenews?\b/;
+
+/**
+ * "Pay later" is BNPL on a product page and something else entirely on a booking site, where
+ * "Book now, pay later" means paying at the property with no credit involved.
+ */
+const PAY_LATER = /\bpay later\b/;
+const PAY_AT_PROPERTY =
+  /\b(?:book|reserve)\s+now,?\s*pay later\b|\bpay (?:at|on arrival|at the) (?:the )?(?:hotel|property|venue|check-?in)\b/;
 
 const LEXEMES = [
   "interest-free",
@@ -102,8 +105,11 @@ export const bnplDetector: Detector = {
       if (t.length === 0 || t.length > 220) continue;
       if (seen.has(n.selectorPath)) continue;
 
-      const copy = INSTALLMENT_PATTERNS.some((re) => re.test(t)) ? 1 : 0;
-      const named = PROVIDERS.some((p) => t.includes(p)) ? 1 : 0;
+      const named = PROVIDER_NAMES.test(t) ? 1 : 0;
+      const monthly =
+        MONTHLY_PATTERNS.some((re) => re.test(t)) && (named === 1 || !SUBSCRIPTION_CONTEXT.test(t));
+      const payLater = PAY_LATER.test(t) && !PAY_AT_PROPERTY.test(t);
+      const copy = INSTALLMENT_PATTERNS.some((re) => re.test(t)) || monthly || payLater ? 1 : 0;
       // An SDK iframe or logo pointing at a provider host.
       const src = `${n.attrs.src ?? ""} ${n.attrs.href ?? ""} ${n.attrs.alt ?? ""}`;
       const frame = PROVIDER_HOSTS.test(src) ? 1 : 0;

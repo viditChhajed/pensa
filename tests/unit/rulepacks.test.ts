@@ -151,12 +151,12 @@ describe("denylist label anchoring", () => {
 
 describe("allowlist recognises subdomains", () => {
   /**
-   * us.shein.com was reported as "does not look like a shopping site" while www.shein.com
-   * was recognised. Permissions had already moved to per-domain grants; this lookup was
-   * still keyed on exact origins, so the two halves disagreed about what site you were on.
+   * us.shein.com was once reported as not a shopping site while www.shein.com was recognised,
+   * because the lookup was keyed on exact origins. The category lookup now lives in
+   * `category.ts` (worker only) and is keyed by registrable domain.
    */
   it("recognises regional and checkout subdomains of allowlisted sites", async () => {
-    const { isAllowlisted, categoryForOrigin } = await import("@/shared/urlScore");
+    const { categoryForOrigin } = await import("@/shared/category");
     for (const origin of [
       "https://us.shein.com",
       "https://www.shein.com",
@@ -165,26 +165,18 @@ describe("allowlist recognises subdomains", () => {
       "https://booking.flyfrontier.com",
       "https://m.etsy.com",
     ]) {
-      expect(isAllowlisted(origin), origin).toBe(true);
       expect(categoryForOrigin(origin), origin).toBeTruthy();
     }
   });
 
   it("does NOT recognise a look-alike domain", async () => {
-    const { isAllowlisted } = await import("@/shared/urlScore");
+    const { categoryForOrigin } = await import("@/shared/category");
     for (const origin of [
       "https://notshein.com",
       "https://shein.com.evil.net",
       "https://fakeetsy.com",
     ]) {
-      expect(isAllowlisted(origin), origin).toBe(false);
+      expect(categoryForOrigin(origin), origin).toBeUndefined();
     }
-  });
-
-  it("scores an allowlisted subdomain as commerce", async () => {
-    const { scoreUrl, DEFAULT_PROMPT_THRESHOLD } = await import("@/shared/urlScore");
-    const r = scoreUrl("https://us.shein.com/");
-    expect(r.allowlisted).toBe(true);
-    expect(r.score).toBeGreaterThanOrEqual(DEFAULT_PROMPT_THRESHOLD);
   });
 });

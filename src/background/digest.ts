@@ -16,6 +16,7 @@ import type {
   DetectionCandidate,
   DigestFrequency,
   FunnelStage,
+  Salience,
   SuppressionReason,
 } from "@/shared/schema";
 import { type PatternFamily, type PatternId, TAXONOMY } from "@/shared/taxonomy";
@@ -28,9 +29,13 @@ export interface RankInput {
   visibleMs: number;
   /** Whether it cleared the salience gate at all. */
   passedGate: boolean;
+  /** Page-measured salience, recorded on the event as measured. Absent for findings with no on-screen node. */
+  salience?: Salience;
 }
 
 export interface RankedItem {
+  /** Position in the `inputs` array this item came from. */
+  inputIndex: number;
   patternId: PatternId;
   detectorId: string;
   confidence: number;
@@ -41,7 +46,16 @@ export interface RankedItem {
 export interface DigestResult {
   items: RankedItem[];
   /** Everything considered, with why it was or was not shown. Logged for research. */
+  /**
+   * Exactly one decision per input, carrying that input's index.
+   *
+   * The index is the point. Decisions used to carry only a patternId, and the caller matched
+   * them back to candidates with `find(patternId)` — so when a page had three different
+   * scarcity messages, all three recorded events carried the FIRST message's text and
+   * confidence. The counts were right and every row after the first described the wrong thing.
+   */
   decisions: {
+    inputIndex: number;
     patternId: PatternId;
     surfaced: boolean;
     reason: SuppressionReason;
@@ -73,14 +87,14 @@ export function buildDigest(inputs: RankInput[], opts: DigestOptions): DigestRes
   const decisions: DigestResult["decisions"] = [];
   const byFamily = new Map<PatternFamily, RankedItem>();
 
-  for (const input of inputs) {
+  for (const [inputIndex, input] of inputs.entries()) {
     const { candidate, visibleMs, passedGate } = input;
     const patternId = candidate.patternId as PatternId;
     const entry = TAXONOMY[patternId];
     const rank = rankOne(candidate, visibleMs);
 
     const reject = (reason: SuppressionReason): void => {
-      decisions.push({ patternId, surfaced: false, reason, rank });
+      decisions.push({ inputIndex, patternId, surfaced: false, reason, rank });
     };
 
     if (!entry) {
@@ -108,6 +122,7 @@ export function buildDigest(inputs: RankInput[], opts: DigestOptions): DigestRes
     }
     if (existing) {
       decisions.push({
+        inputIndex: existing.inputIndex,
         patternId: existing.patternId,
         surfaced: false,
         reason: "dedup_family",
@@ -116,6 +131,7 @@ export function buildDigest(inputs: RankInput[], opts: DigestOptions): DigestRes
     }
 
     byFamily.set(entry.family, {
+      inputIndex,
       patternId,
       detectorId: candidate.detectorId,
       confidence: candidate.rawScore,
@@ -129,6 +145,7 @@ export function buildDigest(inputs: RankInput[], opts: DigestOptions): DigestRes
 
   for (const dropped of sorted.slice(max)) {
     decisions.push({
+      inputIndex: dropped.inputIndex,
       patternId: dropped.patternId,
       surfaced: false,
       reason: "digest_full",
@@ -137,6 +154,7 @@ export function buildDigest(inputs: RankInput[], opts: DigestOptions): DigestRes
   }
   for (const shown of items) {
     decisions.push({
+      inputIndex: shown.inputIndex,
       patternId: shown.patternId,
       surfaced: true,
       reason: "none",
@@ -167,7 +185,7 @@ export function shouldShowDigest(
   stage: FunnelStage,
   state: FrequencyState,
 ): { show: boolean; reason: SuppressionReason } {
-  if (frequency === "off" || frequency === "weekly_only") {
+  if (frequency === "off" || frequency === "never_interrupt") {
     return { show: false, reason: "user_disabled" };
   }
 

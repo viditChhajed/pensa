@@ -56,22 +56,21 @@ export default defineConfig({
     name: "Vero",
     short_name: "Vero",
     description:
-      "Notices persuasion techniques on shopping pages and asks a question about them. Runs on-device; nothing leaves your browser.",
+      "Notices persuasion techniques on shopping pages and asks a question about them. Runs on your device; optional sharing is off by default.",
     version: "1.0.0",
 
     // Justification for each, for the store listing:
-    //   storage   - remember settings and the local event log
-    //   scripting - unregister the runtime content-script registration left behind by
-    //               builds before the permission model changed. Registrations made with
-    //               `persistAcrossSessions` survive an update, so a stale one would keep
-    //               injecting on origins a previous version had been granted, forever,
-    //               with matches nobody can see. Removing it needs this permission.
+    //   storage   - chrome.storage.session (the per-site session ledger, frequency state)
+    //               and chrome.storage.local (settings). IndexedDB needs no permission.
     //   activeTab - read the CURRENT tab's URL in the popup on pages the host permission
     //               below does not cover (http://, chrome://, a PDF viewer), so the popup
     //               can say "Vero does not run here" instead of showing nothing at all.
-    //   alarms    - the 30-day event prune and the offer-store eviction. Without it
-    //               `chrome.alarms` is undefined, the optional chaining turns both into
-    //               silent no-ops, and the retention promise has nothing behind it.
+    //   alarms    - the retention prune, offer-store eviction, and the six-hourly telemetry
+    //               flush. Without it `chrome.alarms` is undefined and all three silently
+    //               never run.
+    //
+    // `scripting` is not requested. The detector is declared in the manifest, so nothing
+    // registers content scripts at runtime.
     //
     // `declarativeContent` is GONE. It existed to light the toolbar icon on plausible
     // shopping URLs without reading pages, back when lighting the icon meant "you can turn
