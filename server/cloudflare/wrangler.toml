@@ -10,7 +10,7 @@ compatibility_date = "2026-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "vero-counts"
-database_id = "PUT-YOUR-D1-DATABASE-ID-HERE"
+database_id = "fe4bfcc1-e08e-4c5a-bf11-cc2369e83f5a"
 
 [observability]
 enabled = false

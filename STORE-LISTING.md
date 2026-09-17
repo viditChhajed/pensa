@@ -326,6 +326,20 @@ be judged. Flipping to Public later is one setting.
 - [x] Version bumped in `wxt.config.ts` — 1.0.0
 - [x] `npm run zip` — `.output/vero-1.0.0-chrome.zip`, 133 KB
 
+### The zip to upload
+
+The prevalence sink is **deployed** at `https://vero-counts.viditchhajed.workers.dev/counts`
+and verified end to end: the shipped build posted a real batch, it landed in D1, and the
+research views read it back. So the upload is the build WITH the endpoint:
+
+```bash
+TELEMETRY_ENDPOINT=https://vero-counts.viditchhajed.workers.dev/counts npm run zip
+```
+
+A zip from a plain `npm run build` has the send path compiled out entirely and will never
+contribute to the dataset. Because the uploaded build transmits (when the user opts in), the
+Data usage section must use the "endpoint is configured" wording above and tick **Web history**.
+
 ### Still yours to do
 
 - [ ] **Chrome Web Store developer account** — $5 one-time, with identity verification

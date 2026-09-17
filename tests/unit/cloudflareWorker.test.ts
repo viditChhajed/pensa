@@ -71,6 +71,7 @@ describe("cloudflare worker", () => {
       "42",
       day,
       4,
+      1,
     ]);
 
     // And the order must match the column list in the statement itself, not just my memory
@@ -79,7 +80,7 @@ describe("cloudflare worker", () => {
     const names = columns
       .split(",")
       .map((c) => c.trim())
-      .filter((c) => c !== "n" && c !== "reporters");
+      .filter((c) => c !== "reporters");
     expect(names).toEqual([
       "pattern_id",
       "detector_id",
@@ -89,6 +90,7 @@ describe("cloudflare worker", () => {
       "rulepack_version",
       "day_bucket",
       "quartile",
+      "n",
     ]);
   });
 
@@ -99,8 +101,36 @@ describe("cloudflare worker", () => {
     await worker.fetch(post({ v: 2, records: [record] }), env);
     const q = bound[0]?.query ?? "";
     expect(q).toMatch(/on conflict/i);
-    expect(q).toMatch(/n = n \+ 1/);
+    expect(q).toMatch(/n = n \+ excluded\.n/);
     expect(q).toMatch(/reporters = reporters \+ 1/);
+  });
+
+  it("counts ONE reporter per batch, however many identical reports it carries", async () => {
+    /**
+     * Found against the deployed worker: one batch of 30 identical reports read back as
+     * `reporters = 30`, because every record bumped the column. The publication floor
+     * releases a shop/technique pair after 20 batches, so one person's one batch cleared it.
+     */
+    const { bound, env } = fakeD1();
+    const res = await worker.fetch(
+      post({ v: 2, records: Array.from({ length: 30 }, () => record) }),
+      env,
+    );
+    expect(res.status).toBe(204);
+    expect(bound, "30 identical reports must collapse to one write").toHaveLength(1);
+    // n carries the 30; reporters is the literal 1 in the SQL, applied once.
+    expect(bound[0]?.values.at(-1)).toBe(30);
+  });
+
+  it("keeps different cohorts in one batch as separate writes", async () => {
+    const { bound, env } = fakeD1();
+    await worker.fetch(
+      post({ v: 2, records: [record, record, { ...record, site: "temu.com" }] }),
+      env,
+    );
+    expect(bound).toHaveLength(2);
+    const bySite = Object.fromEntries(bound.map((b) => [b.values[3], b.values.at(-1)]));
+    expect(bySite).toEqual({ "shein.com": 2, "temu.com": 1 });
   });
 
   it("404s anything that is not /counts", async () => {

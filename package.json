@@ -1,7 +1,7 @@
 {
   "name": "vero",
   "version": "1.0.0",
-  "description": "Vero \u2014 MV3 extension that notices e-commerce persuasion patterns and asks Socratic questions about them.",
+  "description": "Vero — MV3 extension that notices e-commerce persuasion patterns and asks Socratic questions about them.",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",
@@ -49,6 +49,7 @@
     "playwright": "1.63.0",
     "tsx": "4.23.13",
     "typescript": "7.0.2",
-    "vitest": "5.0.0"
+    "vitest": "5.0.0",
+    "wrangler": "4.133.0"
   }
 }

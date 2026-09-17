@@ -26,18 +26,46 @@ export interface Env {
 function d1Store(env: Env): Store {
   return {
     async increment(rows: CountRow[]): Promise<void> {
+      /**
+       * Collapse the batch to one write per cohort FIRST, and bump `reporters` once per cohort.
+       *
+       * This used to bind one statement per record, each doing `reporters = reporters + 1`.
+       * A single batch of 30 identical reports therefore counted as 30 independent reporters —
+       * found by sending one real batch through the deployed worker and reading back
+       * `reporters = 30`. That quietly defeated the publication floor: `site_prevalence_public`
+       * releases a shop/technique pair once 20 batches have reported it, and one person's one
+       * batch was enough. PRIVACY.md promises "enough independent batches", so the column has
+       * to mean batches.
+       */
+      const cohorts = new Map<string, { row: CountRow; n: number }>();
+      for (const r of rows) {
+        const key = [
+          r.patternId,
+          r.detectorId,
+          r.funnelStage,
+          r.site,
+          r.originCategory,
+          r.rulepackVersion,
+          r.dayBucket,
+          r.quartile,
+        ].join("\u0000");
+        const hit = cohorts.get(key);
+        if (hit) hit.n++;
+        else cohorts.set(key, { row: r, n: 1 });
+      }
+
       const statement = env.DB.prepare(
         `insert into counts (pattern_id, detector_id, funnel_stage, site, origin_category,
                              rulepack_version, day_bucket, quartile, n, reporters)
-         values (?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
+         values (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
          on conflict (pattern_id, detector_id, funnel_stage, site, origin_category,
                       rulepack_version, day_bucket, quartile)
-         do update set n = n + 1, reporters = reporters + 1`,
+         do update set n = n + excluded.n, reporters = reporters + 1`,
       );
 
       // One batch, so a partial write cannot leave the aggregate inconsistent.
       await env.DB.batch(
-        rows.map((r) =>
+        [...cohorts.values()].map(({ row: r, n }) =>
           statement.bind(
             r.patternId,
             r.detectorId,
@@ -47,6 +75,7 @@ function d1Store(env: Env): Store {
             r.rulepackVersion,
             r.dayBucket,
             r.quartile,
+            n,
           ),
         ),
       );
