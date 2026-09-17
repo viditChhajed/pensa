@@ -22,8 +22,8 @@ unlisted listing is the honest place to be while that is still true.
 | | |
 |---|---|
 | Patterns shipped | **20** — 14 on-page + 2 cross-stage + 4 derived from visit history |
-| Unit tests | 559 |
-| Real-browser e2e | 43 passing, 3 skipped (sites unreachable from this network) |
+| Unit tests | 577 |
+| Real-browser e2e | 45 passing, 3 skipped (sites unreachable from this network) |
 | Bundle | 119 KB gzipped across all bundles; 31 KB is the content script, which is the number that matters on every page load |
 | `host_permissions` | `https://*/*`, granted at install, with banking/health/government/webmail excluded in two layers |
 | Network requests | **zero with telemetry off** (the shipped default), asserted; with it on, the only reachable address is the declared endpoint, also asserted |
@@ -177,9 +177,7 @@ Four, and no host permissions at install:
 | Permission | Why |
 |---|---|
 | `storage` | Remember your per-site choices and the local event log |
-| `scripting` | Register the detector script, with the denylist as its exclusions |
 | `activeTab` | Read the current tab's URL in the popup, so it can say what it is doing here |
-| `declarativeContent` | Light up the toolbar icon on shopping URLs **without reading pages** |
 
 **Vero requests `https://*/*` at install, and Chrome shows the "read and change all your
 data on websites you visit" warning. That is accurate and it is deliberate.**
