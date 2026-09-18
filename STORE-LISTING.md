@@ -172,10 +172,18 @@ Vero is running on that page, is idle because the page is not a shop, or never r
 
 **`alarms`**
 ```
-Runs two scheduled jobs: deleting locally stored detections older than the retention period,
-and, only if the user has switched on sharing, sending reports in batches every six hours
-rather than at the moment something is found. It grants no access to pages or data.
+Runs scheduled maintenance: every 12 hours it deletes locally stored detections older than
+the user's retention period and product history older than 90 days. Only if the user has
+switched on sharing, it also sends reports in batches every six hours rather than at the
+moment something is found, so the timing of a report reveals nothing about when the user was
+shopping. It grants no access to pages or data.
 ```
+
+*(The earlier draft said "two scheduled jobs" and omitted the 90-day product-history
+eviction that the housekeeping alarm also runs.)*
+
+**Remote code:** No. The shipped bundle was scanned for `eval`, `new Function`,
+`importScripts`, remote `<script src>` and URL `import()` — none present.
 
 **Host permission: `https://*/*`**
 
