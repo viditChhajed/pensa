@@ -1,0 +1,67 @@
+Vero notices the techniques a shopping page is using — countdown timers, "only 3 left" messages, crossed-out reference prices, pre-ticked add-ons, fees that appear only at checkout — and, when you add something to your cart, asks you one question about what was actually on your screen.
+
+It does not tell you what to buy. It does not block anything, hide anything, or change any page. It asks.
+
+WHAT IT NOTICES
+
+On the page in front of you:
+
+• Reference prices — a higher crossed-out price next to the real one
+• Charm pricing — prices that stop just short of a round number
+• Limited-stock messages
+• Countdown timers
+• Live activity notices — "23 people are viewing this"
+• Preselected options — warranties, add-ons, marketing opt-ins
+• Loaded decline wording — "No thanks, I don't want to save money"
+• Spend thresholds — "You're $12 away from free shipping"
+• Installment framing — "4 interest-free payments of $24.99"
+• Unequal button emphasis — a yes/no prompt where one choice is made far louder than the other
+• Decoy options — a third option that exists to make a second one look better
+• Repeated interruptions
+• Savings framing — the same discount shown as whichever number looks bigger
+• Exit-intent offers — something that appears as you move to leave
+
+By comparing one page to the next:
+
+• Fees added later — charges that were not in the first price you saw
+• Unrequested cart items — add-ons in your cart that you never chose
+
+By comparing today to what the same site showed you before:
+
+• Timers that reset on each visit
+• Stock counts that go up as well as down
+• "Was" prices that have never been the actual price
+• Viewer counts that repeat or never vary
+
+The last four say nothing on a first visit, by construction — they are claims about change over time, and there is nothing to compare against until you have seen the same item twice.
+
+HOW IT TALKS TO YOU
+
+Every prompt is a question, never an accusation. It reports what the page displayed and asks what you think — it never claims a message is false, and it makes no claim about any retailer's intent. A limited-stock message may be perfectly accurate; the point is whether knowing that changes your decision.
+
+The card is small, appears in a corner, and stays until you close it — it does not time out while you are reading it. It is never placed over a form field, a submit button, or anything on the purchase path.
+
+PRIVACY AND PERMISSIONS
+
+Chrome will tell you Vero can read the websites you visit, and that is accurate: it needs to, because these techniques turn up on small and new shops as often as on big ones, and no list of sites would cover them. What it does with that access is narrow:
+
+• It reads a page and decides whether it is a shop first. On anything else — email, news, documents, chat — it stops, records nothing, and stays out of the way.
+• It never runs on banking, health, government or webmail sites.
+• There is no account, and no advertising or analytics company is involved at any point.
+• Out of the box it makes no network requests at all. You can check: open DevTools, go to the Network tab, and browse.
+
+Everything it notices stays on your device. Detections are deleted after 30 days by default, and you can change that in Settings; the product history that lets it spot a countdown that resets or a "was" price that is never charged is kept up to 90 days. You can export or erase all of it at any time.
+
+OPTIONAL: HELP MEASURE THESE TECHNIQUES
+
+One setting, off by default and not pre-ticked, shares which shops use which techniques so their prevalence can be measured. It does name the shop: a report says "someone saw a countdown on shein.com today." It never sends the page, the product, your searches, page text, prices, your account, anything that identifies you, or any time more precise than the day. Reports go out in batches, not at the moment something is found, and you can read the exact reports waiting to be sent before any of them are. Turning it off deletes anything not yet sent.
+
+CONTROLS
+
+Choose how often you are interrupted: every time you reach checkout, once per site, or never — read the summary on your own schedule instead.
+
+Every technique in the list above has its own switch. Turn off anything you find unhelpful — one you already watch for yourself is just noise. Switching one off stops it being recorded at all, not merely stops it being shown.
+
+OPEN SOURCE
+
+The full source, including the list of excluded sites and the exact wording of every prompt, is public: https://github.com/viditChhajed/vero

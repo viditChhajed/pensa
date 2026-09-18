@@ -33,6 +33,10 @@ English (United States).
 
 ## Detailed description
 
+**Paste from [store/description.txt](store/description.txt)** — unwrapped, current, and the
+version submitted. The block below is the original wrapped draft, kept for history; the
+store renders line breaks literally, so do not paste it.
+
 ```
 Vero notices the techniques a shopping page is using — countdown timers,
 "only 3 left" messages, crossed-out reference prices, pre-ticked add-ons, fees that appear
