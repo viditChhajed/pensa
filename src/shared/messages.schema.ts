@@ -131,6 +131,17 @@ export const ObservationPayload = z.object({
   }),
 });
 
+export const PageViewPayload = z.object({
+  type: z.literal("pageview"),
+  viewId: z.string().regex(/^[a-z0-9]{8,40}$/),
+  origin: Origin,
+  stage: z.enum(["browse", "pdp"]),
+  // Plain strings here; the worker keeps only ids that are real patterns. A page cannot put
+  // anything into a record that is not already a member of the taxonomy.
+  exposed: z.array(z.string().max(64)).max(32),
+  addedToCart: z.boolean(),
+});
+
 export const GetSummary = z.object({ type: z.literal("get-summary") });
 export const DiagnoseRegistration = z.object({
   type: z.literal("diagnose-registration"),
@@ -152,6 +163,7 @@ export const Message = z.discriminatedUnion("type", [
   CandidatesPayload,
   TriggerPayload,
   ChoicePayload,
+  PageViewPayload,
   GetSummary,
   DiagnoseRegistration,
   ExportEvents,

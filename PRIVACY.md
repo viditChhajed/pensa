@@ -1,6 +1,6 @@
 # Privacy Policy — Vero
 
-**Last updated: 2026-09-17**
+**Last updated: 2026-09-18**
 
 ## The short version
 
@@ -9,7 +9,9 @@ the default settings it makes no network requests of any kind. Everything it not
 page is processed on your device and stays on your device.
 
 The one exception is a setting you have to switch on yourself: sharing which shops use which
-techniques, described in full below. It is off unless you turn it on.
+techniques, and whether you added the item to your cart after seeing them, described in full
+below. It is off unless you turn it on. Vero asks you about it once, on the first card it shows
+you; closing that card without answering counts as no.
 
 With sharing off, nothing reaches any server — that is what the "zero outbound requests" test
 asserts against the compiled extension. With sharing on, reports go to exactly one address, a
@@ -66,6 +68,14 @@ once per second, and a page it finds nothing on produces nothing.
   declined yourself (for example "gift wrap: chosen"). This is what stops Vero reporting an
   add-on you picked as one you did not.
 
+**Open page views, only while sharing is on** — at most 30 minutes each:
+
+- For a product or listing page you are looking at: the shop, whether it is a product or
+  listing page, and which techniques have been on screen so far. This is how Vero knows, when
+  you click Add to Cart, what you had seen before deciding. It is turned into the reports
+  described below when you click Add to Cart or after 30 minutes without activity, then
+  deleted. Nothing is held while sharing is off, and switching it off deletes anything held.
+
 **Settings** you choose, until you change them.
 
 You can export or delete everything from the Settings page ("Export my data", "Delete all my
@@ -120,7 +130,14 @@ removes the permission entirely.
 ## Optional: helping measure these techniques
 
 There is a setting to share which shops use which techniques. **It is off by default and there
-is no pre-checked box.** While it is off, nothing is transmitted and nothing is even recorded
+is no pre-checked box.**
+
+**How you are asked.** Once, at the bottom of the first card Vero shows you, after you have
+seen what it does. The question says who builds Vero, what the data is for, and what is shared,
+in the question itself rather than behind a link. The two answers — "Yes, share" and "No
+thanks" — are the same size and style, neither is selected for you, and closing the card
+without answering is recorded as no. You are not asked again. You can change your answer at
+any time in Settings. While it is off, nothing is transmitted and nothing is even recorded
 for transmission — the queue is not filled and then withheld, because a queue that accumulates
 while you have said no is one that would empty the moment you said yes.
 
@@ -128,7 +145,9 @@ while you have said no is one that would empty the moment you said yes.
 shop, of how often these techniques are used. A report says *"someone saw a countdown on
 shein.com today."* It is sent to a server run by this project and stored there.
 
-Each report carries exactly eight fields and no others:
+There are two kinds of report.
+
+**1. What a shop showed.** Each carries exactly eight fields and no others:
 
 | | |
 |---|---|
@@ -141,7 +160,32 @@ Each report carries exactly eight fields and no others:
 | rule pack version | |
 | **day** | the date, never a time |
 
-Never included: the page, the product, the search, the path or the full web address; any page
+**2. Whether an item was added to the cart.** On product and listing pages only. When you leave
+such a page, or click Add to Cart on it, Vero sends one report saying whether you clicked Add to
+Cart, plus one more for each technique that was on screen *before* you decided. Each carries
+exactly seven fields and no others:
+
+| | |
+|---|---|
+| pattern type | e.g. `urgency.countdown`, or `_page` for the page itself |
+| funnel stage | listing or product page only |
+| **shop** | the main domain only, e.g. `shein.com` |
+| shop category | e.g. `fast_fashion`, or `other` |
+| rule pack version | |
+| **day** | the date, never a time |
+| **added to cart** | yes or no |
+
+"Added to cart" means you clicked an Add to Cart button, not that the item was actually added —
+Vero does not check. A page's reports are sent as separate counts, never as a list of what one
+page showed together, because that combination could identify the page. Nothing about the item
+is included: not its name, price, or address.
+
+This measures association, not effect. It can say that product pages showing a countdown on a
+given shop were followed by an add some share of the time, compared with that shop's pages
+overall. It cannot say the countdown caused the difference, and nothing published from it will
+claim that.
+
+Never included in either kind: the page, the product, the search, the path or the full web address; any page
 text or prices; your account, name, email, or any identifier for you or your browser; and any
 time more precise than the day. The record type is declared `.strict()` in the extension and
 the server independently rejects any report with a field outside that list, so an accidentally
@@ -178,8 +222,9 @@ You can see the exact reports that would be sent, verbatim, in **Settings → He
 techniques → Show me exactly what would be sent**. Asking you to consent to a sentence about
 your data is not the same as showing you the data.
 
-**What the collected data is used for.** Measuring how common persuasion techniques are, which
-shops use them, where in the checkout they appear, and how that changes over time. Findings
+**What the collected data is used for.** Research into persuasion techniques in online shopping:
+how common they are, which shops use them, where in the checkout they appear, how often page
+views that show each one are followed by an add to cart, and how all of that changes over time. Findings
 may be published. Anything published is aggregated so that no single browsing session can be
 picked out: a shop and technique are only included once enough independent batches have
 reported them. The data is not sold, licensed, or used for advertising.

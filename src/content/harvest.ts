@@ -965,6 +965,55 @@ function readStructuralSignals(doc: Document) {
     if (/\bremove\b|\bdelete\b/.test(n) || REMOVE_CTL.test(n.trim())) markUp(el, hasRemoveWithin);
   }
 
+  /**
+   * Is this element inside something the shopper cannot see?
+   *
+   * Shopify themes render the cart drawer into every product page and hide it until opened —
+   * `display: none` in older themes, `visibility: hidden` plus a transform in Dawn. Its rows
+   * were counted anyway, so a product page opened with items already in the cart was judged a
+   * CART page before the shopper did anything: stage-dependent detectors ran as if at the cart,
+   * and the add-to-cart outcome measure (which only runs on listing and product pages) never
+   * started a view on it. Only called for the handful of candidate rows, and memoised, so the
+   * computed-style reads stay bounded.
+   *
+   * A drawer parked off-screen with a transform and nothing else still counts. Catching that
+   * needs layout, which this read phase does not do for rows.
+   */
+  const hiddenMemo = new Map<Element, boolean>();
+  const isHidden = (el: Element): boolean => {
+    // `visibility` inherits and a child can override it back to visible, so it is read once,
+    // on the row itself, whose computed value already accounts for its ancestors. `display:
+    // none` and the attributes cannot be overridden from below, so those walk upward.
+    if (doc.defaultView?.getComputedStyle(el).visibility === "hidden") return true;
+    const path: Element[] = [];
+    let node: Element | null = el;
+    let hidden = false;
+    while (node && node !== doc.documentElement) {
+      const known = hiddenMemo.get(node);
+      if (known !== undefined) {
+        hidden = known;
+        break;
+      }
+      path.push(node);
+      if (
+        node.hasAttribute("hidden") ||
+        node.hasAttribute("inert") ||
+        node.getAttribute("aria-hidden") === "true"
+      ) {
+        hidden = true;
+        break;
+      }
+      const cs = doc.defaultView?.getComputedStyle(node);
+      if (cs?.display === "none") {
+        hidden = true;
+        break;
+      }
+      node = node.parentElement;
+    }
+    for (const p of path) hiddenMemo.set(p, hidden);
+    return hidden;
+  };
+
   // Money-summary rows: a short element carrying a money label AND a price.
   for (const el of post) {
     const t = textOf.get(el) ?? "";
@@ -973,6 +1022,7 @@ function readStructuralSignals(doc: Document) {
     if (!MONEY_LABEL.test(t)) continue;
     // Only count leaf-ish rows so a wrapper is not counted alongside its children.
     if (el.querySelector("div, li, tr, section")) continue;
+    if (isHidden(el)) continue;
     moneySummaryRows++;
     if (TOTAL_LABEL.test(t)) hasTotalRow = true;
   }
@@ -1003,7 +1053,7 @@ function readStructuralSignals(doc: Document) {
     }
   }
   for (const row of rows) {
-    if (!hasRowInside.has(row)) cartLineItems++;
+    if (!hasRowInside.has(row) && !isHidden(row)) cartLineItems++;
   }
 
   // Step chrome: "Cart > Place Order > Pay > Order Complete".

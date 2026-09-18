@@ -377,6 +377,42 @@ export interface CardItem {
   citation?: string;
 }
 
+/**
+ * The one-time sharing question, attached to the first card.
+ *
+ * Its own design rules, because a tool that points out persuasion has no business using any:
+ *
+ *   - The two answers are the SAME element with the same class. Not a filled button and a
+ *     grey link; `interference.visual_asymmetry` would flag that, and should.
+ *   - No default. Nothing is focused, nothing is pre-selected, nothing happens on a timer.
+ *   - Closing the card without answering is an answer — no — and it is never asked again.
+ *   - It says what is shared, including the shop's name and whether the item was added to the
+ *     cart, in the question itself, not behind a link.
+ */
+export const CONSENT_COPY = {
+  heading: "One question for you",
+  ask:
+    "Vero is built by one young independent developer. Would you share what it notices? It " +
+    "supports that work and helps build a research dataset on how common these techniques " +
+    "are across shops, and how often people add an item to their cart after seeing one.",
+  detail:
+    "Shared: which technique appeared on which shop (like shein.com), the day, and whether " +
+    "you added the item to your cart. Never the page, the product, prices, or anything that " +
+    "identifies you. You can change this at any time in Settings.",
+  yes: "Yes, share",
+  no: "No thanks",
+  thanksYes: "Thank you. Sharing is on, and you can turn it off in Settings.",
+  thanksNo: "Understood. Nothing will be shared.",
+} as const;
+
+/** `true`/`false` for an answer, `null` for a card closed without one. */
+export type ConsentAnswer = boolean | null;
+
+export interface ShowOptions {
+  askConsent?: boolean;
+  onConsent?: (answer: ConsentAnswer) => void;
+}
+
 export class DigestCard {
   private host: HTMLElement | null = null;
   private timer: number | null = null;
@@ -384,13 +420,15 @@ export class DigestCard {
   private mode: PlacementMode = "suppressed";
   private recheck: (() => void) | null = null;
   private recheckQueued = false;
+  /** Set while an unanswered sharing question is on screen; called once, then cleared. */
+  private pendingConsent: ((answer: ConsentAnswer) => void) | null = null;
 
   /**
    * Renders and returns what was ACTUALLY displayed. Layout can shift between the capacity
    * measurement and the render, so placement is re-checked here and this return value — not
    * the earlier estimate — is what gets recorded.
    */
-  show(items: CardItem[]): PlacementMode {
+  show(items: CardItem[], opts: ShowOptions = {}): PlacementMode {
     if (items.length === 0) return "suppressed";
     this.dismiss();
 
@@ -405,7 +443,12 @@ export class DigestCard {
     this.applyPosition(host, placement);
 
     const root = host.attachShadow({ mode: "closed" });
-    root.append(this.styles(), placement.mode === "pill" ? this.pill(items) : this.card(items));
+    const body = placement.mode === "pill" ? this.pill(items) : this.card(items);
+    if (placement.mode === "card" && opts.askConsent && opts.onConsent) {
+      this.pendingConsent = opts.onConsent;
+      body.append(this.consent());
+    }
+    root.append(this.styles(), body);
 
     document.documentElement.append(host);
     this.host = host;
@@ -438,6 +481,10 @@ export class DigestCard {
         padding: 14px 16px;
         font-size: 13.5px;
         line-height: 1.5;
+        /* The sharing question makes the first card taller; on a short window it scrolls
+           inside itself rather than running off the bottom of the screen. */
+        max-height: calc(100vh - 32px);
+        overflow-y: auto;
       }
       @media (prefers-color-scheme: dark) {
         .card { background:#1f2126; color:#eceef2; border-color:#33363d; }
@@ -489,6 +536,23 @@ export class DigestCard {
       .citation { font-size: 11.5px; color: #6b7280; margin-top: 4px; }
       @media (prefers-color-scheme: dark) {
         .why summary, .citation { color: #a6acb8; }
+      }
+      .consent { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eceef2; }
+      .consent p + p { margin-top: 6px; }
+      .consent .detail { font-size: 12px; color: #5b616e; }
+      .answers { display: flex; gap: 8px; margin-top: 10px; }
+      /* Both answers share this rule and nothing else. Same size, weight, colour, border. */
+      button.answer {
+        flex: 1 1 0; text-align: center; font-size: 13px; font-weight: 600;
+        padding: 8px 10px; border-radius: 8px; border: 1px solid #c9ccd3;
+        background: transparent; color: inherit;
+      }
+      button.answer:hover { background: rgba(0,0,0,.05); border-color: #9ea3ad; }
+      @media (prefers-color-scheme: dark) {
+        .consent { border-color: #33363d; }
+        .consent .detail { color: #a6acb8; }
+        button.answer { border-color: #4a4d55; }
+        button.answer:hover { background: rgba(255,255,255,.08); }
       }
     `;
     return style;
@@ -643,7 +707,55 @@ export class DigestCard {
     this.applyPosition(host, iconAnchoredPlacement(this.items.length));
   }
 
+  /** Resolve the sharing question exactly once, however the card goes away. */
+  private answer(value: ConsentAnswer): void {
+    const cb = this.pendingConsent;
+    this.pendingConsent = null;
+    cb?.(value);
+  }
+
+  private consent(): HTMLElement {
+    const box = document.createElement("div");
+    box.className = "consent";
+    box.setAttribute("role", "group");
+    box.setAttribute("aria-label", CONSENT_COPY.heading);
+
+    const h = document.createElement("p");
+    h.className = "label";
+    h.textContent = CONSENT_COPY.heading;
+    const ask = document.createElement("p");
+    ask.textContent = CONSENT_COPY.ask;
+    const detail = document.createElement("p");
+    detail.className = "detail";
+    detail.textContent = CONSENT_COPY.detail;
+
+    const row = document.createElement("div");
+    row.className = "answers";
+    const make = (text: string, value: boolean): HTMLButtonElement => {
+      const b = document.createElement("button");
+      b.type = "button";
+      // Identical class for both. See CONSENT_COPY.
+      b.className = "answer";
+      b.setAttribute("data-consent", String(value));
+      b.textContent = text;
+      b.addEventListener("click", () => {
+        this.answer(value);
+        const done = document.createElement("p");
+        done.className = "detail";
+        done.textContent = value ? CONSENT_COPY.thanksYes : CONSENT_COPY.thanksNo;
+        box.replaceChildren(done);
+      });
+      return b;
+    };
+    row.append(make(CONSENT_COPY.yes, true), make(CONSENT_COPY.no, false));
+
+    box.append(h, ask, detail, row);
+    return box;
+  }
+
   dismiss(): void {
+    // Closed with the question unanswered: that is a no, recorded so it is not asked again.
+    if (this.pendingConsent) this.answer(null);
     if (this.recheck) {
       removeEventListener("scroll", this.recheck);
       removeEventListener("resize", this.recheck);

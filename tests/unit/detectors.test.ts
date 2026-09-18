@@ -327,6 +327,51 @@ describe("cart line items — nested price markup", () => {
 });
 
 /**
+ * A CLOSED cart drawer is not a cart. Shopify renders the drawer into every product page and
+ * hides it until opened; its rows were counted anyway, so a product page opened with items
+ * already in the cart read as a cart page before the shopper did anything.
+ */
+describe("cart line items — hidden drawers", () => {
+  const drawerRows = `
+    <div class="row"><div><span>$45.00</span></div><input type="number" value="1" aria-label="Quantity"><button>Remove</button></div>
+    <div class="row"><div><span>$12.00</span></div><input type="number" value="1" aria-label="Quantity"><button>Remove</button></div>
+    <div class="sum">Subtotal $57.00</div><div class="sum">Total $57.00</div>`;
+  const pdp = `
+    <script type="application/ld+json">{"@type":"Product","name":"Tote"}</script>
+    <h1>Tote</h1><p>$45.00</p><button id="atc">Add to cart</button>`;
+  const url = "https://shop.example.com/products/tote";
+
+  for (const [how, attrs] of [
+    ["display: none", 'style="display:none"'],
+    ["visibility: hidden (Dawn)", 'style="visibility:hidden"'],
+    ["the hidden attribute", "hidden"],
+    ["aria-hidden", 'aria-hidden="true"'],
+    ["inert", "inert"],
+  ] as const) {
+    it(`ignores rows inside a drawer closed with ${how}`, () => {
+      document.body.innerHTML = `${pdp}<aside ${attrs}>${drawerRows}</aside>`;
+      const meta = readDocumentMeta(document, url);
+      expect(meta.cartLineItems).toBe(0);
+      expect(meta.moneySummaryRows).toBe(0);
+      expect(classifyStage(url, meta)).toBe("pdp");
+    });
+  }
+
+  it("counts the same rows once the drawer is open", () => {
+    document.body.innerHTML = `${pdp}<aside>${drawerRows}</aside>`;
+    const meta = readDocumentMeta(document, url);
+    expect(meta.cartLineItems).toBe(2);
+    expect(classifyStage(url, meta)).toBe("cart");
+  });
+
+  it("counts a row a child makes visible inside a visibility-hidden parent", () => {
+    // visibility inherits and can be overridden from below; display cannot.
+    document.body.innerHTML = `${pdp}<aside style="visibility:hidden"><div style="visibility:visible">${drawerRows}</div></aside>`;
+    expect(readDocumentMeta(document, url).cartLineItems).toBe(2);
+  });
+});
+
+/**
  * Bombas prices a pack as `$55  <s>$60</s>  8% Pack Savings` — live price FIRST, and a
  * savings badge whose wording matches neither the reference-price lexemes nor the
  * `% off` badge pattern. Reported from the field as a miss, so pinning it: the struck

@@ -52,6 +52,13 @@ const PERF_BUDGET_MS = 50;
 /** One temporal observation per visit, not per re-render (plan §18A). */
 const OBSERVATION_INTERVAL_MS = 60_000;
 
+/** Random, lowercase alphanumeric. Identifies one page view to the worker and nothing else. */
+function newViewId(): string {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => (b % 36).toString(36)).join("");
+}
+
 interface Scored {
   candidate: DetectionCandidate;
   salienceKey: string;
@@ -181,6 +188,19 @@ export default defineUnlistedScript(() => {
    * records each piece of copy once rather than once per pass. Cleared on navigation.
    */
   let reported = new Set<string>();
+  /**
+   * The current page view, for the add-to-cart outcome measure (src/background/outcomes.ts).
+   *
+   * `exposed` holds only techniques that cleared the salience gate — were on screen for real —
+   * and it is frozen at the add-to-cart click, because the view ends there. Something that
+   * appears in the drawer the click opened was not seen before the decision and is not
+   * credited with it. Regenerated on navigation; the id never leaves the device.
+   */
+  let viewId = newViewId();
+  let viewStage: "browse" | "pdp" | null = null;
+  let viewEnded = false;
+  let exposed = new Set<string>();
+  let viewAnnounced = false;
   /** Add-on choices made before the page was confirmed as a shop. Keys only, capped. */
   const pendingChoices: AddonChoice[] = [];
   /** Detectors the shopper switched off in Settings. Refreshed on confirmation and per trigger. */
@@ -400,6 +420,8 @@ export default defineUnlistedScript(() => {
       });
     }
 
+    reportView(false);
+
     // §18A: resolve this page's offer identity and contribute one observation per visit.
     // Rate-limited so an SPA re-rendering ten times a minute does not inflate the history
     // into ten "sightings" and manufacture a temporal claim out of a single visit.
@@ -554,6 +576,47 @@ export default defineUnlistedScript(() => {
     }
   }
 
+  /**
+   * Tell the worker about this page view: on its first pass, whenever another technique clears
+   * the salience gate, and once at the add-to-cart click, which ends it. Only on listing and
+   * product pages, where adding to cart is the decision being made. The worker drops all of it
+   * unless sharing is on.
+   */
+  function reportView(addedToCart: boolean): void {
+    if (!commerceConfirmed || viewEnded) return;
+    if (viewStage === null) {
+      if (stage !== "browse" && stage !== "pdp") return;
+      viewStage = stage;
+    }
+    let grew = false;
+    for (const { candidate: c, salienceKey } of latest) {
+      if (disabledDetectors.has(c.patternId) || exposed.has(c.patternId)) continue;
+      if (!salience.passesGate(salienceKey)) continue;
+      exposed.add(c.patternId);
+      grew = true;
+    }
+    const first = !viewAnnounced;
+    if (!addedToCart && !first && !grew) return;
+    viewAnnounced = true;
+    if (addedToCart) viewEnded = true;
+    void send({
+      type: "pageview",
+      viewId,
+      origin: pageOrigin,
+      stage: viewStage,
+      exposed: [...exposed].slice(0, 32),
+      addedToCart,
+    });
+  }
+
+  function startNewView(): void {
+    viewId = newViewId();
+    viewStage = null;
+    viewEnded = false;
+    viewAnnounced = false;
+    exposed = new Set();
+  }
+
   async function refreshDisabled(): Promise<void> {
     const settings = await send<Settings>({ type: "get-settings" });
     if (settings?.disabledDetectors) disabledDetectors = new Set(settings.disabledDetectors);
@@ -563,6 +626,9 @@ export default defineUnlistedScript(() => {
     // Belt and braces: the listener is only attached once the page is confirmed, but a
     // stage-change trigger arrives through a different path.
     if (!commerceConfirmed) return;
+    // Before anything awaits: the view ends at the click, with exactly what was on screen
+    // before it. A re-scan below would let the drawer the click opened into the exposure set.
+    if (kind === "add_to_cart") reportView(true);
     // A setting changed in another tab should apply to the digest being built right now.
     await refreshDisabled();
 
@@ -650,7 +716,16 @@ export default defineUnlistedScript(() => {
 
     const cap = capacity;
     if (reply?.items && reply.items.length > 0 && reply.mode !== "suppressed") {
-      const rendered = card.show(reply.items);
+      const rendered = card.show(reply.items, {
+        askConsent: reply.askConsent === true,
+        // Any answer, including closing the card, is recorded so the question is never
+        // asked twice. Only an explicit "Yes, share" turns sharing on.
+        onConsent: (answer) =>
+          void send({
+            type: "set-settings",
+            patch: { telemetryConsent: answer === true, telemetryConsentAskedAt: Date.now() },
+          }),
+      });
       console.info(`[vero] digest ${reply.mode} -> rendered ${rendered}`);
     } else {
       const why = (reply as { issues?: string[]; error?: string } | null)?.issues;
@@ -722,6 +797,7 @@ export default defineUnlistedScript(() => {
     nav.addEventListener("navigate", () => {
       // A new page is a new set of copy; the previous page's keys must not suppress it.
       reported = new Set();
+      startNewView();
       void schedulePass(true);
     });
   } else {
@@ -730,6 +806,7 @@ export default defineUnlistedScript(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
         reported = new Set();
+        startNewView();
         void schedulePass(true);
       }
     }, 800);

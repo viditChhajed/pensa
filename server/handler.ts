@@ -1,5 +1,5 @@
 /**
- * The telemetry sink (plan §11, §18G). Per-site prevalence, record version 2.
+ * The telemetry sink (plan §11, §18G). Per-site prevalence (v2), plus page-view outcomes (v3).
  *
  * Written as `(Request) => Response` so it drops into Vercel Edge, Cloudflare Workers or
  * Deno Deploy unchanged, and is three lines from a Node server.
@@ -58,10 +58,39 @@ export interface CountRow {
   quartile: number;
 }
 
+/**
+ * The seven permitted keys of a page-view outcome (v3), and nothing else. Mirrors
+ * OutcomeRecord in src/shared/schema.ts, independently, for the reason given above.
+ */
+const OUTCOME_KEYS = [
+  "patternId",
+  "funnelStage",
+  "site",
+  "originCategory",
+  "rulepackVersion",
+  "dayBucket",
+  "addedToCart",
+] as const;
+const OUTCOME_STAGES = new Set(["browse", "pdp"]);
+/** Pattern ids are `family.name`; `_page` is the per-view baseline. */
+const OUTCOME_PATTERN = /^(_page|[a-z_]{1,32}\.[a-z_]{1,32})$/;
+
+export interface OutcomeRow {
+  patternId: string;
+  funnelStage: string;
+  site: string;
+  originCategory: string;
+  rulepackVersion: string;
+  dayBucket: number;
+  addedToCart: boolean;
+}
+
 /** Where aggregates go. Injected so the handler stays host- and database-agnostic. */
 export interface Store {
   /** Add `n` to each row's counter and increment its reporter count by one. */
   increment(rows: CountRow[]): Promise<void>;
+  /** Same, for page-view outcomes. */
+  incrementOutcomes(rows: OutcomeRow[]): Promise<void>;
 }
 
 const MAX_RECORDS_PER_BATCH = 500;
@@ -96,6 +125,25 @@ function isValid(record: unknown): record is CountRow & { confidenceQuartile: nu
   return true;
 }
 
+function isValidOutcome(record: unknown): record is OutcomeRow {
+  if (typeof record !== "object" || record === null) return false;
+  const r = record as Record<string, unknown>;
+  const keys = Object.keys(r);
+  if (keys.length !== OUTCOME_KEYS.length) return false;
+  for (const k of OUTCOME_KEYS) if (!(k in r)) return false;
+
+  if (typeof r.patternId !== "string" || !OUTCOME_PATTERN.test(r.patternId)) return false;
+  if (typeof r.funnelStage !== "string" || !OUTCOME_STAGES.has(r.funnelStage)) return false;
+  if (typeof r.site !== "string" || r.site.length > 253 || !SITE.test(r.site)) return false;
+  if (typeof r.originCategory !== "string" || !CATEGORIES.has(r.originCategory)) return false;
+  if (typeof r.rulepackVersion !== "string" || r.rulepackVersion.length > 32) return false;
+  if (typeof r.addedToCart !== "boolean") return false;
+  if (typeof r.dayBucket !== "number" || !Number.isInteger(r.dayBucket)) return false;
+  const today = Math.floor(Date.now() / 86_400_000);
+  if (Math.abs(today - r.dayBucket) > MAX_DAY_SKEW) return false;
+  return true;
+}
+
 export async function handle(req: Request, store: Store): Promise<Response> {
   if (req.method !== "POST") return new Response(null, { status: 405 });
 
@@ -121,10 +169,20 @@ export async function handle(req: Request, store: Store): Promise<Response> {
   }
 
   if (typeof body !== "object" || body === null) return new Response(null, { status: 400 });
-  const { v, records } = body as { v?: unknown; records?: unknown };
-  if (v !== 2) return new Response(null, { status: 400 });
-  if (!Array.isArray(records)) return new Response(null, { status: 400 });
-  if (records.length === 0 || records.length > MAX_RECORDS_PER_BATCH) {
+  // v2: prevalence counts only. v3: counts plus page-view outcomes in a separate array, which
+  // may be empty on either side but not both. The limit is on the two together.
+  const { v, records, outcomes = [] } = body as {
+    v?: unknown;
+    records?: unknown;
+    outcomes?: unknown;
+  };
+  if (v !== 2 && v !== 3) return new Response(null, { status: 400 });
+  if (!Array.isArray(records) || !Array.isArray(outcomes)) {
+    return new Response(null, { status: 400 });
+  }
+  if (v === 2 && outcomes.length > 0) return new Response(null, { status: 400 });
+  const total = records.length + outcomes.length;
+  if (total === 0 || total > MAX_RECORDS_PER_BATCH) {
     return new Response(null, { status: 400 });
   }
 
@@ -146,7 +204,22 @@ export async function handle(req: Request, store: Store): Promise<Response> {
     });
   }
 
-  await store.increment(rows);
+  const outcomeRows: OutcomeRow[] = [];
+  for (const o of outcomes) {
+    if (!isValidOutcome(o)) return new Response(null, { status: 422 });
+    outcomeRows.push({
+      patternId: o.patternId,
+      funnelStage: o.funnelStage,
+      site: o.site,
+      originCategory: o.originCategory,
+      rulepackVersion: o.rulepackVersion,
+      dayBucket: o.dayBucket,
+      addedToCart: o.addedToCart,
+    });
+  }
+
+  if (rows.length > 0) await store.increment(rows);
+  if (outcomeRows.length > 0) await store.incrementOutcomes(outcomeRows);
 
   // No body. Anything returned is a channel back to the client, and there is nothing the
   // client needs to know — not even how many rows were accepted, which would let a caller

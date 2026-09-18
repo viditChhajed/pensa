@@ -33,6 +33,13 @@ no row finer than that can exist — plus four views: `site_prevalence`, `patter
 `site_prevalence_public`**, which only releases a shop/technique pair once 20 independent
 batches have reported it.
 
+Version 3 adds an `outcomes` table (add-to-cart outcomes per technique, with a `_page`
+baseline per view) and three views: `pattern_add_rate`, `site_pattern_add_rate` (each
+technique's add rate beside its shop's baseline, and the `lift` between them), and
+`site_pattern_add_rate_public`, floored the same way. These measure association, not effect;
+the comment on `pattern_add_rate` in schema.sql says why. The schema file is safe to re-run on
+an existing database: every statement is `create … if not exists`.
+
 ## 4. Confirm request logging is off — before deploying
 
 The service never reads a header other than `content-type` (a unit test enforces it). That is

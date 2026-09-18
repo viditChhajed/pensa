@@ -54,7 +54,9 @@ Everything it notices stays on your device. Detections are deleted after 30 days
 
 OPTIONAL: HELP MEASURE THESE TECHNIQUES
 
-One setting, off by default and not pre-ticked, shares which shops use which techniques so their prevalence can be measured. It does name the shop: a report says "someone saw a countdown on shein.com today." It never sends the page, the product, your searches, page text, prices, your account, anything that identifies you, or any time more precise than the day. Reports go out in batches, not at the moment something is found, and you can read the exact reports waiting to be sent before any of them are. Turning it off deletes anything not yet sent.
+One setting, off by default and not pre-ticked, shares which shops use which techniques, and whether people added the item to their cart after seeing them, so their prevalence can be researched. Vero asks once, on the first card it shows you, with two equal answers; closing the card counts as no.
+
+It does name the shop: a report says "someone saw a countdown on shein.com today." On product pages it also says whether Add to Cart was clicked. It never sends the page, the product, your searches, page text, prices, your account, anything that identifies you, or any time more precise than the day. Reports go out in batches, not at the moment something is found, and you can read the exact reports waiting to be sent before any of them are. Turning it off deletes anything not yet sent.
 
 CONTROLS
 

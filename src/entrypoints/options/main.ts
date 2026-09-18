@@ -247,7 +247,11 @@ async function renderPending(): Promise<void> {
   }
 
   const count = document.createElement("p");
-  count.textContent = `${records.length} count(s) queued. Newest first:`;
+  const outcomes = records.filter((r) => "addedToCart" in r).length;
+  count.textContent =
+    `${records.length} report(s) queued` +
+    (outcomes > 0 ? `, ${outcomes} of them add-to-cart outcomes` : "") +
+    ". Newest first:";
   pendingEl.append(count);
 
   const pre = document.createElement("pre");

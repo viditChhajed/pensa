@@ -42,15 +42,43 @@ import { ALLOWLIST_VERSION, categoryForOrigin } from "@/shared/category";
 import { MAX_BATCH_AGE_MS, MIN_BATCH, QUEUE_CAP, TELEMETRY_ENDPOINT } from "@/shared/constants";
 import { registrableDomain } from "@/shared/domain";
 import type { DetectionEvent, Settings } from "@/shared/schema";
-import { TelemetryRecord } from "@/shared/schema";
+import { OutcomeRecord, TelemetryRecord } from "@/shared/schema";
 
 export { MAX_BATCH_AGE_MS, MIN_BATCH, QUEUE_CAP, TELEMETRY_ENDPOINT };
+
+/** Largest batch one request carries. Must not exceed the server's MAX_RECORDS_PER_BATCH. */
+export const MAX_SEND = 500;
+
+/** Either kind of row the queue holds. The two strict schemas share no shape, so a row parses as exactly one. */
+export type AnyRecord = TelemetryRecord | OutcomeRecord;
 
 export interface QueuedRecord {
   /** Autoincrement. Dexie needs a key; it never leaves the device. */
   id?: number;
   queuedAt: number;
-  record: TelemetryRecord;
+  record: AnyRecord;
+}
+
+export function isOutcome(r: AnyRecord): r is OutcomeRecord {
+  return "addedToCart" in r;
+}
+
+/**
+ * The shop a record may name, or null if it may not name one.
+ *
+ * https only — the permission Vero holds is https, and a record naming an http origin could
+ * only have come from a test build or a hand-written row. The registrable domain only, so
+ * subdomains merge and no path, query or page identity can travel.
+ */
+export function siteOf(origin: string): { site: string; category: string } | null {
+  if (!origin.startsWith("https://")) return null;
+  let host: string;
+  try {
+    host = new URL(origin).hostname;
+  } catch {
+    return null;
+  }
+  return { site: registrableDomain(host), category: categoryForOrigin(origin) ?? "other" };
 }
 
 /**
@@ -68,7 +96,8 @@ function parseQueued(rows: { id?: number; queuedAt: number; record: unknown }[])
   const valid: QueuedRecord[] = [];
   const corruptIds: number[] = [];
   for (const row of rows) {
-    const parsed = TelemetryRecord.safeParse(row.record);
+    const asCount = TelemetryRecord.safeParse(row.record);
+    const parsed = asCount.success ? asCount : OutcomeRecord.safeParse(row.record);
     if (parsed.success) valid.push({ id: row.id, queuedAt: row.queuedAt, record: parsed.data });
     else if (row.id !== undefined) corruptIds.push(row.id);
   }
@@ -94,23 +123,16 @@ function quartileOf(confidence: number): 1 | 2 | 3 | 4 {
  * field here deliberately, in a function whose whole subject is what may not be sent.
  */
 export function toRecord(event: DetectionEvent): TelemetryRecord | null {
-  let host: string;
-  try {
-    host = new URL(event.origin).hostname;
-  } catch {
-    return null;
-  }
-  // https only. The permission Vero holds is https, and a record naming an http origin could
-  // only have come from a test build or a hand-written row.
-  if (!event.origin.startsWith("https://")) return null;
+  const where = siteOf(event.origin);
+  if (!where) return null;
 
   const candidate = {
     patternId: event.patternId,
     detectorId: event.detectorId,
     confidenceQuartile: quartileOf(event.confidence),
     funnelStage: event.funnelStage,
-    site: registrableDomain(host),
-    originCategory: categoryForOrigin(event.origin) ?? "other",
+    site: where.site,
+    originCategory: where.category,
     rulepackVersion: ALLOWLIST_VERSION,
     dayBucket: dayBucket(event.ts),
   };
@@ -138,6 +160,28 @@ export async function enqueue(events: DetectionEvent[], settings: Settings): Pro
     const record = toRecord(event);
     if (record) rows.push({ queuedAt: now, record });
   }
+  return addRows(rows);
+}
+
+/**
+ * Queue page-view outcomes (src/background/outcomes.ts). Same rules: no consent, no row; and
+ * every row re-parsed against its strict schema here, not trusted from the caller.
+ */
+export async function enqueueOutcomes(
+  records: OutcomeRecord[],
+  settings: Settings,
+): Promise<number> {
+  if (!settings.telemetryConsent) return 0;
+  const now = Date.now();
+  const rows: QueuedRecord[] = [];
+  for (const r of records) {
+    const parsed = OutcomeRecord.safeParse(r);
+    if (parsed.success) rows.push({ queuedAt: now, record: parsed.data });
+  }
+  return addRows(rows);
+}
+
+async function addRows(rows: QueuedRecord[]): Promise<number> {
   if (rows.length === 0) return 0;
 
   const db = getDb();
@@ -198,7 +242,11 @@ export async function flush(
     return { sent: 0, held: queued.length, reason: "too_small" };
   }
 
-  const ready = queued;
+  // At most MAX_SEND per request, oldest first. This used to send the whole queue — up to
+  // QUEUE_CAP, 5,000 — against a server that refuses any batch over 500, so a queue that ever
+  // grew past 500 (a few days offline) was rejected on every flush from then on and never
+  // drained. The remainder goes on the next alarm.
+  const ready = queued.slice(0, MAX_SEND);
 
   try {
     const res = await fetchImpl(TELEMETRY_ENDPOINT, {
@@ -207,9 +255,13 @@ export async function flush(
       // No credentials, no cookies, no custom headers. A header is a field, and the point of
       // this payload is that it has no fields beyond the eight listed at the top.
       credentials: "omit",
-      // v2: the record names the site and buckets by day. The server rejects v1 bodies, so
-      // an old build cannot keep sending the hour-resolution shape after this ships.
-      body: JSON.stringify({ v: 2, records: ready.map((r) => r.record) }),
+      // v3: v2's prevalence counts, plus page-view outcomes in their own array. Kept apart
+      // rather than tagged, so the server validates each against its own exact key set.
+      body: JSON.stringify({
+        v: 3,
+        records: ready.filter((r) => !isOutcome(r.record)).map((r) => r.record),
+        outcomes: ready.filter((r) => isOutcome(r.record)).map((r) => r.record),
+      }),
     });
     if (!res.ok) return { sent: 0, held: queued.length, reason: "failed" };
   } catch {
@@ -220,7 +272,7 @@ export async function flush(
   await db.telemetry.bulkDelete(
     ready.map((r) => r.id).filter((id): id is number => id !== undefined),
   );
-  return { sent: ready.length, held: 0, reason: "sent" };
+  return { sent: ready.length, held: queued.length - ready.length, reason: "sent" };
 }
 
 /**
@@ -235,7 +287,7 @@ export async function discardQueue(): Promise<void> {
   await getDb().telemetry.clear();
 }
 
-export async function pendingRecords(limit = 200): Promise<TelemetryRecord[]> {
+export async function pendingRecords(limit = 200): Promise<AnyRecord[]> {
   const rows = await getDb().telemetry.orderBy("queuedAt").reverse().limit(limit).toArray();
   return parseQueued(rows).valid.map((r) => r.record);
 }

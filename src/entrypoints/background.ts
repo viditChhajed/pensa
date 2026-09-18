@@ -8,6 +8,7 @@ import {
   readSettings,
   writeSettings,
 } from "@/background/db";
+import { discardViews, notePageView, sweepViews } from "@/background/outcomes";
 import { recordObservation } from "@/background/recordOffer";
 import { currentSessionId, decideDigest, recordPassive } from "@/background/session";
 import {
@@ -96,7 +97,11 @@ export default defineBackground(() => {
 /** Send whatever is consented to and ready to go. Logs its own outcome. */
 async function flushTelemetry(): Promise<void> {
   try {
-    const result = await flush(await readSettings());
+    const settings = await readSettings();
+    // End views that went idle first, so their non-adds travel in this batch rather than
+    // waiting six more hours behind it.
+    await sweepViews(settings);
+    const result = await flush(settings);
     // Every branch is worth seeing. "Nothing was sent" has several causes with different
     // fixes: no consent, no endpoint compiled in, too few records yet, or a failed request.
     if (result.reason !== "no_consent" || result.sent > 0) {
@@ -180,6 +185,9 @@ async function handleMessage(raw: unknown): Promise<unknown> {
       return { ok: true };
     }
 
+    case "pageview":
+      return { queued: await notePageView(msg, await readSettings()) };
+
     case "candidates": {
       if (msg.intent === "record") {
         const { recorded } = await recordPassive(
@@ -188,7 +196,12 @@ async function handleMessage(raw: unknown): Promise<unknown> {
           msg.stage,
           msg.items,
         );
-        return { type: "show-digest", items: [], mode: "suppressed", recorded } satisfies ShowDigest & {
+        return {
+          type: "show-digest",
+          items: [],
+          mode: "suppressed",
+          recorded,
+        } satisfies ShowDigest & {
           recorded: number;
         };
       }
@@ -209,10 +222,20 @@ async function handleMessage(raw: unknown): Promise<unknown> {
         msg.offerKey,
         msg.placement,
       );
+      // The one-time sharing question rides on the first full card, and only then: it is
+      // asked right after the person has seen what Vero does, never before, and never again
+      // once answered or dismissed. A pill has no room to explain it honestly, so it waits.
+      const settings = await readSettings();
+      const askConsent =
+        decision.mode === "card" &&
+        decision.items.length > 0 &&
+        !settings.telemetryConsent &&
+        settings.telemetryConsentAskedAt === undefined;
       return {
         type: "show-digest",
         items: decision.items,
         mode: decision.mode,
+        ...(askConsent ? { askConsent: true } : {}),
       } satisfies ShowDigest;
     }
 
@@ -353,13 +376,17 @@ async function handleMessage(raw: unknown): Promise<unknown> {
       // Anything already gathered was gathered under a permission that has been revoked, and
       // holding it for six hours in case they change their mind is not the user's decision
       // to have made for them.
-      if (msg.patch.telemetryConsent === false) await discardQueue();
+      if (msg.patch.telemetryConsent === false) {
+        await discardQueue();
+        await discardViews();
+      }
       return updated;
     }
 
     case "clear-data":
       await clearAllData();
       await clearLedgers();
+      await discardViews();
       return { ok: true };
 
     default:

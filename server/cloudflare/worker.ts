@@ -6,7 +6,7 @@
  * them apart is what lets the rules be unit-tested without a Worker runtime, and what makes
  * a move to another host a change to this file alone.
  */
-import { type CountRow, handle, type Store } from "../handler";
+import { type CountRow, handle, type OutcomeRow, type Store } from "../handler";
 
 export interface Env {
   DB: D1Database;
@@ -75,6 +75,49 @@ function d1Store(env: Env): Store {
             r.rulepackVersion,
             r.dayBucket,
             r.quartile,
+            n,
+          ),
+        ),
+      );
+    },
+
+    /** Same collapse-then-write as `increment`, and for the same reason: `reporters` counts batches. */
+    async incrementOutcomes(rows: OutcomeRow[]): Promise<void> {
+      const cohorts = new Map<string, { row: OutcomeRow; n: number }>();
+      for (const r of rows) {
+        const key = [
+          r.patternId,
+          r.funnelStage,
+          r.site,
+          r.originCategory,
+          r.rulepackVersion,
+          r.dayBucket,
+          r.addedToCart ? 1 : 0,
+        ].join("\u0000");
+        const hit = cohorts.get(key);
+        if (hit) hit.n++;
+        else cohorts.set(key, { row: r, n: 1 });
+      }
+
+      const statement = env.DB.prepare(
+        `insert into outcomes (pattern_id, funnel_stage, site, origin_category, rulepack_version,
+                               day_bucket, added_to_cart, n, reporters)
+         values (?, ?, ?, ?, ?, ?, ?, ?, 1)
+         on conflict (pattern_id, funnel_stage, site, origin_category, rulepack_version,
+                      day_bucket, added_to_cart)
+         do update set n = n + excluded.n, reporters = reporters + 1`,
+      );
+
+      await env.DB.batch(
+        [...cohorts.values()].map(({ row: r, n }) =>
+          statement.bind(
+            r.patternId,
+            r.funnelStage,
+            r.site,
+            r.originCategory,
+            r.rulepackVersion,
+            r.dayBucket,
+            r.addedToCart ? 1 : 0,
             n,
           ),
         ),

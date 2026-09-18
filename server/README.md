@@ -12,11 +12,11 @@ public URL, and the guarantees in PRIVACY.md have to survive that.
 
 | Rule | Why |
 |---|---|
-| Reject any body that is not an array of the exact eight-field v2 record | The record type is `.strict()` on the client for a reason; an extra field arriving from anywhere is a leak |
+| Reject any body that is not an array of the exact eight-field prevalence record (v2/v3), plus in v3 an array of the exact seven-field outcome record | Both record types are `.strict()` on the client for a reason; an extra field arriving from anywhere is a leak |
 | `site` must be a bare registrable domain | It is the one free-text-shaped column, so it is where a modified client would try to put a URL, a path or an identifier |
 | **Never log or store the IP address** | An IP beside a shop name and a day re-identifies a person. This is the single most important line in the file |
 | Aggregate on write, keep no rows | A store of individual records is a store that can be correlated later; a store of counters cannot |
-| Publish only from `site_prevalence_public` (≥ 20 batches) | Raw per-site counts are for analysis; anything shared outside the project comes from the floored view |
+| Publish only from `site_prevalence_public` and `site_pattern_add_rate_public` (≥ 20 batches) | Raw per-site counts are for analysis; anything shared outside the project comes from the floored view |
 | No cookies, no auth, no session | There is nothing to authenticate. An identifier added for "abuse prevention" would defeat the entire design |
 | Rate-limit by coarse bucket, not by identity | Abuse control must not become a tracking mechanism |
 

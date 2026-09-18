@@ -70,6 +70,25 @@ export interface ChoicePayload {
   choices: { key: AddonKey; selected: boolean }[];
 }
 
+/**
+ * One product or listing page view, for the add-to-cart outcome measure.
+ *
+ * Sent when the view starts, again whenever another technique clears the salience gate, and
+ * once more with `addedToCart: true` at the click. The worker ends the view there, or after it
+ * goes idle. Carries technique ids and a boolean; never text, never the path. Dropped by the
+ * worker unless sharing is on — see src/background/outcomes.ts.
+ */
+export interface PageViewPayload {
+  type: "pageview";
+  /** Random per page view, regenerated on navigation. Never leaves the device. */
+  viewId: string;
+  origin: string;
+  stage: "browse" | "pdp";
+  /** Techniques that passed the salience gate on this view so far. */
+  exposed: string[];
+  addedToCart: boolean;
+}
+
 /** A page's contribution to the §18A temporal history, keyed by resolved offer identity. */
 export interface ObservationPayload {
   type: "observation";
@@ -157,6 +176,7 @@ export type Message =
   | CandidatesPayload
   | TriggerPayload
   | ChoicePayload
+  | PageViewPayload
   | GetSummary
   | DiagnoseRegistration
   | ExportEvents
@@ -179,6 +199,11 @@ export interface ShowDigest {
   }[];
   /** What the worker decided the page can hold. "suppressed" means render nothing. */
   mode: "card" | "pill" | "suppressed";
+  /**
+   * Attach the one-time sharing question to this card. True at most until it is answered or
+   * the card is closed, and only while sharing is off. See src/content/ui/card.ts.
+   */
+  askConsent?: boolean;
 }
 
 export async function send<T = unknown>(msg: Message): Promise<T | null> {

@@ -357,6 +357,43 @@ export const TelemetryRecord = z
   .strict();
 export type TelemetryRecord = z.infer<typeof TelemetryRecord>;
 
+/**
+ * The baseline row every page view contributes, whatever it showed. Without it an outcome
+ * rate has nothing to be compared against: "40% of pages with a countdown led to an add" is
+ * meaningless until you know what share of ALL product pages on that site did.
+ */
+export const PAGE_BASELINE = "_page" as const;
+
+/**
+ * One page view's outcome, for one technique that was on screen before the decision.
+ *
+ * A product or listing page view becomes 1 + k of these when it ends: one `_page` baseline and
+ * one per technique that passed the salience gate BEFORE any add-to-cart click. Split into
+ * independent rows on purpose — the set of techniques a single page showed together is a
+ * fingerprint of that page, and co-occurrence is not needed for a per-technique rate.
+ *
+ * What this measures is association, not effect. Pages that show countdowns differ from pages
+ * that do not in product, price and the shopper's intent, and all of that moves the add rate.
+ * The dataset can say "pages showing X were followed by an add N% of the time, against a
+ * site baseline of M%". It cannot say X caused the difference.
+ *
+ * `.strict()` for the same reason as TelemetryRecord: an unknown key is a leak.
+ */
+export const OutcomeRecord = z
+  .object({
+    patternId: z.union([PatternId, z.literal(PAGE_BASELINE)]),
+    /** Only stages where adding to cart is the decision being made. */
+    funnelStage: z.enum(["browse", "pdp"]),
+    site: TelemetryRecord.shape.site,
+    originCategory: z.string().max(32),
+    rulepackVersion: z.string().max(32),
+    dayBucket: z.number().int(),
+    /** Whether an add-to-cart click happened on this page view. The click, not a confirmed add. */
+    addedToCart: z.boolean(),
+  })
+  .strict();
+export type OutcomeRecord = z.infer<typeof OutcomeRecord>;
+
 // --------------------------------- rule packs ---------------------------------
 
 export const DetectorConfig = z.object({

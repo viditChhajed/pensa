@@ -16,7 +16,7 @@ import { execFileSync } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import { type BrowserContext, chromium, expect, test } from "@playwright/test";
 import { MIN_BATCH } from "@/shared/constants";
-import { type CountRow, handle } from "../../server/handler";
+import { type CountRow, handle, type OutcomeRow } from "../../server/handler";
 import { stageLocalBuild } from "./localBuild";
 
 const PORT = 9911;
@@ -28,6 +28,7 @@ let extensionId: string;
 
 /** Everything the sink accepted, and every raw body it saw — including rejected ones. */
 const stored: CountRow[] = [];
+const storedOutcomes: OutcomeRow[] = [];
 const bodies: unknown[] = [];
 
 test.beforeAll(async () => {
@@ -49,7 +50,10 @@ test.beforeAll(async () => {
           headers: { "content-type": req.headers["content-type"] ?? "" },
           body: raw,
         }),
-        { increment: async (rows) => void stored.push(...rows) },
+        {
+          increment: async (rows) => void stored.push(...rows),
+          incrementOutcomes: async (rows) => void storedOutcomes.push(...rows),
+        },
       );
       res.writeHead(response.status, { "access-control-allow-origin": "*" });
       res.end();
@@ -147,7 +151,7 @@ test("a consented batch reaches the sink, and carries exactly eight fields", asy
   await page.waitForTimeout(500);
 
   const body = bodies[0] as { v: number; records: Record<string, unknown>[] };
-  expect(body.v).toBe(2);
+  expect(body.v).toBe(3);
   expect(body.records.length).toBeGreaterThanOrEqual(MIN_BATCH);
 
   // The sink returns 422 on an extra key, so anything in `stored` already passed the strict
@@ -185,6 +189,58 @@ test("a consented batch reaches the sink, and carries exactly eight fields", asy
       ),
   );
   expect((pending as { records: unknown[] }).records).toEqual([]);
+
+  await page.close();
+});
+
+test("a page view's add-to-cart outcome reaches the sink as seven-field rows", async () => {
+  bodies.length = 0;
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/options.html`);
+  if (!(await page.locator("#telemetry").isChecked())) await page.locator("#telemetry").check();
+  await page.waitForTimeout(300);
+
+  // One view that showed two techniques and ended in an add, and enough filler views, ended
+  // the same way, to clear the minimum batch.
+  await page.evaluate(async (n) => {
+    const send = (msg: unknown) => new Promise((res) => chrome.runtime.sendMessage(msg, res));
+    for (let i = 0; i < n; i++) {
+      await send({
+        type: "pageview",
+        viewId: `view${String(i).padStart(8, "0")}`,
+        origin: "https://www.shein.com",
+        stage: "pdp",
+        exposed: i === 0 ? ["urgency.countdown", "scarcity.stock"] : [],
+        addedToCart: true,
+      });
+    }
+  }, MIN_BATCH + 2);
+
+  const [sw] = context.serviceWorkers();
+  await sw?.evaluate(() => chrome.alarms.create("telemetry", { when: Date.now() + 500 }));
+  await expect.poll(() => bodies.length, { timeout: 20_000 }).toBeGreaterThan(0);
+  await page.waitForTimeout(500);
+
+  const body = bodies[0] as { v: number; outcomes: Record<string, unknown>[] };
+  expect(body.v).toBe(3);
+  expect(storedOutcomes.length, "the sink accepted no outcomes").toBeGreaterThan(0);
+  for (const o of body.outcomes) {
+    expect(Object.keys(o).sort()).toEqual([
+      "addedToCart",
+      "dayBucket",
+      "funnelStage",
+      "originCategory",
+      "patternId",
+      "rulepackVersion",
+      "site",
+    ]);
+    expect(o.site).toBe("shein.com");
+  }
+  const patterns = body.outcomes.map((o) => o.patternId);
+  expect(patterns.filter((p) => p === "_page")).toHaveLength(MIN_BATCH + 2);
+  expect(patterns).toContain("urgency.countdown");
+  expect(patterns).toContain("scarcity.stock");
+  expect(JSON.stringify(body)).not.toContain("view0000");
 
   await page.close();
 });

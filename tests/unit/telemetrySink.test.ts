@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type CountRow, handle } from "../../server/handler";
+import { type CountRow, handle, type OutcomeRow } from "../../server/handler";
 
 /**
  * The sink's job is to disbelieve its client.
@@ -12,11 +12,16 @@ import { type CountRow, handle } from "../../server/handler";
 
 function fakeStore() {
   const rows: CountRow[] = [];
+  const outcomes: OutcomeRow[] = [];
   return {
     rows,
+    outcomes,
     store: {
       increment: async (r: CountRow[]) => {
         rows.push(...r);
+      },
+      incrementOutcomes: async (r: OutcomeRow[]) => {
+        outcomes.push(...r);
       },
     },
   };
@@ -156,7 +161,7 @@ describe("telemetry sink", () => {
     // writing a different shape into columns that now mean something else.
     const { store } = fakeStore();
     expect((await handle(post({ v: 1, records: [valid()] }), store)).status).toBe(400);
-    expect((await handle(post({ v: 3, records: [valid()] }), store)).status).toBe(400);
+    expect((await handle(post({ v: 4, records: [valid()] }), store)).status).toBe(400);
   });
 
   it("rejects anything that is not a POST of JSON", async () => {
@@ -181,5 +186,110 @@ describe("telemetry sink", () => {
     expect(headerReads, `handler reads headers: ${headerReads.join(", ")}`).toEqual([
       "content-type",
     ]);
+  });
+});
+
+const outcome = () => ({
+  patternId: "urgency.countdown",
+  funnelStage: "pdp",
+  site: "shein.com",
+  originCategory: "fast_fashion",
+  rulepackVersion: "1",
+  dayBucket: day,
+  addedToCart: true,
+});
+
+describe("telemetry sink — v3 page-view outcomes", () => {
+  it("accepts counts and outcomes together, and stores each in its own place", async () => {
+    const { rows, outcomes, store } = fakeStore();
+    const res = await handle(
+      post({
+        v: 3,
+        records: [valid()],
+        outcomes: [outcome(), { ...outcome(), patternId: "_page" }],
+      }),
+      store,
+    );
+    expect(res.status).toBe(204);
+    expect(rows).toHaveLength(1);
+    expect(outcomes.map((o) => o.patternId)).toEqual(["urgency.countdown", "_page"]);
+  });
+
+  it("accepts a v3 batch with only outcomes, or only counts", async () => {
+    const { store } = fakeStore();
+    expect((await handle(post({ v: 3, records: [], outcomes: [outcome()] }), store)).status).toBe(
+      204,
+    );
+    expect((await handle(post({ v: 3, records: [valid()], outcomes: [] }), store)).status).toBe(
+      204,
+    );
+    expect((await handle(post({ v: 3, records: [], outcomes: [] }), store)).status).toBe(400);
+  });
+
+  it("REJECTS an outcome carrying an extra field — a product, a path, a price", async () => {
+    const { outcomes, store } = fakeStore();
+    for (const extra of [
+      { path: "/p/1" },
+      { productId: "123" },
+      { price: 49.99 },
+      { ts: Date.now() },
+    ]) {
+      const res = await handle(
+        post({ v: 3, records: [], outcomes: [{ ...outcome(), ...extra }] }),
+        store,
+      );
+      expect(res.status, JSON.stringify(extra)).toBe(422);
+    }
+    expect(outcomes).toEqual([]);
+  });
+
+  it("rejects outcomes at stages where adding to cart is not the decision", async () => {
+    const { store } = fakeStore();
+    for (const funnelStage of ["cart", "checkout", "payment", "x"]) {
+      const res = await handle(
+        post({ v: 3, records: [], outcomes: [{ ...outcome(), funnelStage }] }),
+        store,
+      );
+      expect(res.status, funnelStage).toBe(422);
+    }
+  });
+
+  it("rejects a pattern id that is not shaped like one", async () => {
+    const { store } = fakeStore();
+    for (const patternId of ["https://x.com", "a.b.c", "_PAGE", "", "x".repeat(80)]) {
+      const res = await handle(
+        post({ v: 3, records: [], outcomes: [{ ...outcome(), patternId }] }),
+        store,
+      );
+      expect(res.status, patternId).toBe(422);
+    }
+  });
+
+  it("rejects a non-boolean outcome", async () => {
+    const { store } = fakeStore();
+    const res = await handle(
+      post({ v: 3, records: [], outcomes: [{ ...outcome(), addedToCart: 1 }] }),
+      store,
+    );
+    expect(res.status).toBe(422);
+  });
+
+  it("refuses outcomes under v2", async () => {
+    const { store } = fakeStore();
+    const res = await handle(post({ v: 2, records: [valid()], outcomes: [outcome()] }), store);
+    expect(res.status).toBe(400);
+  });
+
+  it("applies the 500 limit to counts and outcomes together", async () => {
+    const { store } = fakeStore();
+    const res = await handle(
+      post({
+        v: 3,
+        records: Array.from({ length: 300 }, valid),
+        outcomes: Array.from({ length: 201 }, outcome),
+      }),
+      store,
+    );
+    expect(res.status).toBe(400);
   });
 });

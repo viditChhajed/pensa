@@ -160,3 +160,36 @@ describe("cloudflare worker", () => {
     expect(bound, "a rejected batch reached the database").toEqual([]);
   });
 });
+
+describe("cloudflare worker — outcomes", () => {
+  it("binds outcome columns in the order the SQL declares, collapsed per cohort", async () => {
+    const { bound, env } = fakeD1();
+    const o = {
+      patternId: "urgency.countdown",
+      funnelStage: "pdp",
+      site: "shein.com",
+      originCategory: "fast_fashion",
+      rulepackVersion: "42",
+      dayBucket: day,
+      addedToCart: false,
+    };
+    const res = await worker.fetch(post({ v: 3, records: [], outcomes: [o, o, o] }), env);
+    expect(res.status).toBe(204);
+    const writes = bound.filter((b) => b.query.includes("insert into outcomes"));
+    // Three identical outcomes are one cohort: one write, n = 3, reporters + 1.
+    expect(writes).toHaveLength(1);
+    expect(writes[0]?.values).toEqual([
+      "urgency.countdown",
+      "pdp",
+      "shein.com",
+      "fast_fashion",
+      "42",
+      day,
+      0,
+      3,
+    ]);
+    expect(writes[0]?.query).toMatch(
+      /\(pattern_id, funnel_stage, site, origin_category, rulepack_version,\s+day_bucket, added_to_cart, n, reporters\)/,
+    );
+  });
+});
