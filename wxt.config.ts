@@ -56,7 +56,7 @@ export default defineConfig({
     name: "Vero",
     short_name: "Vero",
     description:
-      "Notices persuasion techniques on shopping pages and asks a question about them. Runs on your device; optional sharing is off by default.",
+      "Notices persuasion techniques on shopping pages and asks a question about them. Runs on your device; sharing is off by default.",
     version: "1.0.0",
 
     // Justification for each, for the store listing:
