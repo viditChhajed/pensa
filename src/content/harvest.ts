@@ -187,8 +187,6 @@ const TRIGGER_WORDS = [
   "unlock",
   "spend",
   "free shipping",
-  "interest-free",
-  "payments of",
   "no thanks",
   "i don",
   "i'd rather",
@@ -221,13 +219,10 @@ const TRIGGER_WORDS = [
   "someone",
   "claimed",
   "signed up",
-  // Goal-gradient and BNPL copy that can appear with no currency symbol.
+  // Goal-gradient copy that can appear with no currency symbol. (The installment words that
+  // sat here went with the installment detector in 1.1.0; nothing reads them now.)
   "qualify",
   "to go",
-  "installment",
-  "instalment",
-  "interest free",
-  "per month",
   /**
    * Deadline copy stated in words. "ends" was here; "ending" was not, and `includes("ends")`
    * does not match "ending" — so "Summer sale ending soon" was rejected by the prefilter and
