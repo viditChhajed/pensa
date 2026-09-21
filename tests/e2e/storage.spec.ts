@@ -105,7 +105,7 @@ test("the offers store accumulates across visits and yields a temporal claim", a
 
   const stored = await page.evaluate(async () => {
     const db: IDBDatabase = await new Promise((res, rej) => {
-      const r = indexedDB.open("vero");
+      const r = indexedDB.open("pensa");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });
@@ -187,7 +187,7 @@ test("delete all my data — CLICKED FROM THE OPTIONS UI — empties IndexedDB",
 async function countOffers(page: import("@playwright/test").Page): Promise<number> {
   return page.evaluate(async () => {
     const db: IDBDatabase = await new Promise((res, rej) => {
-      const r = indexedDB.open("vero");
+      const r = indexedDB.open("pensa");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });
@@ -260,7 +260,7 @@ test("an accumulated history produces a temporal claim in the digest", async () 
 
   const events = await page.evaluate(async () => {
     const db: IDBDatabase = await new Promise((res, rej) => {
-      const r = indexedDB.open("vero");
+      const r = indexedDB.open("pensa");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });

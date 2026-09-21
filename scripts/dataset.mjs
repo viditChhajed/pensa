@@ -20,7 +20,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const DATABASE = "vero-counts";
+const DATABASE = "pensa-counts";
 const CONFIG = resolve("server/cloudflare/wrangler.toml");
 
 /** The views schema.sql defines. Anything else must be passed as --sql, on purpose. */

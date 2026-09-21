@@ -43,7 +43,7 @@ async function ensureSchema(page: Page): Promise<void> {
         page.evaluate(
           () =>
             new Promise<boolean>((res) => {
-              const r = indexedDB.open("vero");
+              const r = indexedDB.open("pensa");
               r.onsuccess = () => res(r.result.objectStoreNames.contains("events"));
               r.onerror = () => res(false);
             }),
@@ -56,7 +56,7 @@ async function ensureSchema(page: Page): Promise<void> {
 async function seed(page: Page, n: number): Promise<void> {
   await page.evaluate(async (count) => {
     const db: IDBDatabase = await new Promise((res, rej) => {
-      const r = indexedDB.open("vero");
+      const r = indexedDB.open("pensa");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });

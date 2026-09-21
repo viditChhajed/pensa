@@ -15,7 +15,7 @@ the account owner.
 ## 2. Create the database
 
 ```bash
-npx wrangler d1 create vero-counts
+npx wrangler d1 create pensa-counts
 ```
 
 Copy the `database_id` it prints into `server/cloudflare/wrangler.toml`, replacing
@@ -87,7 +87,7 @@ Must print `422` — a path in `site`. If it prints anything else, **stop**: the
 not running and PRIVACY.md is not being enforced. Delete the test row afterwards:
 
 ```bash
-npx wrangler d1 execute vero-counts --remote --config server/cloudflare/wrangler.toml --command "delete from counts where detector_id in ('scarcity.stock@1','x') and site = 'shein.com' and n <= 1"
+npx wrangler d1 execute pensa-counts --remote --config server/cloudflare/wrangler.toml --command "delete from counts where detector_id in ('scarcity.stock@1','x') and site = 'shein.com' and n <= 1"
 ```
 
 ## 7. Point the extension at it

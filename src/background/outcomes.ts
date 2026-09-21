@@ -34,8 +34,7 @@ import type { PageViewPayload } from "@/shared/messages";
 import { type OutcomeRecord, PAGE_BASELINE, type Settings } from "@/shared/schema";
 import { PATTERN_IDS } from "@/shared/taxonomy";
 
-// Named under the extension's first published name (Vero). Kept: it is stored on installs.
-const STORAGE_KEY = "vero:views";
+const STORAGE_KEY = "pensa:views";
 /** A view with no activity for this long is over, and ended without an add. */
 export const VIEW_IDLE_MS = 30 * 60 * 1000;
 /** Bound on views held at once. The oldest is ended (as a non-add) to make room. */

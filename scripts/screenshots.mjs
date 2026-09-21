@@ -381,7 +381,7 @@ async function seedSummary(page) {
   await page.evaluate(
     async ([rows, origins]) => {
       const db = await new Promise((res, rej) => {
-        const r = indexedDB.open("vero");
+        const r = indexedDB.open("pensa");
         r.onsuccess = () => res(r.result);
         r.onerror = () => rej(r.error);
       });

@@ -27,7 +27,7 @@
     "screenshots": "node scripts/screenshots.mjs",
     "dataset": "node scripts/dataset.mjs",
     "sink:deploy": "wrangler deploy --config server/cloudflare/wrangler.toml",
-    "sink:schema": "wrangler d1 execute vero-counts --remote --config server/cloudflare/wrangler.toml --file server/cloudflare/schema.sql"
+    "sink:schema": "wrangler d1 execute pensa-counts --remote --config server/cloudflare/wrangler.toml --file server/cloudflare/schema.sql"
   },
   "author": "Vidit Chhajed",
   "license": "ISC",

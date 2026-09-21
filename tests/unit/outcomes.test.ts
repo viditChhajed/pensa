@@ -100,7 +100,7 @@ describe("a page view that ends in an add", () => {
       expect(r.funnelStage).toBe("pdp");
       expect(r.dayBucket).toBe(Math.floor(T0 / 86_400_000));
     }
-    expect(store["vero:views"]).toEqual({}); // ended, not held
+    expect(store["pensa:views"]).toEqual({}); // ended, not held
   });
 
   it("carries exactly seven fields, none of them about the item", async () => {
@@ -146,7 +146,7 @@ describe("views that end without an add", () => {
     for (let i = 0; i <= MAX_OPEN_VIEWS; i++) {
       await notePageView(view({ viewId: `v${String(i).padStart(11, "0")}` }), on, T0 + i);
     }
-    expect(Object.keys(store["vero:views"] as object)).toHaveLength(MAX_OPEN_VIEWS);
+    expect(Object.keys(store["pensa:views"] as object)).toHaveLength(MAX_OPEN_VIEWS);
     expect(queued).toHaveLength(1);
     expect(queued[0]?.addedToCart).toBe(false);
   });
@@ -192,7 +192,7 @@ describe("concurrency", () => {
       notePageView(view({ viewId: "tab100000000" }), on, T0),
       notePageView(view({ viewId: "tab200000000" }), on, T0),
     ]);
-    expect(Object.keys(store["vero:views"] as object).sort()).toEqual([
+    expect(Object.keys(store["pensa:views"] as object).sort()).toEqual([
       "tab100000000",
       "tab200000000",
     ]);

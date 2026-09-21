@@ -69,7 +69,7 @@ async function events(): Promise<{ patternId: string; stage: string; surfaced: b
   if (!sw) return [];
   return (await sw.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((res, rej) => {
-      const r = indexedDB.open("vero");
+      const r = indexedDB.open("pensa");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });

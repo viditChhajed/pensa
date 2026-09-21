@@ -56,7 +56,7 @@ async function historyDigest(page: Page, offerKey: string): Promise<unknown> {
 async function recordedPatterns(page: Page): Promise<string[]> {
   return page.evaluate(async () => {
     const db: IDBDatabase = await new Promise((res, rej) => {
-      const r = indexedDB.open("vero");
+      const r = indexedDB.open("pensa");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });
