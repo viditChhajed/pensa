@@ -3,14 +3,12 @@
     "scarcity.stock": 0.542,
     "urgency.countdown": 0.709,
     "social_proof.live_activity": 0.583,
-    "goal_gradient.threshold": 0.725,
-    "bnpl.installments": 1
+    "goal_gradient.threshold": 0.725
   },
   "positives": {
     "scarcity.stock": 24,
     "urgency.countdown": 86,
     "social_proof.live_activity": 12,
-    "goal_gradient.threshold": 80,
-    "bnpl.installments": 11
+    "goal_gradient.threshold": 80
   }
 }

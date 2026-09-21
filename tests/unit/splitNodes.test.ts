@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { bnplDetector } from "@/content/detectors/bnpl";
 import { scarcityDetector } from "@/content/detectors/scarcity";
 import { contextFrom } from "./helpers";
 
@@ -77,27 +76,5 @@ describe("scarcity reads a sentence split across elements", () => {
       `<div><div class="a"><span>3</span></div><div class="b">left-hand drive available</div></div>`,
     );
     expect(scarcityDetector.run(ctx)).toEqual([]);
-  });
-});
-
-describe("bnpl finds an amount rendered in a sibling", () => {
-  it("scores the same whether the price is inline or in its own span", () => {
-    const inline = bnplDetector.run(split("or 4 interest-free payments of $8.75"));
-    const sibling = bnplDetector.run(
-      split('<span>or 4 interest-free payments of </span><span class="amt">$8.75</span>'),
-    );
-    expect(inline).toHaveLength(1);
-    expect(sibling).toHaveLength(1);
-    expect(best(sibling), "the sibling-amount shape still scores lower").toBe(best(inline));
-    expect(best(sibling)).toBeGreaterThanOrEqual(0.75);
-  });
-
-  it("fires on the copy recorded in the field", () => {
-    // Shein, verbatim from EVAL run 1. Scored 0.70 against a 0.75 threshold on two visits.
-    const hits = bnplDetector.run(
-      split("<span>Pay now, or in</span> <span><b>4</b> payments of <b>$3.13</b></span>"),
-    );
-    expect(hits.length, "the recorded field copy still does not fire").toBeGreaterThan(0);
-    expect(best(hits)).toBeGreaterThanOrEqual(0.75);
   });
 });

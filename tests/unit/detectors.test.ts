@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { anchoringDetector } from "@/content/detectors/anchoring";
-import { bnplDetector } from "@/content/detectors/bnpl";
 import { charmDetector } from "@/content/detectors/charm";
 import { defaultsDetector } from "@/content/detectors/defaults";
 import { goalGradientDetector } from "@/content/detectors/goalGradient";
@@ -514,12 +513,6 @@ describe("field lexicon gaps", () => {
       "almost sold out during peak season and that you should plan ahead";
     const found = scarcityDetector.run(contextFrom(`<div>${prose}</div>`));
     expect(found[0]?.rawScore ?? 0).toBeLessThan(0.75);
-  });
-
-  it("surfaces an installment claim on its own", () => {
-    // Shein's "Pay now, or in 4 payments of $3.13" scored 0.70 against 0.75 on two visits.
-    const found = bnplDetector.run(contextFrom(`<div>Pay now, or in 4 payments of $3.13</div>`));
-    expect(found[0]?.rawScore ?? 0).toBeGreaterThanOrEqual(0.75);
   });
 });
 

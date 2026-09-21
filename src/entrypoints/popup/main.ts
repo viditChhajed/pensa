@@ -86,8 +86,13 @@ async function init(): Promise<void> {
   // registrableDomain here, which now pulls in the Public Suffix List — ~100 KB to open a
   // popup, for a label the address bar already shows.
   const domain = parsed.hostname.replace(/^www\./, "");
-  statusEl.textContent = `Pensa is running on ${domain}.`;
-  detailEl.textContent = "Patterns found on this page will appear when you add to cart.";
+  // Provisional, until the checks below settle it. It used to be final: "Pensa is running on
+  // X. Patterns found on this page will appear when you add to cart." was written first, and
+  // the shop verdict appended beneath it — so on a page that is not a shop the popup said it
+  // was running and would report patterns, then in the next line that it was idle and
+  // recording nothing. Now the verdict writes the headline.
+  statusEl.textContent = `Checking ${domain}…`;
+  detailEl.textContent = "";
 
   /**
    * "Running" is a claim, so check it.
@@ -122,7 +127,7 @@ async function init(): Promise<void> {
     if (report.excluded || !report.granted) return;
   }
 
-  renderPageKind(report?.active === true);
+  renderPageKind(domain, report?.active === true);
 }
 
 /**
@@ -139,13 +144,18 @@ async function init(): Promise<void> {
  * instead of the guess, and the answer for a page that is not a shop is the useful one:
  * nothing is being collected here.
  */
-function renderPageKind(active: boolean): void {
-  const line = document.createElement("p");
-  line.className = "detail score";
-  line.textContent = active
-    ? "This page is being checked for persuasion techniques."
-    : "This page does not look like a shop, so Pensa is idle here and is recording nothing.";
-  detailEl.after(line);
+function renderPageKind(domain: string, active: boolean): void {
+  if (active) {
+    statusEl.textContent = `Pensa is checking ${domain}.`;
+    detailEl.textContent = "If it notices anything, you will see a card when you add to cart.";
+  } else {
+    // Also what a shop shows in the first moments, before Pensa has finished reading it —
+    // hence "yet" rather than a flat verdict.
+    statusEl.textContent = `Pensa is idle on ${domain}.`;
+    detailEl.textContent =
+      "This page does not look like a shop (yet), so Pensa is not checking it or recording " +
+      "anything here.";
+  }
 }
 
 void init();

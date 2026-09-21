@@ -4,7 +4,6 @@
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { buildDigest } from "@/background/digest";
-import { bnplDetector } from "@/content/detectors/bnpl";
 import { confirmshamingDetector } from "@/content/detectors/confirmshaming";
 import { defaultsDetector } from "@/content/detectors/defaults";
 import { interferenceDetector } from "@/content/detectors/interference";
@@ -19,7 +18,7 @@ import type { DetectionCandidate } from "@/shared/schema";
 import { contextFrom } from "./helpers";
 
 const detects = (
-  detector: { run: typeof bnplDetector.run },
+  detector: { run: typeof urgencyDetector.run },
   html: string,
   stage: "pdp" | "cart" | "checkout" = "pdp",
 ) => detector.run(contextFrom(html, { stage }));
@@ -163,27 +162,6 @@ describe("add-to-cart attribute matching uses whole tokens", () => {
     ]) {
       expect(fired(attr), attr).toBe(true);
     }
-  });
-});
-
-describe("bnpl separates financing from subscriptions and hotels", () => {
-  it("does not treat a subscription plan price as installments", () => {
-    expect(detects(bnplDetector, `<p>Premium plans from $9.99/mo, cancel anytime</p>`)).toEqual([]);
-  });
-
-  it("does not treat 'Book now, pay later' at a hotel as BNPL", () => {
-    expect(detects(bnplDetector, `<p>Book now, pay later</p>`)).toEqual([]);
-  });
-
-  it("does not read a zip code as the Zip provider", () => {
-    const hits = detects(bnplDetector, `<p>Pay in 4 — enter your zip code</p>`);
-    expect(hits[0]?.subSignals.providerNamed).toBe(0);
-  });
-
-  it("still catches device financing with no provider named", () => {
-    expect(
-      detects(bnplDetector, `<p>Get the Apple Watch SE 3 starting at $24/mo.</p>`).length,
-    ).toBeGreaterThan(0);
   });
 });
 

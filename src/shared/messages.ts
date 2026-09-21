@@ -152,6 +152,22 @@ export interface ExportEvents {
   type: "export-events";
 }
 
+/**
+ * A card the worker decided to show, collected by the NEXT page on the same shop.
+ *
+ * On a site whose Add to Cart navigates to a cart page, the card is built for a page that is
+ * already being torn down. The worker holds each card until a page confirms it stayed on
+ * screen (`card-seen`); if none does, the next page on that origin takes it and shows it.
+ */
+export interface TakePendingCard {
+  type: "take-pending-card";
+  origin: string;
+}
+export interface CardSeen {
+  type: "card-seen";
+  origin: string;
+}
+
 export interface GetSettings {
   type: "get-settings";
 }
@@ -177,6 +193,8 @@ export type Message =
   | TriggerPayload
   | ChoicePayload
   | PageViewPayload
+  | TakePendingCard
+  | CardSeen
   | GetSummary
   | DiagnoseRegistration
   | ExportEvents

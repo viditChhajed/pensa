@@ -519,6 +519,12 @@ export default defineUnlistedScript(() => {
    * which the drawer is animating open anyway.
    */
   const SALIENCE_ACCRUAL_MS = 450;
+  /**
+   * How long a card must stay on screen before this page reports it seen. Longer than the gap
+   * between an Add to Cart click and a navigating page being torn down, which is what it
+   * distinguishes; short enough that a card someone closes at once still counts as seen.
+   */
+  const CARD_SEEN_MS = 1_500;
 
   /**
    * Total budget for waiting on a post-click page to become worth asking about.
@@ -567,6 +573,8 @@ export default defineUnlistedScript(() => {
    * exist until the page is confirmed, and text recording starts at the same moment.
    */
   function onCommerceConfirmed(): void {
+    // First, so a card lost to the navigation that brought us here appears as soon as possible.
+    void collectPendingCard();
     observer.startRecording();
     triggers.attach();
     void refreshDisabled();
@@ -615,6 +623,38 @@ export default defineUnlistedScript(() => {
     viewEnded = false;
     viewAnnounced = false;
     exposed = new Set();
+  }
+
+  /**
+   * Show a card the worker decided on, and tell it once the card has actually stayed up.
+   *
+   * The confirmation is what makes a card survive navigation. On a site whose Add to Cart
+   * loads a cart page, this page is torn down within moments of the click — the card rendered
+   * here for a few milliseconds and was never seen, and nothing noticed. The worker now holds
+   * every card until this confirmation arrives; a page that dies first never sends it, and the
+   * next page on the shop collects the card instead (`collectPendingCard`).
+   */
+  function renderDigest(reply: ShowDigest, source: "digest" | "carried over"): void {
+    const rendered = card.show(reply.items, {
+      askConsent: reply.askConsent === true,
+      // Any answer, including closing the card, is recorded so the question is never
+      // asked twice. Only an explicit "Yes, share" turns sharing on.
+      onConsent: (answer) =>
+        void send({
+          type: "set-settings",
+          patch: { telemetryConsent: answer === true, telemetryConsentAskedAt: Date.now() },
+        }),
+    });
+    console.info(`[pensa] ${source} ${reply.mode} -> rendered ${rendered}`);
+    setTimeout(() => void send({ type: "card-seen", origin: pageOrigin }), CARD_SEEN_MS);
+  }
+
+  /** Show a card the previous page on this shop was torn down before it could display. */
+  async function collectPendingCard(): Promise<void> {
+    const reply = await send<ShowDigest>({ type: "take-pending-card", origin: pageOrigin });
+    if (reply?.items && reply.items.length > 0 && reply.mode !== "suppressed") {
+      renderDigest(reply, "carried over");
+    }
   }
 
   async function refreshDisabled(): Promise<void> {
@@ -716,17 +756,7 @@ export default defineUnlistedScript(() => {
 
     const cap = capacity;
     if (reply?.items && reply.items.length > 0 && reply.mode !== "suppressed") {
-      const rendered = card.show(reply.items, {
-        askConsent: reply.askConsent === true,
-        // Any answer, including closing the card, is recorded so the question is never
-        // asked twice. Only an explicit "Yes, share" turns sharing on.
-        onConsent: (answer) =>
-          void send({
-            type: "set-settings",
-            patch: { telemetryConsent: answer === true, telemetryConsentAskedAt: Date.now() },
-          }),
-      });
-      console.info(`[pensa] digest ${reply.mode} -> rendered ${rendered}`);
+      renderDigest(reply, "digest");
     } else {
       const why = (reply as { issues?: string[]; error?: string } | null)?.issues;
       console.info(

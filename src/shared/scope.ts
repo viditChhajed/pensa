@@ -31,7 +31,6 @@ export const SHIPPED_PAGE_DETECTORS = [
   "social_proof.live_activity",
   "confirmshaming.decline_copy",
   "goal_gradient.threshold",
-  "bnpl.installments",
   // Tier 2
   "interference.visual_asymmetry",
   "decoy.asymmetric_dominance",

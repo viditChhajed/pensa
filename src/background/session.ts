@@ -19,7 +19,7 @@ import type {
 } from "@/shared/schema";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
 import { putEvents, readOffer, readSettings } from "./db";
-import { buildDigest, type RankInput, shouldShowDigest } from "./digest";
+import { buildDigest, frequencyKey, type RankInput, shouldShowDigest } from "./digest";
 import { detectDrip, detectSneak, dripCandidate } from "./dripPricing";
 import { loadLedger, noteDigest, noteEvents, saveLedger } from "./sessionLedger";
 import { enqueue } from "./telemetry";
@@ -270,11 +270,18 @@ export async function decideDigest(
     disabledDetectors: new Set(settings.disabledDetectors),
   });
 
+  // Which page this card belongs to, for the one-per-page debounce. The resolved product
+  // identity where there is one: path templates redact numeric ids, so /p/12345 and /p/67890
+  // are both /p/:id and would otherwise count as the same page.
+  const pageKey = offerKey ?? pathTemplate;
   const freq = await loadFrequencyState();
-  const gate = shouldShowDigest(settings.digestFrequency, origin, stage, {
-    shownThisSession: freq.shown,
-    originsShown: freq.origins,
-  });
+  const gate = shouldShowDigest(
+    settings.digestFrequency,
+    origin,
+    stage,
+    { shownThisSession: freq.shown, originsShown: freq.origins },
+    pageKey,
+  );
 
   // How much the page can actually display, measured page-side before ranking. Absent
   // capacity means an older content script; assume a full card rather than suppressing.
@@ -399,7 +406,7 @@ export async function decideDigest(
     return { items: [], mode: "suppressed" };
   }
 
-  freq.shown.add(`${origin}:${stage}`);
+  freq.shown.add(frequencyKey(origin, stage, pageKey));
   freq.origins.add(origin);
   await saveFrequencyState(freq);
   await recordPrompts(used);

@@ -21,7 +21,7 @@ unlisted listing is the honest place to be while that is still true.
 
 | | |
 |---|---|
-| Patterns shipped | **20** — 14 on-page + 2 cross-stage + 4 derived from visit history |
+| Patterns shipped | **19** — 13 on-page + 2 cross-stage + 4 derived from visit history |
 | Unit tests | 608 |
 | Real-browser e2e | 48 passing, 3 skipped (sites unreachable from this network) |
 | Bundle | 225 KB gzipped across all bundles, but the number that matters is the content script on every page load: **31 KB**. The service worker is 182 KB, most of it the Public Suffix List that names shops correctly, loaded once per worker wake and never in a page |
@@ -31,11 +31,15 @@ unlisted listing is the honest place to be while that is still true.
 | Detector recall | measured against 29,742 label rows over 4,957 distinct snippets from 44 shops — `npm run eval:detectors`. The corpus itself is **not distributed** (it is real retailer page text); see [CORPUS.md](CORPUS.md) to rebuild it, and `tests/eval/baseline.json` for the committed numbers |
 | Precision | 157 firings across 22 live sites, read claim by claim, most recently against the post-audit build — [EVAL.md](EVAL.md). Across three runs 29 wrong claims were found and fixed, each with a regression test. Plus 0 confirmed false positives in ~44 hand-checked firings across 6 retailers |
 
-**On the page (14):** `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
+**On the page (13):** `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
 `urgency.countdown`, `defaults.preselected`, `social_proof.live_activity`,
-`confirmshaming.decline_copy`, `goal_gradient.threshold`, `bnpl.installments`,
+`confirmshaming.decline_copy`, `goal_gradient.threshold`,
 `interference.visual_asymmetry`, `decoy.asymmetric_dominance`, `nagging.repeat_interstitial`,
 `framing.savings_ratio`, `loss_aversion.exit_intent`
+
+Installment framing (`bnpl.installments`) was removed in 1.1.0. Splitting a small price into
+payments changes nobody's decision, and pay-later options often genuinely help people; a card
+questioning them was noise at best.
 
 **Across a checkout flow (2):** `pricing.drip`, `basket.sneak` — these live in the service
 worker and take a session ledger rather than a page, so they are not in the content-script
@@ -66,7 +70,6 @@ same imagination — they agreed with each other and with nothing else.
 
 | pattern | recall | precision | |
 |---|---|---|---|
-| `bnpl.installments` | 1.00 | 1.00 | |
 | `goal_gradient.threshold` | 0.72 | 0.98 | |
 | `urgency.countdown` | 0.71 | 0.92 | |
 | `social_proof.live_activity` | 0.58 | 1.00 | |
@@ -80,7 +83,6 @@ Against the first measurement, before any of this was rewritten:
 | `goal_gradient.threshold` | 0.04 | **0.72** |
 | `urgency.countdown` | 0.11 | **0.71** |
 | `social_proof.live_activity` | 0.00 | **0.58** |
-| `bnpl.installments` | 0.29 | **1.00** |
 | `scarcity.stock` | 0.43 | **0.54** |
 
 Precision was not traded for it — it sits between 0.92 and 1.00, and every one of those

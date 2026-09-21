@@ -126,13 +126,13 @@ describe("the baseline", () => {
 
 describe("views that end without an add", () => {
   it("are ended by the sweep as non-adds, not silently dropped", async () => {
-    await notePageView(view({ exposed: ["bnpl.installments"] }), on, T0);
+    await notePageView(view({ exposed: ["scarcity.stock"] }), on, T0);
     await sweepViews(on, T0 + VIEW_IDLE_MS - 1);
     expect(queued).toEqual([]); // not idle yet
     await sweepViews(on, T0 + VIEW_IDLE_MS + 1);
     expect(queued.map((r) => [r.patternId, r.addedToCart])).toEqual([
       ["_page", false],
-      ["bnpl.installments", false],
+      ["scarcity.stock", false],
     ]);
   });
 

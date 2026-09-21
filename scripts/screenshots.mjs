@@ -361,8 +361,6 @@ const SEED = [
   ["social_proof.live_activity", "pdp", 2, false, "dedup_family"],
   ["defaults.preselected", "checkout", 1, true, "none"],
   ["defaults.preselected", "checkout", 1, false, "digest_full"],
-  ["bnpl.installments", "pdp", 0, false, "below_threshold"],
-  ["bnpl.installments", "pdp", 2, true, "none"],
   ["goal_gradient.threshold", "cart", 0, false, "placement_suppressed"],
   ["confirmshaming.decline_copy", "checkout", 1, false, "below_salience_gate"],
 ];

@@ -14,7 +14,6 @@ On the page in front of you:
 • Preselected options — warranties, add-ons, marketing opt-ins
 • Loaded decline wording — "No thanks, I don't want to save money"
 • Spend thresholds — "You're $12 away from free shipping"
-• Installment framing — "4 interest-free payments of $24.99"
 • Unequal button emphasis — a yes/no prompt where one choice is made far louder than the other
 • Decoy options — a third option that exists to make a second one look better
 • Repeated interruptions

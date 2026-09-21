@@ -19,7 +19,6 @@ export type PatternFamily =
   | "defaults"
   | "confirmshaming"
   | "goal_gradient"
-  | "bnpl"
   | "interference"
   | "decoy"
   | "nagging"
@@ -150,19 +149,6 @@ export const TAXONOMY = {
     citation:
       "Kivetz, R., Urminsky, O. & Zheng, Y. (2006). The Goal-Gradient Hypothesis Resurfaces. Journal of Marketing Research, 43(1), 39–58.",
     severityWeight: 0.55,
-    tier: 1,
-    crossStage: false,
-    temporal: false,
-  },
-  "bnpl.installments": {
-    id: "bnpl.installments",
-    family: "bnpl",
-    label: "Installment framing",
-    mechanism:
-      "Splitting a price into small future payments reduces how much the cost is felt right now.",
-    citation:
-      "Prelec, D. & Simester, D. (2001). Always Leave Home Without It: A Further Investigation of the Credit-Card Effect on Willingness to Pay. Marketing Letters, 12(1), 5–12. See also Laibson, D. (1997). Golden Eggs and Hyperbolic Discounting. Quarterly Journal of Economics, 112(2), 443–478.",
-    severityWeight: 0.75,
     tier: 1,
     crossStage: false,
     temporal: false,

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { bnplDetector } from "@/content/detectors/bnpl";
 import { confirmshamingDetector } from "@/content/detectors/confirmshaming";
 import { goalGradientDetector } from "@/content/detectors/goalGradient";
 import { socialProofDetector } from "@/content/detectors/socialProof";
@@ -123,35 +122,5 @@ describe("goal_gradient.threshold", () => {
       { stage: "cart" },
     );
     expect(goalGradientDetector.run(ctx).length).toBeGreaterThanOrEqual(1);
-  });
-});
-
-describe("bnpl.installments", () => {
-  it("fires on interest-free installment copy", () => {
-    const ctx = contextFrom(`<p>or 4 interest-free payments of $24.99 with Klarna</p>`);
-    const out = bnplDetector.run(ctx);
-    expect(out).toHaveLength(1);
-    expect(out[0]?.subSignals.providerNamed).toBe(1);
-  });
-
-  it('fires on "as low as $12/mo"', () => {
-    const ctx = contextFrom(`<p>As low as $12/mo</p>`);
-    expect(bnplDetector.run(ctx)).toHaveLength(1);
-  });
-
-  it("fires on a provider iframe with no copy", () => {
-    const ctx = contextFrom(`<a href="https://www.affirm.com/apply">Learn more</a>`);
-    expect(bnplDetector.run(ctx)).toHaveLength(1);
-  });
-
-  it('does NOT fire on the word "zip" in an address form', () => {
-    // A provider name alone is not enough — "Zip" is also a postcode field label.
-    const ctx = contextFrom(`<label>Zip code</label>`, { stage: "checkout" });
-    expect(bnplDetector.run(ctx)).toHaveLength(0);
-  });
-
-  it("does NOT fire on an ordinary total", () => {
-    const ctx = contextFrom(`<p>Total: $99.96</p>`, { stage: "checkout" });
-    expect(bnplDetector.run(ctx)).toHaveLength(0);
   });
 });

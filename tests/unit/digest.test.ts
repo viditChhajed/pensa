@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildDigest, type RankInput, rankOne, shouldShowDigest } from "@/background/digest";
+import {
+  buildDigest,
+  frequencyKey,
+  type RankInput,
+  rankOne,
+  shouldShowDigest,
+} from "@/background/digest";
 import type { DetectionCandidate } from "@/shared/schema";
 import type { PatternId } from "@/shared/taxonomy";
 
@@ -77,7 +83,7 @@ describe("buildDigest", () => {
         input("scarcity.stock", 0.9, 5000),
         input("urgency.countdown", 0.9, 5000),
         input("defaults.preselected", 0.9, 5000),
-        input("bnpl.installments", 0.9, 5000),
+        input("confirmshaming.decline_copy", 0.9, 5000),
         input("goal_gradient.threshold", 0.9, 5000),
         input("social_proof.live_activity", 0.9, 5000),
       ],
@@ -135,14 +141,45 @@ describe("shouldShowDigest", () => {
   });
 
   it("never re-fires for the same origin and stage in a session", () => {
-    const state = { ...empty, shownThisSession: new Set(["https://a.com:checkout"]) };
-    const r = shouldShowDigest("every_checkout", "https://a.com", "checkout", state);
+    const state = {
+      ...empty,
+      shownThisSession: new Set([frequencyKey("https://a.com", "checkout", "/checkout")]),
+    };
+    const r = shouldShowDigest("every_checkout", "https://a.com", "checkout", state, "/checkout");
     expect(r.show).toBe(false);
     expect(r.reason).toBe("debounced");
   });
 
+  it("shows again for a DIFFERENT product on the same shop, on the default setting", () => {
+    // The first card on a shop used to silence every later add-to-cart there all day.
+    const state = {
+      ...empty,
+      shownThisSession: new Set([frequencyKey("https://a.com", "pdp", "/products/:slug-1")]),
+    };
+    const r = shouldShowDigest(
+      "every_checkout",
+      "https://a.com",
+      "pdp",
+      state,
+      "/products/:slug-2",
+    );
+    expect(r.show).toBe(true);
+  });
+
+  it("once_per_site still stays quiet on a second product", () => {
+    const state = {
+      shownThisSession: new Set([frequencyKey("https://a.com", "pdp", "/products/:slug-1")]),
+      originsShown: new Set(["https://a.com"]),
+    };
+    const r = shouldShowDigest("once_per_site", "https://a.com", "pdp", state, "/products/:slug-2");
+    expect(r.show).toBe(false);
+  });
+
   it("still allows a different stage on the same origin", () => {
-    const state = { ...empty, shownThisSession: new Set(["https://a.com:cart"]) };
+    const state = {
+      ...empty,
+      shownThisSession: new Set([frequencyKey("https://a.com", "cart", "/cart")]),
+    };
     expect(shouldShowDigest("every_checkout", "https://a.com", "checkout", state).show).toBe(true);
   });
 

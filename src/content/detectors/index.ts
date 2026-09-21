@@ -8,7 +8,6 @@
 import type { DetectionCandidate, FunnelStage } from "@/shared/schema";
 import type { Detector, PageContext } from "../types";
 import { anchoringDetector } from "./anchoring";
-import { bnplDetector } from "./bnpl";
 import { charmDetector } from "./charm";
 import { confirmshamingDetector } from "./confirmshaming";
 import { decoyDetector } from "./decoy";
@@ -42,7 +41,6 @@ export const DETECTORS: readonly Detector[] = [
   socialProofDetector,
   confirmshamingDetector,
   goalGradientDetector,
-  bnplDetector,
   // Tier 2
   interferenceDetector,
   decoyDetector,

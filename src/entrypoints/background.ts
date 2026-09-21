@@ -122,6 +122,11 @@ async function housekeeping(): Promise<void> {
   }
 }
 
+/** storage.session key prefix for a card not yet confirmed seen. Session-only, cleared on close. */
+const PENDING_PREFIX = "pending-card:";
+/** How long a lost card waits for the next page. Long enough for a slow cart page to load. */
+const PENDING_CARD_TTL_MS = 60_000;
+
 async function handleMessage(raw: unknown): Promise<unknown> {
   // Cross-context input is a trust boundary like any other.
   const parsed = Message.safeParse(raw);
@@ -185,6 +190,20 @@ async function handleMessage(raw: unknown): Promise<unknown> {
       return { ok: true };
     }
 
+    case "take-pending-card": {
+      const key = PENDING_PREFIX + msg.origin;
+      const got = (await chrome.storage.session.get(key))[key] as
+        | { reply: ShowDigest; ts: number }
+        | undefined;
+      await chrome.storage.session.remove(key);
+      if (got && Date.now() - got.ts <= PENDING_CARD_TTL_MS) return got.reply;
+      return { type: "show-digest", items: [], mode: "suppressed" } satisfies ShowDigest;
+    }
+
+    case "card-seen":
+      await chrome.storage.session.remove(PENDING_PREFIX + msg.origin);
+      return { ok: true };
+
     case "pageview":
       return { queued: await notePageView(msg, await readSettings()) };
 
@@ -231,12 +250,20 @@ async function handleMessage(raw: unknown): Promise<unknown> {
         decision.items.length > 0 &&
         !settings.telemetryConsent &&
         settings.telemetryConsentAskedAt === undefined;
-      return {
+      const reply = {
         type: "show-digest",
         items: decision.items,
         mode: decision.mode,
         ...(askConsent ? { askConsent: true } : {}),
       } satisfies ShowDigest;
+      // Held until a page confirms the card stayed on screen. See TakePendingCard: on a site
+      // whose Add to Cart navigates, this reply arrives at a page that is already gone.
+      if (reply.mode !== "suppressed" && reply.items.length > 0) {
+        await chrome.storage.session.set({
+          [PENDING_PREFIX + msg.origin]: { reply, ts: Date.now() },
+        });
+      }
+      return reply;
     }
 
     case "observation": {

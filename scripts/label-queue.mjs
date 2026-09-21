@@ -189,38 +189,6 @@ export const TRAINABLE = [
       /\balmost there\b/i,
     ],
   },
-  {
-    id: "bnpl.installments",
-    label: "Pay in instalments",
-    question: "Is this offering to split the price into smaller payments?",
-    mechanism: "Splitting a price into small future payments reduces how much paying now hurts.",
-    yes: [
-      "4 interest-free payments of $24.99",
-      "Pay in 4 with Klarna",
-      "From $12/mo with Affirm",
-      "starting at $38/mo.",
-      "Pay in full or in installments",
-      // The category's own name, and it carries no digit — so every pattern that required
-      // one missed it, and the prefilter dropped it before that even mattered.
-      "Buy now, pay later",
-    ],
-    no: ["Total: $99.96", "Pay now", "Monthly newsletter"],
-    strict: [
-      /\b\d\s*(?:interest[- ]free\s+)?(?:payments?|instal?lments?)\s+of\b/i,
-      /\bpay in \d\b/i,
-      /\b(?:klarna|affirm|afterpay|sezzle|clearpay|quadpay)\b/i,
-    ],
-    loose: [
-      /\binterest[- ]free\b/i,
-      /\binstal?lment/i,
-      /\bas low as\b/i,
-      /\bper month\b/i,
-      /\/mo\b/i,
-      /\bfinanc/i,
-      /\bsplit\b/i,
-      /\bpayments?\b/i,
-    ],
-  },
 ];
 
 /**

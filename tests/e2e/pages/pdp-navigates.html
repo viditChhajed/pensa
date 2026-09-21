@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Linen Shirt — Test Shop</title>
+    <script type="application/ld+json">
+      { "@context": "https://schema.org", "@type": "Product", "name": "Linen Shirt",
+        "offers": { "@type": "Offer", "price": "48.00", "priceCurrency": "USD" } }
+    </script>
+    <meta property="og:type" content="product" />
+    <style>body { font: 16px system-ui; margin: 0; } main { padding: 24px; max-width: 620px; }</style>
+  </head>
+  <body>
+    <!--
+      A product page whose Add to Cart LEAVES the page, the way Amazon, WooCommerce and many
+      non-drawer Shopify themes work: a form POST to a cart page. Everything the shopper saw
+      here was on this page, and the page is gone before a card built after the click could
+      render on it.
+    -->
+    <main>
+      <h1>Linen Shirt</h1>
+      <p class="price">$48.00</p>
+      <p class="stock">Only 3 left in stock</p>
+      <p class="live">23 people are viewing this right now</p>
+      <form action="/cart-page.html" method="get">
+        <button id="atc" type="submit">Add to cart</button>
+      </form>
+    </main>
+  </body>
+</html>

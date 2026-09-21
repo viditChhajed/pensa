@@ -173,10 +173,24 @@ export function buildDigest(inputs: RankInput[], opts: DigestOptions): DigestRes
  * not deferred.
  */
 export interface FrequencyState {
-  /** `${origin}:${stage}` keys already digested this session. */
+  /** `frequencyKey()` keys — origin, stage and page — already digested this session. */
   shownThisSession: ReadonlySet<string>;
   /** Origins that have shown a digest at all this session. */
   originsShown: ReadonlySet<string>;
+}
+
+/**
+ * The debounce key: one card per PAGE per stage per session.
+ *
+ * It was origin + stage, so on the default "Every time I reach checkout" setting the first
+ * card on a shop's product page silenced every later add-to-cart on that shop for the rest of
+ * the day — a second product, a third, all quiet, which is not what "every time" says. The
+ * page part is the product's resolved identity where one exists, else the path template; a
+ * second click on the SAME page still shows nothing. "Once per site" is the setting for
+ * anyone who wants the quieter behaviour.
+ */
+export function frequencyKey(origin: string, stage: FunnelStage, page: string): string {
+  return `${origin}:${stage}:${page}`;
 }
 
 export function shouldShowDigest(
@@ -184,6 +198,7 @@ export function shouldShowDigest(
   origin: string,
   stage: FunnelStage,
   state: FrequencyState,
+  page = "",
 ): { show: boolean; reason: SuppressionReason } {
   if (frequency === "off" || frequency === "never_interrupt") {
     return { show: false, reason: "user_disabled" };
@@ -193,8 +208,8 @@ export function shouldShowDigest(
     return { show: false, reason: "debounced" };
   }
 
-  // Even on the most frequent setting: one digest per origin per stage per session.
-  if (state.shownThisSession.has(`${origin}:${stage}`)) {
+  // Even on the most frequent setting: one digest per page per stage per session.
+  if (state.shownThisSession.has(frequencyKey(origin, stage, page))) {
     return { show: false, reason: "debounced" };
   }
 

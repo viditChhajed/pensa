@@ -142,6 +142,9 @@ export const PageViewPayload = z.object({
   addedToCart: z.boolean(),
 });
 
+export const TakePendingCard = z.object({ type: z.literal("take-pending-card"), origin: Origin });
+export const CardSeen = z.object({ type: z.literal("card-seen"), origin: Origin });
+
 export const GetSummary = z.object({ type: z.literal("get-summary") });
 export const DiagnoseRegistration = z.object({
   type: z.literal("diagnose-registration"),
@@ -164,6 +167,8 @@ export const Message = z.discriminatedUnion("type", [
   TriggerPayload,
   ChoicePayload,
   PageViewPayload,
+  TakePendingCard,
+  CardSeen,
   GetSummary,
   DiagnoseRegistration,
   ExportEvents,

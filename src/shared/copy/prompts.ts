@@ -84,14 +84,6 @@ export const PROMPTS: Partial<Record<PatternId, readonly string[]>> = {
     "This showed you how close you were to a threshold. Is the shipping worth what it takes to earn it?",
   ],
 
-  "bnpl.installments": [
-    "This price was also shown as smaller payments over time. Does the full amount still fit your budget?",
-    "The page offered to split this cost into instalments. What is the total across every payment?",
-    "A pay-later option was displayed. Would you buy this if the whole amount were due today?",
-    "This was presented as a monthly figure. How does the total compare with what you meant to spend?",
-    "The cost was broken into parts here. Do you know what you would owe in three months?",
-  ],
-
   "pricing.drip": [
     "Charges appeared later here that were not in the first price you saw. Is the total still what you expected?",
     "The final amount includes fees added after the starting price. Would you have compared differently knowing the total up front?",
