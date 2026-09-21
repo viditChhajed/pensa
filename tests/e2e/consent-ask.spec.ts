@@ -27,7 +27,7 @@ let context: BrowserContext;
 let extensionId: string;
 
 test.beforeAll(async () => {
-  const build = stageLocalBuild("vero-consent-", ["https://shop.example.com/*"]);
+  const build = stageLocalBuild("pensa-consent-", ["https://shop.example.com/*"]);
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",
     args: [`--disable-extensions-except=${build}`, `--load-extension=${build}`],
@@ -47,7 +47,7 @@ async function openShop(): Promise<{ page: Page; logs: string[] }> {
   const page = await context.newPage();
   const logs: string[] = [];
   page.on("console", (m) => {
-    if (m.text().includes("[vero]")) logs.push(m.text());
+    if (m.text().includes("[pensa]")) logs.push(m.text());
   });
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());

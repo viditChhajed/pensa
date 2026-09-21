@@ -200,7 +200,7 @@ export async function recordPassive(
   try {
     await enqueue(events, settings);
   } catch (err) {
-    console.error("[vero] telemetry enqueue failed", err);
+    console.error("[pensa] telemetry enqueue failed", err);
   }
   return { recorded: events.length };
 }
@@ -261,7 +261,7 @@ export async function decideDigest(
       }
     } catch (err) {
       // A broken history must never take down the whole digest.
-      console.error("[vero] temporal claims failed", err);
+      console.error("[pensa] temporal claims failed", err);
     }
   }
 
@@ -357,7 +357,7 @@ export async function decideDigest(
     await enqueue(events, settings);
   } catch (err) {
     // Prevalence counting must never be able to break a digest.
-    console.error("[vero] telemetry enqueue failed", err);
+    console.error("[pensa] telemetry enqueue failed", err);
   }
 
   if (!gate.show || result.items.length === 0 || mode === "suppressed") {

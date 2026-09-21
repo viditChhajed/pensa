@@ -156,7 +156,7 @@ export default defineUnlistedScript(() => {
     const explained = explainStage(url, meta);
     if (explained.stage !== stage) {
       stage = explained.stage;
-      console.info(`[vero] stage -> ${stage} :: ${explained.reasons.join(" | ")}`);
+      console.info(`[pensa] stage -> ${stage} :: ${explained.reasons.join(" | ")}`);
       triggers.noteStageChange(stage);
     }
     return {
@@ -178,7 +178,7 @@ export default defineUnlistedScript(() => {
    * Has this page ever looked like a shop? Latched, not re-decided every pass.
    *
    * Single-page storefronts build the cart after the first paint, so a page that is not a
-   * shop at pass 1 can be one at pass 3 — the check has to be able to turn Vero ON later.
+   * shop at pass 1 can be one at pass 3 — the check has to be able to turn Pensa ON later.
    * It must not be able to turn it OFF again: a cart that empties is still a shop, and
    * flapping would mean a detection recorded on one pass and silently dropped on the next.
    */
@@ -220,7 +220,7 @@ export default defineUnlistedScript(() => {
    * and kayak.com the verdict was taken ~300ms after document_idle, when the page had rendered
    * ZERO prices — "prices 0, atc 0, booking 0, cartRows 0" — and the next looks came at 0.9s,
    * 2.1s, 4.5s, 9.3s. A travel search that paints its results at three seconds was judged on an
-   * empty skeleton and, with nothing else to trigger a re-read, stayed judged. Vero went silent
+   * empty skeleton and, with nothing else to trigger a re-read, stayed judged. Pensa went silent
    * on every travel and ticketing site in the audit.
    *
    * So for the first stretch of a page's life the interval stays flat and short; only after that
@@ -238,7 +238,7 @@ export default defineUnlistedScript(() => {
      * nothing.
      *
      * Deliberately BEFORE `buildContext`, so a page that is not a shop never pays for the
-     * harvest — which is the expensive half and which, now that Vero runs on every https
+     * harvest — which is the expensive half and which, now that Pensa runs on every https
      * page, would otherwise be paid on every page of the web. The cost of putting it here
      * is that `readDocumentMeta` runs twice on the one pass that first confirms a shop.
      * That is one extra structural read, once per page, against not walking the DOM at all
@@ -246,7 +246,7 @@ export default defineUnlistedScript(() => {
      *
      * Nothing downstream has run at this point: no detector, no salience observation, no
      * message to the worker, and therefore no row in the event log. A page that is not a
-     * shop leaves no trace that Vero was ever there — which, given the permission it now
+     * shop leaves no trace that Pensa was ever there — which, given the permission it now
      * holds, is the difference between a shopping tool and something that watches you
      * browse.
      */
@@ -261,7 +261,7 @@ export default defineUnlistedScript(() => {
         // again, but nothing consumes that set until a pass builds a context. Drained here, or
         // a chat or feed that never becomes a shop accumulates element references for hours.
         observer.takeDirtyRoots();
-        // Said once, at default log level. "Vero did nothing here" has two very different
+        // Said once, at default log level. "Pensa did nothing here" has two very different
         // causes — the page is not a shop, or the page is a shop the classifier cannot see —
         // and without the score and the signals there is no way to tell them apart. That
         // distinction is exactly what a silent travel or ticketing site turns on.
@@ -271,7 +271,7 @@ export default defineUnlistedScript(() => {
         if (notCommercePasses === 0) {
           const m = readDocumentMeta(document, location.href);
           console.info(
-            `[vero] not a shop (score ${verdict.score}) :: ` +
+            `[pensa] not a shop (score ${verdict.score}) :: ` +
               (verdict.reasons.length > 0 ? verdict.reasons.join(" | ") : "no commerce signals") +
               ` — prices ${m.pricedTextCount}, atc ${m.addToCartCtaCount}, checkout ` +
               `${m.checkoutCtaCount}, booking ${m.bookingCtaCount}, perUnit ${m.perUnitPriceRows}, ` +
@@ -288,7 +288,7 @@ export default defineUnlistedScript(() => {
       commerceConfirmed = true;
       debounceMs = PASS_DEBOUNCE_MS;
       console.info(
-        `[vero] commerce page (score ${verdict.score}) :: ${verdict.reasons.join(" | ")}`,
+        `[pensa] commerce page (score ${verdict.score}) :: ${verdict.reasons.join(" | ")}`,
       );
       onCommerceConfirmed();
     }
@@ -368,7 +368,7 @@ export default defineUnlistedScript(() => {
         })
         .join(" | ");
       console.info(
-        `[vero] ${stage}: ${collected.length} detection(s)` +
+        `[pensa] ${stage}: ${collected.length} detection(s)` +
           (duplicates > 0 ? ` (+${duplicates} repeat(s) of the same copy)` : "") +
           ` — ${summary}`,
       );
@@ -457,7 +457,7 @@ export default defineUnlistedScript(() => {
       const money = (m?: { amount: bigint; currency: string }): string =>
         m ? `${m.currency} ${(Number(m.amount) / 100).toFixed(2)}` : "-";
       console.info(
-        `[vero] snapshot @${stage}: price ${money(snap.displayedPrice)}, ` +
+        `[pensa] snapshot @${stage}: price ${money(snap.displayedPrice)}, ` +
           `subtotal ${money(snap.subtotal)}, total ${money(snap.total)}, ` +
           `shipping ${money(snap.shipping)}, ${snap.fees.length} fee(s)` +
           (snap.fees.length > 0
@@ -484,7 +484,7 @@ export default defineUnlistedScript(() => {
       // Naming the phase matters: "the pass is slow" has three possible causes with three
       // different fixes, and the previous message did not distinguish them.
       console.warn(
-        `[vero] pass used ${elapsed.toFixed(0)}ms CPU of ${wallMs.toFixed(0)}ms wall ` +
+        `[pensa] pass used ${elapsed.toFixed(0)}ms CPU of ${wallMs.toFixed(0)}ms wall ` +
           `(budget ${PERF_BUDGET_MS}ms) — ` +
           `meta ${phase.meta.toFixed(0)}ms, harvest ${phase.harvest.toFixed(0)}ms, ` +
           `detectors ${phase.detectors.toFixed(0)}ms, ${ctx.candidates.length} candidates — ` +
@@ -558,7 +558,7 @@ export default defineUnlistedScript(() => {
   }
 
   /**
-   * Everything that should only happen on a page Vero has decided is a shop.
+   * Everything that should only happen on a page Pensa has decided is a shop.
    *
    * The add-to-cart listener used to be attached at boot, on every non-denied https page, and
    * `onTrigger` never checked the verdict — so a "Book now" or "Proceed to…" button on a page
@@ -690,7 +690,7 @@ export default defineUnlistedScript(() => {
     // symptom is "nothing happened", which is indistinguishable from every other failure in
     // the chain — and that cost a full manual test round.
     console.info(
-      `[vero] trigger ${kind} @${stage}: ${items.length} candidate(s) — ` +
+      `[pensa] trigger ${kind} @${stage}: ${items.length} candidate(s) — ` +
         items
           .map(
             (i) =>
@@ -726,11 +726,11 @@ export default defineUnlistedScript(() => {
             patch: { telemetryConsent: answer === true, telemetryConsentAskedAt: Date.now() },
           }),
       });
-      console.info(`[vero] digest ${reply.mode} -> rendered ${rendered}`);
+      console.info(`[pensa] digest ${reply.mode} -> rendered ${rendered}`);
     } else {
       const why = (reply as { issues?: string[]; error?: string } | null)?.issues;
       console.info(
-        `[vero] no digest: mode=${reply?.mode ?? "none"} items=${reply?.items?.length ?? 0} ` +
+        `[pensa] no digest: mode=${reply?.mode ?? "none"} items=${reply?.items?.length ?? 0} ` +
           `capacity=card:${cap.maxCardItems}/pill:${cap.pillFits}` +
           (why ? ` REJECTED -> ${why.join("; ")}` : ""),
       );
@@ -762,7 +762,7 @@ export default defineUnlistedScript(() => {
   // inferring it from chrome.storage.session, which is cleared on every extension reload —
   // so "no ledger key" was ambiguous between "not injected" and "you reloaded the extension
   // and have not revisited the page yet". One line removes the ambiguity.
-  console.info(`[vero] active on ${pageOrigin} — build ${BUILD_STAMP}`);
+  console.info(`[pensa] active on ${pageOrigin} — build ${BUILD_STAMP}`);
 
   observer.start();
   // Attached at boot so a toggle made in the first moments is not missed, but choices are only

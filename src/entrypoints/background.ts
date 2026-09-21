@@ -66,7 +66,7 @@ export default defineBackground(() => {
       .catch((err: unknown) => {
         const detail = err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : String(err);
         console.error(
-          `[vero] handler threw for ${(raw as { type?: string })?.type ?? "unknown"}:`,
+          `[pensa] handler threw for ${(raw as { type?: string })?.type ?? "unknown"}:`,
           detail,
         );
         sendResponse({ ok: false, error: "handler threw", issues: [detail.slice(0, 400)] });
@@ -105,10 +105,10 @@ async function flushTelemetry(): Promise<void> {
     // Every branch is worth seeing. "Nothing was sent" has several causes with different
     // fixes: no consent, no endpoint compiled in, too few records yet, or a failed request.
     if (result.reason !== "no_consent" || result.sent > 0) {
-      console.info(`[vero] telemetry: ${result.reason}, ${result.sent} sent, ${result.held} held`);
+      console.info(`[pensa] telemetry: ${result.reason}, ${result.sent} sent, ${result.held} held`);
     }
   } catch (err) {
-    console.error("[vero] telemetry flush failed", err);
+    console.error("[pensa] telemetry flush failed", err);
   }
 }
 
@@ -118,7 +118,7 @@ async function housekeeping(): Promise<void> {
     await pruneEvents(settings.retentionDays);
     await evictOffers();
   } catch (err) {
-    console.error("[vero] housekeeping failed", err);
+    console.error("[pensa] housekeeping failed", err);
   }
 }
 
@@ -131,7 +131,7 @@ async function handleMessage(raw: unknown): Promise<unknown> {
     // the caller. That is the same failure shape as the BigInt bug: a real error dressed up
     // as an ordinary empty answer. It cost two manual test rounds to localise.
     console.error(
-      `[vero] REJECTED ${(raw as { type?: string })?.type ?? "unknown"} message:`,
+      `[pensa] REJECTED ${(raw as { type?: string })?.type ?? "unknown"} message:`,
       JSON.stringify(parsed.error.issues.slice(0, 6), null, 1),
     );
     // Returned, not just logged. The service worker console is not reachable from every
@@ -223,7 +223,7 @@ async function handleMessage(raw: unknown): Promise<unknown> {
         msg.placement,
       );
       // The one-time sharing question rides on the first full card, and only then: it is
-      // asked right after the person has seen what Vero does, never before, and never again
+      // asked right after the person has seen what Pensa does, never before, and never again
       // once answered or dismissed. A pill has no room to explain it honestly, so it waits.
       const settings = await readSettings();
       const askConsent =
@@ -291,7 +291,7 @@ async function handleMessage(raw: unknown): Promise<unknown> {
        * Absence is the answer for a non-shop page.
        *
        * A ledger key exists only once the detector has messaged the worker, and it only
-       * does that after its commerce gate passes. So this reports "Vero decided this is a
+       * does that after its commerce gate passes. So this reports "Pensa decided this is a
        * shop" without anything, anywhere, having written down that the other pages were
        * visited. storage.session is also cleared when the browser closes.
        */

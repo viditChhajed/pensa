@@ -76,9 +76,9 @@ const sites = typeof args.sites === "string" ? args.sites.split(",") : DEFAULT_S
 const pagesPerSite = Number(args.pages ?? 4);
 const OUT = resolve("corpus", typeof args.out === "string" ? args.out : "spot-check.jsonl");
 
-/** `[vero] <stage>: N detection(s) — id xN: "text [lexemes]" | id xN: "..."` */
+/** `[pensa] <stage>: N detection(s) — id xN: "text [lexemes]" | id xN: "..."` */
 const DETECTION_LINE =
-  /^\[vero\] (\w+): (\d+) detection\(s\)(?: \(\+\d+ repeat\(s\)[^)]*\))? — (.*)$/;
+  /^\[pensa\] (\w+): (\d+) detection\(s\)(?: \(\+\d+ repeat\(s\)[^)]*\))? — (.*)$/;
 
 function parseDetections(line) {
   const m = DETECTION_LINE.exec(line);
@@ -100,7 +100,7 @@ function parseDetections(line) {
 const PRODUCT_LINK =
   /\/(?:products?|item|itm|dp|pd|p|prod|sku|buy|hotel|hotels|rooms?|flights?|stays?|event|events|tickets?|listing)\//i;
 
-const build = mkdtempSync(join(tmpdir(), "vero-spot-"));
+const build = mkdtempSync(join(tmpdir(), "pensa-spot-"));
 cpSync(resolve(".output/chrome-mv3"), build, { recursive: true });
 const mp = join(build, "manifest.json");
 const manifest = JSON.parse(readFileSync(mp, "utf8"));

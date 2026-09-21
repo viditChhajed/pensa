@@ -22,7 +22,7 @@ let context: BrowserContext;
 let testBuild: string;
 
 test.beforeAll(async () => {
-  testBuild = stageLocalBuild("vero-ext-", [
+  testBuild = stageLocalBuild("pensa-ext-", [
     "http://shop.example.com/*",
     "http://shop.example.com/*",
   ]);
@@ -80,7 +80,7 @@ test("the manifest declares the script AND it actually injects", async () => {
   await page.waitForTimeout(2500);
 
   // NOTE: injection CANNOT be checked from page.evaluate. Content scripts run in an
-  // isolated world, so `__veroDetectorInjected__` is invisible to the main world —
+  // isolated world, so `__pensaDetectorInjected__` is invisible to the main world —
   // which is the point of setting it there. An earlier version of this test asserted
   // against the main world and reported a false failure.
   //

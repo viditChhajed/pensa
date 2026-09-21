@@ -16,7 +16,7 @@
 /**
  * The shadow root protects what is INSIDE the card. It does nothing for the host element,
  * which lives in the page's own DOM and is fully styleable by the page. A real fixture with
- * `#vero-host { display: none !important }` and
+ * `#pensa-host { display: none !important }` and
  * `[id^="persuasion"] { visibility: hidden !important }` hid the card completely.
  *
  * Two defences: a per-injection random id, so there is no stable selector to target, and
@@ -392,7 +392,7 @@ export interface CardItem {
 export const CONSENT_COPY = {
   heading: "One question for you",
   ask:
-    "Vero is built by one young independent developer. Would you share what it notices? It " +
+    "Pensa is built by one young independent developer. Would you share what it notices? It " +
     "supports that work and helps build a research dataset on how common these techniques " +
     "are across shops, and how often people add an item to their cart after seeing one.",
   detail:

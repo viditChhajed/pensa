@@ -8,7 +8,7 @@ import denylistJson from "../../rulepacks/denylist.v1.json";
  * The permission-model regression net, inverted.
  *
  * These assertions used to guard the opposite product: `host_permissions` had to be EMPTY,
- * because a declared host permission meant an install prompt listing 150 sites. Vero now
+ * because a declared host permission meant an install prompt listing 150 sites. Pensa now
  * asks for `https://*` at install and accepts that prompt deliberately, so the old
  * assertions would fail every build — but the thing they were protecting was never "ask for
  * nothing", it was "never ship a reach nobody argued for, and never ship it without the
@@ -44,7 +44,7 @@ describe("built manifest", () => {
   it.skipIf(!available)("requires exactly one host pattern, and it is https-only", () => {
     // Exactly this, not a superset and not something broader that happens to include it.
     // `<all_urls>` and `*://*/*` would add file:, ftp: and data:; `http://*/*` would add
-    // plaintext pages, where anything Vero can read is already readable in transit.
+    // plaintext pages, where anything Pensa can read is already readable in transit.
     expect(manifest?.host_permissions).toEqual(["https://*/*"]);
   });
 
@@ -59,7 +59,7 @@ describe("built manifest", () => {
     // a permission that appears here without one is a permission nobody has argued for.
     //
     // `declarativeContent` is gone: it lit the toolbar icon on plausible shopping URLs back
-    // when a lit icon meant "you can turn Vero on here". Nothing is turned on per site any
+    // when a lit icon meant "you can turn Pensa on here". Nothing is turned on per site any
     // more, the action is enabled everywhere, and the popup opens on every page — so the
     // page rules decided nothing.
     //
@@ -157,7 +157,7 @@ describe("built manifest", () => {
       ]) {
         expect(
           excludes.some((p) => matchesPattern(p, new URL(url))),
-          `${url} is excluded — Vero would be silently dead on a site it claims to cover`,
+          `${url} is excluded — Pensa would be silently dead on a site it claims to cover`,
         ).toBe(false);
       }
     });

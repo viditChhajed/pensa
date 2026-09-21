@@ -21,7 +21,7 @@ let context: BrowserContext;
 let extensionId: string;
 
 test.beforeAll(async () => {
-  const build = stageLocalBuild("vero-passive-");
+  const build = stageLocalBuild("pensa-passive-");
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",
     args: [`--disable-extensions-except=${build}`, `--load-extension=${build}`],

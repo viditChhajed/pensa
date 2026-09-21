@@ -3,16 +3,16 @@
  *
  * It used to be the enablement surface: an "Enable on this site" button, a live user
  * gesture carefully preserved through to `chrome.permissions.request()`, and a revoke
- * control once a site was granted. All of that is gone. Vero now holds `https://` for every
+ * control once a site was granted. All of that is gone. Pensa now holds `https://` for every
  * site at install, so there is nothing left to ask for and nothing left to take back — the
  * only per-site control that ever existed was the permission itself, and settings has no
  * per-site flag to wire this to instead.
  *
  * What is left is the question the popup was always really answering, now answered honestly
- * instead of inferred from a permission: is Vero running on this page, or not, and why not.
+ * instead of inferred from a permission: is Pensa running on this page, or not, and why not.
  *
  * `activeTab` is what lets this read the current tab's URL on pages the host permission
- * does NOT cover — http://, chrome://, a PDF viewer — so a page Vero cannot run on can still
+ * does NOT cover — http://, chrome://, a PDF viewer — so a page Pensa cannot run on can still
  * be told apart from a popup that failed to load.
  */
 
@@ -58,26 +58,26 @@ async function init(): Promise<void> {
   /**
    * The refusal, stated first and stated plainly.
    *
-   * This is the most important sentence in the popup. Everywhere else Vero runs by default
+   * This is the most important sentence in the popup. Everywhere else Pensa runs by default
    * now, which makes the places it does not run the only thing a person cannot infer. The
    * copy says both halves — it does not run here, and it is not reading this page — because
    * "not running" is a claim about behaviour and "not reading" is the one people care about.
    */
   if (isDenied(parsed)) {
-    statusEl.textContent = `Vero does not run on ${parsed.hostname}.`;
+    statusEl.textContent = `Pensa does not run on ${parsed.hostname}.`;
     detailEl.textContent =
-      "Vero never runs on banking, health, government, webmail or similar sites. It is not " +
+      "Pensa never runs on banking, health, government, webmail or similar sites. It is not " +
       "reading this page, and nothing about it is recorded.";
     return;
   }
 
   if (parsed.protocol !== "https:") {
-    // Honest about the edge the permission deliberately does not cover. Vero asks for
+    // Honest about the edge the permission deliberately does not cover. Pensa asks for
     // https:// only, so a plaintext page — or a chrome:// page, or a local file — is one it
     // has no access to at all.
-    statusEl.textContent = `Vero does not run on ${parsed.hostname || "this page"}.`;
+    statusEl.textContent = `Pensa does not run on ${parsed.hostname || "this page"}.`;
     detailEl.textContent =
-      `Vero only runs on https:// pages, and this one is ${parsed.protocol.replace(":", "")}. ` +
+      `Pensa only runs on https:// pages, and this one is ${parsed.protocol.replace(":", "")}. ` +
       "It is not reading this page.";
     return;
   }
@@ -86,7 +86,7 @@ async function init(): Promise<void> {
   // registrableDomain here, which now pulls in the Public Suffix List — ~100 KB to open a
   // popup, for a label the address bar already shows.
   const domain = parsed.hostname.replace(/^www\./, "");
-  statusEl.textContent = `Vero is running on ${domain}.`;
+  statusEl.textContent = `Pensa is running on ${domain}.`;
   detailEl.textContent = "Patterns found on this page will appear when you add to cart.";
 
   /**
@@ -104,13 +104,13 @@ async function init(): Promise<void> {
     const line = document.createElement("p");
     line.className = "detail score";
     if (report.excluded) {
-      statusEl.textContent = `Vero does not run on ${parsed.hostname}.`;
-      detailEl.textContent = "This site is on Vero's permanent exclusion list.";
-      line.textContent = "Chrome is not allowed to load Vero's detector here at all.";
+      statusEl.textContent = `Pensa does not run on ${parsed.hostname}.`;
+      detailEl.textContent = "This site is on Pensa's permanent exclusion list.";
+      line.textContent = "Chrome is not allowed to load Pensa's detector here at all.";
     } else if (!report.granted) {
-      statusEl.textContent = `Vero is not running on ${domain}.`;
+      statusEl.textContent = `Pensa is not running on ${domain}.`;
       detailEl.textContent =
-        "Chrome is withholding access to this site. Check Site access for Vero in " +
+        "Chrome is withholding access to this site. Check Site access for Pensa in " +
         "chrome://extensions if that was not deliberate.";
       line.textContent = report.error ?? "";
     } else {
@@ -126,7 +126,7 @@ async function init(): Promise<void> {
 }
 
 /**
- * Whether Vero is actually working on this page, or idling.
+ * Whether Pensa is actually working on this page, or idling.
  *
  * This replaces a line that reported a URL SCORE — "nothing commerce-shaped in
  * /chat/67039775…, so you may see nothing here. That check only reads the address, never the
@@ -135,7 +135,7 @@ async function init(): Promise<void> {
  * nonsense on an obviously non-shopping page, and it was nonsense — the address was never
  * the question.
  *
- * Vero now reads the page and decides from what is on it. So this reports the decision
+ * Pensa now reads the page and decides from what is on it. So this reports the decision
  * instead of the guess, and the answer for a page that is not a shop is the useful one:
  * nothing is being collected here.
  */
@@ -144,7 +144,7 @@ function renderPageKind(active: boolean): void {
   line.className = "detail score";
   line.textContent = active
     ? "This page is being checked for persuasion techniques."
-    : "This page does not look like a shop, so Vero is idle here and is recording nothing.";
+    : "This page does not look like a shop, so Pensa is idle here and is recording nothing.";
   detailEl.after(line);
 }
 

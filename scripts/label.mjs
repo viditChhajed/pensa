@@ -83,7 +83,7 @@ function loadLabels() {
 }
 
 const page = /* html */ `
-<!doctype html><meta charset="utf-8"><title>Label — Vero</title>
+<!doctype html><meta charset="utf-8"><title>Label — Pensa</title>
 <style>
   :root { color-scheme: light dark; --fg:#111; --muted:#6b7280; --bg:#fff; --line:#e5e7eb;
           --yes:#047857; --no:#b91c1c; --accent:#2563eb; }

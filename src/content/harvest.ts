@@ -123,7 +123,7 @@ export function invalidateStyles(roots: Iterable<Element>): void {
       // page that simply never repeats a node look identical from the outside, and the
       // first version of this fired on every batch without anything saying so.
       console.warn(
-        `[vero] style cache flushed entirely — ${rootCount} dirty root(s) covering more ` +
+        `[pensa] style cache flushed entirely — ${rootCount} dirty root(s) covering more ` +
           "than 50k elements between them",
       );
       styleEpoch++;
@@ -592,7 +592,7 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
     // Loud, because the consequence is that the page was only partly seen. A quiet
     // truncation looks exactly like a page that simply had fewer candidates.
     console.warn(
-      `[vero] harvest budget (${HARVEST_BUDGET_MS}ms) hit at ${stoppedAt} of ` +
+      `[pensa] harvest budget (${HARVEST_BUDGET_MS}ms) hit at ${stoppedAt} of ` +
         `${stoppedAt + dropped.length} candidates — ${dropped.length - rescued} not read` +
         (rescued > 0 ? `, ${rescued} ephemeral node(s) read anyway` : "") +
         // Whether this page is converging matters more than the truncation itself: a rising
@@ -903,7 +903,7 @@ function readStructuralSignals(doc: Document) {
      *
      * A hotel, flight or event page has no add-to-cart control, no quantity stepper and no
      * cart rows, so the commerce gate scored booking.com, kayak.com, eventbrite.com and
-     * ticketmaster.com at ZERO and Vero went silent on all four — measured, not guessed.
+     * ticketmaster.com at ZERO and Pensa went silent on all four — measured, not guessed.
      * Those are the categories with the worst drip pricing in the taxonomy, which made this
      * the most expensive blind spot available.
      */

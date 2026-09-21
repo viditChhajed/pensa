@@ -93,7 +93,7 @@ const wait = (page, ms) => page.waitForTimeout(ms);
  *   permission buys the right to read a page nothing is injected into.
  */
 function stageBuild(fixtureOrigin) {
-  const dir = mkdtempSync(join(tmpdir(), "vero-shots-"));
+  const dir = mkdtempSync(join(tmpdir(), "pensa-shots-"));
   cpSync(BUILD, dir, { recursive: true });
   const mp = join(dir, "manifest.json");
   const manifest = JSON.parse(readFileSync(mp, "utf8"));
@@ -266,7 +266,7 @@ async function captureLiveCard(ctx, url) {
   const page = await ctx.newPage();
   const logs = [];
   page.on("console", (m) => {
-    if (m.text().includes("[vero]")) logs.push(m.text());
+    if (m.text().includes("[pensa]")) logs.push(m.text());
   });
   try {
     const res = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
@@ -446,7 +446,7 @@ async function shootAt(page, y, file) {
  * Nudge the fold so it lands between two switches rather than through the middle of one.
  *
  * A row sliced across its description line reads as a rendering fault. There is only ever a
- * few dozen pixels of slack — capped so the "Vero" heading never leaves the top of the page,
+ * few dozen pixels of slack — capped so the "Pensa" heading never leaves the top of the page,
  * which is the one thing the shot cannot afford to lose.
  */
 async function switchFold(page) {
@@ -557,7 +557,7 @@ let ctx = null;
 let sw = null;
 let extensionId = null;
 let cardSource = null;
-/** Where the popup is shot: the shop the card fired on, so it reports Vero as running. */
+/** Where the popup is shot: the shop the card fired on, so it reports Pensa as running. */
 let popupSite = null;
 
 for (const { url } of targets) {

@@ -1,7 +1,7 @@
 {
-  "name": "vero",
-  "version": "1.0.0",
-  "description": "Vero — MV3 extension that notices e-commerce persuasion patterns and asks Socratic questions about them.",
+  "name": "pensa",
+  "version": "1.1.0",
+  "description": "Pensa — MV3 extension that notices e-commerce persuasion patterns and asks Socratic questions about them.",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",

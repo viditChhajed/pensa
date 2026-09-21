@@ -17,7 +17,7 @@ const denylist = JSON.parse(
 
 const { matches: DENY_EXCLUDES, inexpressible: RUNTIME_ONLY_DENIES } = toExcludeMatches(denylist);
 
-/** The one pattern Vero asks for, and the only one this build will let through. */
+/** The one pattern Pensa asks for, and the only one this build will let through. */
 const REQUIRED_HOST = "https://*/*";
 
 export default defineConfig({
@@ -53,18 +53,18 @@ export default defineConfig({
 
   manifest: {
     manifest_version: 3,
-    name: "Vero",
-    short_name: "Vero",
+    name: "Pensa",
+    short_name: "Pensa",
     description:
       "Notices persuasion techniques on shopping pages and asks a question about them. Runs on your device; sharing is off by default.",
-    version: "1.0.0",
+    version: "1.1.0",
 
     // Justification for each, for the store listing:
     //   storage   - chrome.storage.session (the per-site session ledger, frequency state)
     //               and chrome.storage.local (settings). IndexedDB needs no permission.
     //   activeTab - read the CURRENT tab's URL in the popup on pages the host permission
     //               below does not cover (http://, chrome://, a PDF viewer), so the popup
-    //               can say "Vero does not run here" instead of showing nothing at all.
+    //               can say "Pensa does not run here" instead of showing nothing at all.
     //   alarms    - the retention prune, offer-store eviction, and the six-hourly telemetry
     //               flush. Without it `chrome.alarms` is undefined and all three silently
     //               never run.
@@ -74,7 +74,7 @@ export default defineConfig({
     //
     // `declarativeContent` is GONE. It existed to light the toolbar icon on plausible
     // shopping URLs without reading pages, back when lighting the icon meant "you can turn
-    // Vero on here". Vero is now on everywhere it is allowed to be, the action is enabled
+    // Pensa on here". Pensa is now on everywhere it is allowed to be, the action is enabled
     // by default, and the popup opens on every page and says which state applies — so the
     // page rules decided nothing and the permission bought nothing.
     permissions: ["storage", "activeTab", "alarms"],
@@ -93,7 +93,7 @@ export default defineConfig({
      *
      * `https://` only, and that is load-bearing. `<all_urls>` and the any-scheme wildcard
      * would also take ftp, file and data URLs; the http variant would take plaintext pages,
-     * where anything Vero can read is already readable by every hop in between. The build
+     * where anything Pensa can read is already readable by every hop in between. The build
      * hook below refuses all four by name.
      *
      * The denylist is still absolute. It is enforced twice: `exclude_matches` on the
@@ -111,7 +111,7 @@ export default defineConfig({
     },
 
     action: {
-      default_title: "Vero",
+      default_title: "Pensa",
       default_popup: "popup.html",
       default_icon: {
         16: "icon/16.png",
@@ -177,7 +177,7 @@ export default defineConfig({
       if (hosts.length !== 1 || hosts[0] !== REQUIRED_HOST) {
         throw new Error(
           `host_permissions must be exactly ["${REQUIRED_HOST}"]. Found: ${JSON.stringify(hosts)}. ` +
-            "http:// and non-web schemes stay out: on a plaintext page anything Vero can " +
+            "http:// and non-web schemes stay out: on a plaintext page anything Pensa can " +
             "read is already readable by every hop in between, and file:/ftp:/data: are " +
             "not shopping.",
         );

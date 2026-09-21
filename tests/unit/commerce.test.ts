@@ -126,7 +126,7 @@ describe("the verdict explains itself", () => {
 describe("selling without a cart", () => {
   /**
    * The gate was built around retail cart furniture and scored booking.com, kayak.com,
-   * eventbrite.com and ticketmaster.com at exactly ZERO — Vero was silent on the whole travel
+   * eventbrite.com and ticketmaster.com at exactly ZERO — Pensa was silent on the whole travel
    * and ticketing category, which is where drip pricing lives most heavily.
    */
   const listing = (n: number, price = "$189") =>

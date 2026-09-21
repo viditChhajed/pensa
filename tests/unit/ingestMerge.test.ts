@@ -45,7 +45,7 @@ function writeRound(n: number, key: string, patterns: string[]): void {
 }
 
 beforeAll(() => {
-  sandbox = mkdtempSync(join(tmpdir(), "vero-ingest-"));
+  sandbox = mkdtempSync(join(tmpdir(), "pensa-ingest-"));
   cwd = sandbox;
   mkdirSync(join(cwd, "corpus"), { recursive: true });
   // The script resolves scripts/label-queue.mjs relative to itself, so only corpus/ matters.

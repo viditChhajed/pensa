@@ -1,7 +1,7 @@
 /**
  * The denylist, plus the two URL helpers the content script needs.
  *
- * `isDenied()` decides whether the detector runs at all. Vero holds access to every https
+ * `isDenied()` decides whether the detector runs at all. Pensa holds access to every https
  * site at install, so the worst case here is not an awkward prompt but the extension reading
  * a patient portal. It is called from the top of the content script and from the popup, and
  * both must keep calling it.

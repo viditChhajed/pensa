@@ -76,7 +76,7 @@ export function* runDetectors(
     try {
       candidates = d.run(ctx);
     } catch (err) {
-      console.error(`[vero] detector ${d.id} threw`, err);
+      console.error(`[pensa] detector ${d.id} threw`, err);
     }
     yield { detectorId: d.id, candidates, elapsedMs: performance.now() - started };
   }

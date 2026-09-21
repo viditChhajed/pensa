@@ -18,7 +18,7 @@ let context: BrowserContext;
 let extensionId: string;
 
 test.beforeAll(async () => {
-  const build = stageLocalBuild("vero-export-");
+  const build = stageLocalBuild("pensa-export-");
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",
     args: [`--disable-extensions-except=${build}`, `--load-extension=${build}`],
@@ -110,7 +110,7 @@ test("Export my data — CLICKED FROM THE OPTIONS UI — downloads parseable JSO
     page.click("#export"),
   ]);
 
-  expect(download.suggestedFilename()).toMatch(/^vero-events-\d{4}-\d{2}-\d{2}\.jsonl$/);
+  expect(download.suggestedFilename()).toMatch(/^pensa-events-\d{4}-\d{2}-\d{2}\.jsonl$/);
 
   const path = await download.path();
   expect(path, "the download produced no file on disk").toBeTruthy();

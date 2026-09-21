@@ -25,7 +25,7 @@ const PAGES = resolve("tests/e2e/pages");
 let context: BrowserContext;
 
 test.beforeAll(async () => {
-  const testBuild = stageLocalBuild("vero-drip-", ["http://shop.example.com/*"]);
+  const testBuild = stageLocalBuild("pensa-drip-", ["http://shop.example.com/*"]);
 
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",
@@ -46,7 +46,7 @@ async function openJourney(): Promise<{ page: Page; logs: string[] }> {
   const page = await context.newPage();
   const logs: string[] = [];
   page.on("console", (m) => {
-    if (m.text().includes("[vero]")) logs.push(m.text());
+    if (m.text().includes("[pensa]")) logs.push(m.text());
   });
   await page.route("**/*", async (route) => {
     const name = new URL(route.request().url()).pathname.replace(/^\//, "");

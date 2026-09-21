@@ -71,7 +71,7 @@ test.beforeAll(async () => {
   // The sink is a permission, not a place to inject: the worker posts to it, no page there
   // is ever read.
   const build = stageLocalBuild(
-    "vero-tele-",
+    "pensa-tele-",
     ["http://shop.example.com/*"],
     [`http://127.0.0.1:${PORT}/*`],
   );

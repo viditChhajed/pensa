@@ -5,7 +5,7 @@ let context: BrowserContext;
 let extensionId: string;
 
 test.beforeAll(async () => {
-  const build = stageLocalBuild("vero-store-", ["http://shop.example.com/*"]);
+  const build = stageLocalBuild("pensa-store-", ["http://shop.example.com/*"]);
 
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",

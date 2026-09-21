@@ -1,14 +1,14 @@
 /**
  * Is this page a shop? Answered from the PAGE, not from its address.
  *
- * What this replaces. The old model asked the user to enable Vero site by site, and the
+ * What this replaces. The old model asked the user to enable Pensa site by site, and the
  * popup explained itself with a URL score — "nothing commerce-shaped in /chat/67039775…,
  * so you may see nothing here". That line was answering a question nobody asked, on a page
  * that was obviously not a shop, using the only evidence available at the time: a string.
  * You cannot inspect a page to decide whether to ask permission to inspect the page, so
  * before the grant the address was all there was.
  *
- * That constraint is gone. Vero now holds the permission at install, so by the time this
+ * That constraint is gone. Pensa now holds the permission at install, so by the time this
  * runs the document is right there. A URL heuristic is strictly worse than reading the
  * thing, and it is wrong in both directions: `/chat/…` is not commerce, but neither is
  * `/products/engineering-blog`, and plenty of real storefronts live at paths no pattern
@@ -24,7 +24,7 @@
  *
  * DIRECTION OF ERROR. A false negative costs one page of missed detections. A false positive
  * costs a card interrupting someone on a page that was never selling anything, which is the
- * failure that gets an extension uninstalled — and, now that Vero reads every https page,
+ * failure that gets an extension uninstalled — and, now that Pensa reads every https page,
  * the failure that would make it feel like spyware. So the threshold is set to need real
  * evidence, and every ambiguous case resolves to "not a shop".
  */
@@ -97,7 +97,7 @@ export function classifyCommerce(meta: DocumentMeta): CommerceVerdict {
    *
    * Everything above assumes a retail cart: a product page, priced rows with steppers, an order
    * summary. Travel, lodging and ticketing have none of those, and the first version of this gate
-   * scored booking.com, kayak.com, eventbrite.com and ticketmaster.com at exactly ZERO — Vero was
+   * scored booking.com, kayak.com, eventbrite.com and ticketmaster.com at exactly ZERO — Pensa was
    * silent on all four, which is where drip pricing and dated urgency live most heavily.
    *
    * A booking control plus a price is the equivalent structure; per-unit pricing ("$189/night")

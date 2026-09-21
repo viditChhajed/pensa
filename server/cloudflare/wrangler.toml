@@ -1,4 +1,4 @@
-name = "vero-counts"
+name = "pensa-counts"
 main = "worker.ts"
 compatibility_date = "2026-01-01"
 
@@ -9,6 +9,8 @@ compatibility_date = "2026-01-01"
 
 [[d1_databases]]
 binding = "DB"
+# The D1 database keeps the extension's first name (Vero): D1 cannot rename a database, and
+# this one holds the dataset. Only the Worker, and so the endpoint URL, is named pensa.
 database_name = "vero-counts"
 database_id = "fe4bfcc1-e08e-4c5a-bf11-cc2369e83f5a"
 

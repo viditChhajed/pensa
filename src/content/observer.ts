@@ -100,7 +100,7 @@ export class PageObserver {
    * notices that the page changed (so a storefront that renders late gets re-checked) and
    * still tracks modal appearances (timestamps and element references only, capped), but it
    * holds no text. On a page that never turns out to be a shop — a chat, an inbox, a document
-   * — nothing it displayed is ever copied into memory by Vero.
+   * — nothing it displayed is ever copied into memory by Pensa.
    */
   private recording = false;
 

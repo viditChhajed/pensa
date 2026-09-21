@@ -96,16 +96,16 @@ describe("store listing describes what ships", () => {
   it.skipIf(!existsSync(MANIFEST))("does not still promise a per-site opt-in", () => {
     /**
      * The claim most likely to survive the change and become a lie. The old listing had to
-     * explain that Vero reads nothing until you enable it site by site; the product now
+     * explain that Pensa reads nothing until you enable it site by site; the product now
      * holds every https site from the moment it is installed. A listing that still promises
      * the opposite is worse than one that says nothing.
      */
     const promises =
-      /enable (it |vero )?(on )?(each|every|per)[- ]site|site by site|only reads sites you (have )?enabled|nothing until you enable/i;
+      /enable (it |pensa )?(on )?(each|every|per)[- ]site|site by site|only reads sites you (have )?enabled|nothing until you enable/i;
     const hit = promises.exec(listing);
     expect(
       hit?.[0],
-      `the listing still promises per-site enablement ("${hit?.[0]}") — Vero now holds ` +
+      `the listing still promises per-site enablement ("${hit?.[0]}") — Pensa now holds ` +
         "https://*/* at install",
     ).toBeUndefined();
   });

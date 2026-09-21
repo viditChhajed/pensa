@@ -1,4 +1,4 @@
-Vero notices the techniques a shopping page is using — countdown timers, "only 3 left" messages, crossed-out reference prices, pre-ticked add-ons, fees that appear only at checkout — and, when you add something to your cart, asks you one question about what was actually on your screen.
+Pensa notices the techniques a shopping page is using — countdown timers, "only 3 left" messages, crossed-out reference prices, pre-ticked add-ons, fees that appear only at checkout — and, when you add something to your cart, asks you one question about what was actually on your screen.
 
 It does not tell you what to buy. It does not block anything, hide anything, or change any page. It asks.
 
@@ -43,7 +43,7 @@ The card is small, appears in a corner, and stays until you close it — it does
 
 PRIVACY AND PERMISSIONS
 
-Chrome will tell you Vero can read the websites you visit, and that is accurate: it needs to, because these techniques turn up on small and new shops as often as on big ones, and no list of sites would cover them. What it does with that access is narrow:
+Chrome will tell you Pensa can read the websites you visit, and that is accurate: it needs to, because these techniques turn up on small and new shops as often as on big ones, and no list of sites would cover them. What it does with that access is narrow:
 
 • It reads a page and decides whether it is a shop first. On anything else — email, news, documents, chat — it stops, records nothing, and stays out of the way.
 • It never runs on banking, health, government or webmail sites.
@@ -54,7 +54,7 @@ Everything it notices stays on your device. Detections are deleted after 30 days
 
 OPTIONAL: HELP MEASURE THESE TECHNIQUES
 
-One setting, off by default and not pre-ticked, shares which shops use which techniques, and whether people added the item to their cart after seeing them, so their prevalence can be researched. Vero asks once, on the first card it shows you, with two equal answers; closing the card counts as no.
+One setting, off by default and not pre-ticked, shares which shops use which techniques, and whether people added the item to their cart after seeing them, so their prevalence can be researched. Pensa asks once, on the first card it shows you, with two equal answers; closing the card counts as no.
 
 It does name the shop: a report says "someone saw a countdown on shein.com today." On product pages it also says whether Add to Cart was clicked. It never sends the page, the product, your searches, page text, prices, your account, anything that identifies you, or any time more precise than the day. Reports go out in batches, not at the moment something is found, and you can read the exact reports waiting to be sent before any of them are. Turning it off deletes anything not yet sent.
 
@@ -66,4 +66,4 @@ Every technique in the list above has its own switch. Turn off anything you find
 
 OPEN SOURCE
 
-The full source, including the list of excluded sites and the exact wording of every prompt, is public: https://github.com/viditChhajed/vero
+The full source, including the list of excluded sites and the exact wording of every prompt, is public: https://github.com/viditChhajed/pensa

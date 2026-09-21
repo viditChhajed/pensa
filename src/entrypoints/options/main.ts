@@ -35,13 +35,13 @@ const FREQUENCY_CHOICES: { value: DigestFrequency; label: string }[] = [
 ];
 
 /**
- * "Sites you have enabled" is gone, because nothing is enabled any more — Vero holds every
+ * "Sites you have enabled" is gone, because nothing is enabled any more — Pensa holds every
  * https site from the moment it is installed, and there was never a per-site switch other
  * than the permission itself. A list of granted origins would now show one entry reading
  * "every site", which is true and useless.
  *
  * What replaces it is the only per-site fact left that a person cannot see for themselves:
- * where Vero REFUSES to run. It is read out of the manifest Chrome actually loaded rather
+ * where Pensa REFUSES to run. It is read out of the manifest Chrome actually loaded rather
  * than re-derived from the rulepack, so this list is the real one — if the exclusions ever
  * shipped empty, this page would say so instead of describing a list that is not there.
  */
@@ -77,10 +77,10 @@ function renderSites(): void {
    */
   const noteEl = document.getElementById("sitesNote") as HTMLParagraphElement;
   noteEl.textContent =
-    `${excluded.length} host patterns above are refused by Chrome itself — Vero's code is ` +
+    `${excluded.length} host patterns above are refused by Chrome itself — Pensa's code is ` +
     `never loaded there. A further ${DENYLIST_COVERAGE.inexpressible.length} rules cannot be ` +
     "written as a Chrome pattern (things like “any site with 'bank' in its name” or “a " +
-    "mychart. address on any domain”). Those are checked by Vero, on page load, before " +
+    "mychart. address on any domain”). Those are checked by Pensa, on page load, before " +
     "anything is read — a weaker guarantee than the list above, and worth knowing apart.";
 }
 
@@ -311,7 +311,7 @@ exportBtn.addEventListener("click", async () => {
     const a = document.createElement("a");
     a.href = url;
     const stamp = new Date().toISOString().slice(0, 10);
-    a.download = `vero-events-${stamp}.jsonl`;
+    a.download = `pensa-events-${stamp}.jsonl`;
     a.click();
     // Revoked on the next turn of the event loop: revoking synchronously can race the
     // download on some Chrome versions and produce an empty file.

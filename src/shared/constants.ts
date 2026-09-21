@@ -7,7 +7,7 @@ export const CONTENT_SCRIPT_FILE = "detector.js";
 export const DETECTOR_VERSION = "0.1.0";
 
 /** Guards against double injection when a page is re-registered mid-session. */
-export const INJECTION_FLAG = "__veroDetectorInjected__";
+export const INJECTION_FLAG = "__pensaDetectorInjected__";
 
 /** Salience gates (plan §5). */
 export const SALIENCE_STATIC_MS = 800;

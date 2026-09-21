@@ -20,7 +20,7 @@ const ORIGIN = "http://shop.example.com";
 let context: BrowserContext;
 
 test.beforeAll(async () => {
-  const build = stageLocalBuild("vero-nonshop-");
+  const build = stageLocalBuild("pensa-nonshop-");
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",
     args: [`--disable-extensions-except=${build}`, `--load-extension=${build}`],
@@ -63,7 +63,7 @@ async function ledgerKeys(): Promise<string[]> {
 test("clicking Book now on a page that is not a shop records nothing", async () => {
   const { page, logs } = await open("not-a-shop.html");
   await expect
-    .poll(() => logs.some((l) => l.includes("[vero] active on")), { timeout: 10_000 })
+    .poll(() => logs.some((l) => l.includes("[pensa] active on")), { timeout: 10_000 })
     .toBe(true);
   await page.waitForTimeout(1500);
 
@@ -76,7 +76,7 @@ test("clicking Book now on a page that is not a shop records nothing", async () 
     "the article was judged a shop",
   ).toBe(false);
   expect(
-    logs.some((l) => l.includes("[vero] trigger")),
+    logs.some((l) => l.includes("[pensa] trigger")),
     "a trigger fired on a non-shop",
   ).toBe(false);
   expect(await ledgerKeys()).toEqual([]);

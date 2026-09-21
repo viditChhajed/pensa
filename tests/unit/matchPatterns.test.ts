@@ -107,7 +107,7 @@ describe("denylist -> exclude_matches", () => {
      * The conversion is allowed to be over-broad relative to reality (the cross product of
      * a name alternation and a TLD alternation invents `bluesky.com`, which is fine — no
      * shopping happens there) but it must never be over-broad relative to the DENYLIST.
-     * An exclusion for a host `isDenied()` would let through means Vero is silently absent
+     * An exclusion for a host `isDenied()` would let through means Pensa is silently absent
      * somewhere it claims to work, with nothing anywhere saying so.
      */
     for (const p of matches) {

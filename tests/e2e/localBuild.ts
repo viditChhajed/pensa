@@ -26,7 +26,7 @@ import { join, resolve } from "node:path";
  * It WAS localhost, and that quietly stopped working the moment the detector grew a runtime
  * denylist check at the top of its body. `isDenied()` refuses localhost and 127.0.0.1 — which
  * is correct and deliberate for the product: a router admin page or a local dev service is
- * exactly the kind of thing Vero must never read. The fixtures were being served from a host
+ * exactly the kind of thing Pensa must never read. The fixtures were being served from a host
  * the extension is designed to refuse, so every fixture-backed spec failed with an empty
  * extension log and no other clue.
  *
@@ -47,8 +47,8 @@ export function stageLocalBuild(
   origins: string[] = LOCAL_ORIGINS,
   /**
    * Origins the WORKER must be able to reach, but where no content script should run — the
-   * telemetry sink being the only current case. Kept separate because conflating "where Vero
-   * reads pages" with "what Vero may contact" is exactly the distinction the zero-egress
+   * telemetry sink being the only current case. Kept separate because conflating "where Pensa
+   * reads pages" with "what Pensa may contact" is exactly the distinction the zero-egress
    * tests exist to police.
    */
   extraPermissions: string[] = [],

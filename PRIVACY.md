@@ -1,4 +1,4 @@
-# Privacy Policy — Vero
+# Privacy Policy — Pensa
 
 **Last updated: 2026-09-18**
 
@@ -10,7 +10,7 @@ page is processed on your device and stays on your device.
 
 The one exception is a setting you have to switch on yourself: sharing which shops use which
 techniques, and whether you added the item to your cart after seeing them, described in full
-below. It is off unless you turn it on. Vero asks you about it once, on the first card it shows
+below. It is off unless you turn it on. Pensa asks you about it once, on the first card it shows
 you; closing that card without answering counts as no.
 
 With sharing off, nothing reaches any server — that is what the "zero outbound requests" test
@@ -34,7 +34,7 @@ not a list it holds; they are simply the pages where these techniques appear.
 ## What it stores, and where
 
 Everything below is stored only on your device, in your browser's extension storage, and only
-for pages Vero has decided are shops. A page that is not a shop is never recorded.
+for pages Pensa has decided are shops. A page that is not a shop is never recorded.
 
 **Detections** — kept 30 days by default (adjustable in Settings):
 
@@ -46,7 +46,7 @@ for pages Vero has decided are shops. A page that is not a shop is never recorde
   you can see what was matched. On a checkout page, text near a matched element can include
   whatever that page displays, so an excerpt could in principle contain details shown there.
 
-These are recorded as you browse shops — when Vero notices something, it writes down what the
+These are recorded as you browse shops — when Pensa notices something, it writes down what the
 page displayed — and again when you add something to your cart or head to checkout, which is
 when it may also show you a card. Each distinct piece of copy is recorded once per page, not
 once per second, and a page it finds nothing on produces nothing.
@@ -56,7 +56,7 @@ once per second, and a page it finds nothing on produces nothing.
 - For products you view on shops: an identifier for the product (its SKU or barcode where the
   page provides one, otherwise a one-way hash of its address and title), the prices and "was"
   prices shown, stock counts, countdown end times and viewer counts, each with the time seen.
-- This is what lets Vero notice a countdown that resets, a stock count that goes back up, or a
+- This is what lets Pensa notice a countdown that resets, a stock count that goes back up, or a
   "was" price that is never actually charged. It is a record of which products you looked at on
   which shops, and it never leaves your device.
 
@@ -65,13 +65,13 @@ once per second, and a page it finds nothing on produces nothing.
 - For each shop: which checkout stages you reached, and the prices on each — item price,
   subtotal, shipping, tax, total, and fee or add-on lines with their labels.
 - The label of any add-to-cart button you clicked, and which kinds of add-on you chose or
-  declined yourself (for example "gift wrap: chosen"). This is what stops Vero reporting an
+  declined yourself (for example "gift wrap: chosen"). This is what stops Pensa reporting an
   add-on you picked as one you did not.
 
 **Open page views, only while sharing is on** — at most 30 minutes each:
 
 - For a product or listing page you are looking at: the shop, whether it is a product or
-  listing page, and which techniques have been on screen so far. This is how Vero knows, when
+  listing page, and which techniques have been on screen so far. This is how Pensa knows, when
   you click Add to Cart, what you had seen before deciding. It is turned into the reports
   described below when you click Add to Cart or after 30 minutes without activity, then
   deleted. Nothing is held while sharing is off, and switching it off deletes anything held.
@@ -93,14 +93,14 @@ data").
 
 ## Site permissions
 
-**Vero asks for access to all https websites at install time, and Chrome will tell you so in
+**Pensa asks for access to all https websites at install time, and Chrome will tell you so in
 those words.** You should read that warning as accurate: the permission is broad, and it is
 granted the moment you install rather than site by site.
 
-This is a deliberate change from how Vero previously worked, and it is worth being plain
+This is a deliberate change from how Pensa previously worked, and it is worth being plain
 about the trade. The earlier design asked for one site at a time, which made the permission
 narrow and the tool nearly useless — a shopper had to already suspect a page before they
-could ask Vero to look at it, which is precisely backwards for a tool whose whole purpose is
+could ask Pensa to look at it, which is precisely backwards for a tool whose whole purpose is
 to notice what you did not. Persuasion techniques are not confined to a list of large
 retailers; they turn up on small independent shops, regional sites, and storefronts that did
 not exist when any list was written. A fixed list is always wrong, and it is wrong in the
@@ -109,9 +109,9 @@ direction that leaves people unprotected.
 So the permission is broad. What constrains it is not the permission; it is what the code
 does with it, and that is public and testable:
 
-- **Vero never runs on banking, health, government, or webmail sites.** This is enforced in
+- **Pensa never runs on banking, health, government, or webmail sites.** This is enforced in
   two independent layers: those hosts are excluded from the content script's match patterns,
-  so Chrome does not inject Vero there at all; and the script additionally refuses to run on
+  so Chrome does not inject Pensa there at all; and the script additionally refuses to run on
   any denied host before it reads anything. The list is in `src/shared/urlScore.ts` and the
   build fails if it is empty.
 - **Only `https` sites.** Plain `http` pages are outside the requested permission entirely.
@@ -121,10 +121,10 @@ does with it, and that is public and testable:
 - **It records nothing about a page that is not a shop.** Access to read a page is not a
   record of having read it. On shops, what it keeps is listed under "What it stores".
 
-Vero itself has no per-site off switch. You can turn detection off entirely, or switch off any
-individual technique, from its Settings page. To keep Vero off particular sites, use Chrome's
-own control: open `chrome://extensions`, choose Vero's Details, and set Site access to "On
-specific sites" — Chrome then enforces that regardless of anything Vero does. Uninstalling
+Pensa itself has no per-site off switch. You can turn detection off entirely, or switch off any
+individual technique, from its Settings page. To keep Pensa off particular sites, use Chrome's
+own control: open `chrome://extensions`, choose Pensa's Details, and set Site access to "On
+specific sites" — Chrome then enforces that regardless of anything Pensa does. Uninstalling
 removes the permission entirely.
 
 ## Optional: helping measure these techniques
@@ -132,8 +132,8 @@ removes the permission entirely.
 There is a setting to share which shops use which techniques. **It is off by default and there
 is no pre-checked box.**
 
-**How you are asked.** Once, at the bottom of the first card Vero shows you, after you have
-seen what it does. The question says who builds Vero, what the data is for, and what is shared,
+**How you are asked.** Once, at the bottom of the first card Pensa shows you, after you have
+seen what it does. The question says who builds Pensa, what the data is for, and what is shared,
 in the question itself rather than behind a link. The two answers — "Yes, share" and "No
 thanks" — are the same size and style, neither is selected for you, and closing the card
 without answering is recorded as no. You are not asked again. You can change your answer at
@@ -161,7 +161,7 @@ There are two kinds of report.
 | **day** | the date, never a time |
 
 **2. Whether an item was added to the cart.** On product and listing pages only. When you leave
-such a page, or click Add to Cart on it, Vero sends one report saying whether you clicked Add to
+such a page, or click Add to Cart on it, Pensa sends one report saying whether you clicked Add to
 Cart, plus one more for each technique that was on screen *before* you decided. Each carries
 exactly seven fields and no others:
 
@@ -176,7 +176,7 @@ exactly seven fields and no others:
 | **added to cart** | yes or no |
 
 "Added to cart" means you clicked an Add to Cart button, not that the item was actually added —
-Vero does not check. A page's reports are sent as separate counts, never as a list of what one
+Pensa does not check. A page's reports are sent as separate counts, never as a list of what one
 page showed together, because that combination could identify the page. Nothing about the item
 is included: not its name, price, or address.
 
@@ -193,14 +193,14 @@ added field is refused at both ends rather than stored.
 
 The limits, each enforced in code rather than promised here:
 
-- **Only shops can be reported.** Vero reads each page and decides whether it is selling
+- **Only shops can be reported.** Pensa reads each page and decides whether it is selling
   something before it does anything else. A detection — and therefore a report — can only
   exist on a page that passed that check. A site you visit that is not a shop is never
   reported, whatever it is.
 - **The day, not the time.** A shop plus an exact time is far easier to tie to one person's
   browsing than a shop plus a date, and measuring how common a technique is needs no more
   than the date.
-- **Sent on a timer, never at the moment something is found.** Vero checks every six hours and
+- **Sent on a timer, never at the moment something is found.** Pensa checks every six hours and
   sends once at least 25 reports are waiting, or once the oldest has waited a day. So the
   timing of a request does not reveal when you were shopping.
 - **One request carries one person's batch.** A batch can hold reports from several shops over
@@ -249,10 +249,10 @@ Material changes will be reflected here with an updated date, and in the extensi
 ## Where this is published
 
 The authoritative copy is served at
-<https://viditchhajed.github.io/vero-docs/privacy.html>.
+<https://viditchhajed.github.io/pensa-docs/privacy.html>.
 
-The previous address lived under the project's old name and no longer resolves. If you
-followed a `persuasion-patterns-docs` link here, the URL above is the current one.
+Pensa was previously published as **Vero**. The policy formerly served at
+`viditchhajed.github.io/vero-docs/` redirects here.
 
 ## Contact
 

@@ -197,7 +197,7 @@ for (const site of CANDIDATES) {
           ({ pos, size, FIELD, CLICKABLE, INTENT }) => {
             const intent = new RegExp(INTENT, "i");
             const host = document.createElement("div");
-            host.id = "vero-e2e-probe";
+            host.id = "pensa-e2e-probe";
             host.style.cssText = [
               "position:fixed !important",
               `left:${pos.left}px !important`,

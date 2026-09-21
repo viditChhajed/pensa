@@ -47,7 +47,7 @@ worth nothing if the platform logs the address anyway, and **an IP beside a shop
 day re-identifies a person.**
 
 - `server/cloudflare/wrangler.toml` sets `[observability] enabled = false`, which keeps
-  Workers Logs off. After deploying, confirm in the dashboard: **Workers → vero-counts →
+  Workers Logs off. After deploying, confirm in the dashboard: **Workers → pensa-counts →
   Observability** shows disabled.
 - **Logpush**: leave disabled.
 - Do **not** add an Analytics Engine binding, a tail consumer, or `wrangler tail` sessions
@@ -63,12 +63,12 @@ false.
 npm run sink:deploy
 ```
 
-Note the URL, e.g. `https://vero-counts.<you>.workers.dev`.
+Note the URL, e.g. `https://pensa-counts.<you>.workers.dev`.
 
 ## 6. Check it accepts what it should and refuses what it must
 
 ```bash
-W=https://vero-counts.<you>.workers.dev
+W=https://pensa-counts.<you>.workers.dev
 DAY=$(( $(date +%s) / 86400 ))
 GOOD='{"patternId":"scarcity.stock","detectorId":"scarcity.stock@1","confidenceQuartile":4,"funnelStage":"pdp","site":"shein.com","originCategory":"fast_fashion","rulepackVersion":"1","dayBucket":'$DAY'}'
 ```
@@ -93,7 +93,7 @@ npx wrangler d1 execute vero-counts --remote --config server/cloudflare/wrangler
 ## 7. Point the extension at it
 
 ```bash
-TELEMETRY_ENDPOINT=https://vero-counts.<you>.workers.dev/counts npm run build && npm run zip
+TELEMETRY_ENDPOINT=https://pensa-counts.<you>.workers.dev/counts npm run build && npm run zip
 ```
 
 Build-time only. Upload **that** zip — a zip from a plain `npm run build` sends nothing.

@@ -1,4 +1,4 @@
-# Vero
+# Pensa
 
 A Manifest V3 extension that passively notices the persuasion architecture on shopping pages
 and, at add-to-cart or checkout, asks a question about what was actually on screen.
@@ -179,12 +179,12 @@ Four, and no host permissions at install:
 | `storage` | Remember your per-site choices and the local event log |
 | `activeTab` | Read the current tab's URL in the popup, so it can say what it is doing here |
 
-**Vero requests `https://*/*` at install, and Chrome shows the "read and change all your
+**Pensa requests `https://*/*` at install, and Chrome shows the "read and change all your
 data on websites you visit" warning. That is accurate and it is deliberate.**
 
 It did not start this way. The original design (plan §14.2) asked for one origin at a time
 from the popup, which kept the permission narrow and made the tool close to useless: a
-shopper had to already suspect a page before they could ask Vero to look at it, which is
+shopper had to already suspect a page before they could ask Pensa to look at it, which is
 backwards for something whose whole job is to notice what you did not. And the list is
 always wrong — these techniques run on small independent shops and regional storefronts as
 readily as on the large retailers any list would name.

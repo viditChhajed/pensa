@@ -53,7 +53,7 @@ covering a control. Do **not** rely on the card alone — read the full log:
 - Extension **Settings → What was noticed today** lists everything detected, including
   suppressed items, with a Noticed / Shown split.
 - The service worker console (`chrome://extensions` → **Inspect views: service worker`)
-  logs `[vero] digest` lines.
+  logs `[pensa] digest` lines.
 
 ---
 
@@ -726,7 +726,7 @@ plus additions to `drip`, `temporal`, `commerce` and `framingPrecision`).
 
 ## The blind spot the repair exposed
 
-Adding the commerce gate had made Vero **silent on every travel and ticketing site** — booking,
+Adding the commerce gate had made Pensa **silent on every travel and ticketing site** — booking,
 kayak, eventbrite, ticketmaster all scored exactly 0. Measured, not guessed: the diagnostic line
 now prints the signal counts, and it read `prices 0, atc 0, checkout 0, booking 0, cartRows 0`
 on pages that visibly show a hundred prices.

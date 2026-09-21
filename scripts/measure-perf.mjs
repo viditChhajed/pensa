@@ -55,7 +55,7 @@ for (const [name, url] of SITES) {
   const lines = [];
   page.on("console", (m) => {
     const t = m.text();
-    if (t.includes("[vero] pass ") || t.includes("[vero] harvest budget")) lines.push(t);
+    if (t.includes("[pensa] pass ") || t.includes("[pensa] harvest budget")) lines.push(t);
   });
   try {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 40_000 });
@@ -84,7 +84,7 @@ for (const [name, url] of SITES) {
       : `${name.padEnd(8)} under budget (no pass exceeded PERF_BUDGET_MS)`,
   );
   for (const l of lines.filter((l) => l.includes("harvest budget"))) {
-    console.log(`         ${l.replace("[vero] ", "")}`);
+    console.log(`         ${l.replace("[pensa] ", "")}`);
   }
   await page.close();
 }

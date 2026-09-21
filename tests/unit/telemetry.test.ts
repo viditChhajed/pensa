@@ -108,7 +108,7 @@ describe("what a telemetry record carries", () => {
   });
 
   it("refuses anything that is not https", () => {
-    // Vero's permission is https. An http origin could only be a test build or a
+    // Pensa's permission is https. An http origin could only be a test build or a
     // hand-written row, and neither belongs in a dataset.
     expect(toRecord(event({ origin: "http://shop.example.com" }))).toBeNull();
   });

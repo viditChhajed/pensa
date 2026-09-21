@@ -66,7 +66,7 @@ export function isOutcome(r: AnyRecord): r is OutcomeRecord {
 /**
  * The shop a record may name, or null if it may not name one.
  *
- * https only — the permission Vero holds is https, and a record naming an http origin could
+ * https only — the permission Pensa holds is https, and a record naming an http origin could
  * only have come from a test build or a hand-written row. The registrable domain only, so
  * subdomains merge and no path, query or page identity can travel.
  */
@@ -227,7 +227,7 @@ export async function flush(
     await db.telemetry.orderBy("queuedAt").toArray(),
   );
   if (corruptIds.length > 0) {
-    console.warn(`[vero] dropped ${corruptIds.length} unparseable telemetry row(s)`);
+    console.warn(`[pensa] dropped ${corruptIds.length} unparseable telemetry row(s)`);
     await db.telemetry.bulkDelete(corruptIds);
   }
   if (queued.length === 0) return { sent: 0, held: 0, reason: "too_small" };

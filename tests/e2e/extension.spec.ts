@@ -56,7 +56,7 @@ test.describe("extension runtime", () => {
 
     /**
      * This assertion used to demand that `host_permissions` be EMPTY. The product decision
-     * reversed: Vero now asks for every https site at install and shows Chrome's warning.
+     * reversed: Pensa now asks for every https site at install and shows Chrome's warning.
      *
      * The assertion is still worth having, for a narrower reason. It pins the permission to
      * https exactly — not `<all_urls>`, not a scheme wildcard — so plain http pages and
@@ -79,7 +79,7 @@ test.describe("extension runtime", () => {
      * The load-bearing assertion of the new permission model.
      *
      * Once the broad permission is granted at install, `exclude_matches` is the only thing
-     * that stops Chrome injecting Vero into a bank. An empty or missing exclusion list would
+     * that stops Chrome injecting Pensa into a bank. An empty or missing exclusion list would
      * not fail any other test in this suite — the extension would simply work, everywhere,
      * including where it must never run.
      */
@@ -92,7 +92,7 @@ test.describe("extension runtime", () => {
     expect(excludes.length).toBeGreaterThan(50);
 
     // Whole hosts and their subdomains ARE expressible as match patterns, so these must be
-    // refused by Chrome itself, before a line of Vero's code runs on them.
+    // refused by Chrome itself, before a line of Pensa's code runs on them.
     for (const host of ["chase.com", "bankofamerica.com", "irs.gov"]) {
       expect(
         excludes.includes(`https://*.${host}/*`),
@@ -126,7 +126,7 @@ test.describe("extension runtime", () => {
   test("popup no longer offers enablement, because there is nothing to enable", async () => {
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/popup.html`);
-    await expect(page.locator("h1")).toContainText("Vero");
+    await expect(page.locator("h1")).toContainText("Pensa");
     // The grant button and the whole per-origin request flow are gone.
     await expect(page.locator("#enable")).toHaveCount(0);
     await page.close();
@@ -182,7 +182,7 @@ test.describe("grant -> register -> INJECT", () => {
     await page.waitForTimeout(2000);
 
     const injected = await page.evaluate(
-      () => (globalThis as Record<string, unknown>).__veroDetectorInjected__ === true,
+      () => (globalThis as Record<string, unknown>).__pensaDetectorInjected__ === true,
     );
     expect(injected, "script registered but never injected — the §1.3 silent failure").toBe(true);
     await page.close();

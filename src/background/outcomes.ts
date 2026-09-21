@@ -16,7 +16,7 @@
  *   salience gate BEFORE the click, because the view ends at the click — so a drawer that
  *   opens afterwards with "only 2 left" cannot be credited with the add that opened it.
  *
- *   Vero's own card cannot contaminate a view's outcome: the card is shown in RESPONSE to the
+ *   Pensa's own card cannot contaminate a view's outcome: the card is shown in RESPONSE to the
  *   add-to-cart click, after this view has already ended. It can still change what a
  *   long-time user does on later pages, which is a limit of measuring from inside a tool that
  *   intervenes.
@@ -34,6 +34,7 @@ import type { PageViewPayload } from "@/shared/messages";
 import { type OutcomeRecord, PAGE_BASELINE, type Settings } from "@/shared/schema";
 import { PATTERN_IDS } from "@/shared/taxonomy";
 
+// Named under the extension's first published name (Vero). Kept: it is stored on installs.
 const STORAGE_KEY = "vero:views";
 /** A view with no activity for this long is over, and ended without an add. */
 export const VIEW_IDLE_MS = 30 * 60 * 1000;

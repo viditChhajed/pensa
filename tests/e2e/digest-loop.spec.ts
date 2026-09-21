@@ -20,7 +20,7 @@ const PAGES = resolve("tests/e2e/pages");
 let context: BrowserContext;
 
 test.beforeAll(async () => {
-  const testBuild = stageLocalBuild("vero-loop-", [
+  const testBuild = stageLocalBuild("pensa-loop-", [
     "http://shop.example.com/*",
     "http://shop.example.com/*",
   ]);
@@ -51,7 +51,7 @@ async function openFixture(name: string): Promise<{ page: Page; logs: string[] }
   const page = await context.newPage();
   const logs: string[] = [];
   page.on("console", (m) => {
-    if (m.text().includes("[vero]")) logs.push(m.text());
+    if (m.text().includes("[pensa]")) logs.push(m.text());
   });
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());

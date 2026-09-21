@@ -6,7 +6,7 @@ let context: BrowserContext;
 let extensionId: string;
 
 test.beforeAll(async () => {
-  const build = stageLocalBuild("vero-settings-", ["http://shop.example.com/*"]);
+  const build = stageLocalBuild("pensa-settings-", ["http://shop.example.com/*"]);
 
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",

@@ -10,7 +10,7 @@ reviewer checks.
 ## Item name (45 char limit)
 
 ```
-Vero
+Pensa
 ```
 
 ## Short description (132 char limit)
@@ -38,7 +38,7 @@ version submitted. The block below is the original wrapped draft, kept for histo
 store renders line breaks literally, so do not paste it.
 
 ```
-Vero notices the techniques a shopping page is using — countdown timers,
+Pensa notices the techniques a shopping page is using — countdown timers,
 "only 3 left" messages, crossed-out reference prices, pre-ticked add-ons, fees that appear
 only at checkout — and, when you add something to your cart, asks you one question about
 what was actually on your screen.
@@ -93,7 +93,7 @@ on the purchase path; it may sit over an ordinary link, which one click uncovers
 
 PRIVACY AND PERMISSIONS
 
-Chrome will tell you Vero can read the websites you visit, and that is accurate: it needs to,
+Chrome will tell you Pensa can read the websites you visit, and that is accurate: it needs to,
 because these techniques turn up on small and new shops as often as on big ones, and no list
 of sites would cover them. What it does with that access is narrow:
 
@@ -136,7 +136,7 @@ public.
 
 > **ORDERING DEPENDENCY — the repo must be public BEFORE this listing is submitted.**
 >
-> `viditChhajed/vero` is private today, deliberately: the decision is to stay
+> `viditChhajed/pensa` is private today, deliberately: the decision is to stay
 > private while the detectors are still being refined, and to flip public immediately before
 > launch. That is a sound order — refine in private, ship in public — but it makes the
 > paragraph above **false until the flip happens**, in the one direction a reviewer can check
@@ -166,7 +166,7 @@ add-on choices. Stored on the device; detections are deleted after 30 days by de
 **`activeTab`**
 ```
 Lets the popup read the address of the tab the user is looking at, so it can say whether
-Vero is running on that page, is idle because the page is not a shop, or never runs there
+Pensa is running on that page, is idle because the page is not a shop, or never runs there
 (banking, health, government and webmail sites). Used only while the popup is open.
 ```
 
@@ -192,7 +192,7 @@ eviction that the housekeeping alarm also runs.)*
 > look hardest at broad host permissions, and a vague answer here is the likeliest rejection.
 
 ```
-Vero detects persuasion techniques — countdown timers, limited-stock claims, crossed-out
+Pensa detects persuasion techniques — countdown timers, limited-stock claims, crossed-out
 reference prices, preselected add-ons, fees added at checkout — on the shopping pages a user
 visits, and asks them a question about what was on screen before they buy.
 
@@ -230,14 +230,14 @@ nothing. Nothing is transmitted, and four e2e tests assert it.
 Cart was clicked is user activity (a click). Use this wording (fits the 1,000-character field):
 
 ```
-Optional and off by default. Vero asks once, on its first card, with two equal answers; closing the card counts as no. When on, it reports which persuasion technique appeared on which shop (main domain only, e.g. shein.com), at which checkout stage, and on which day. On product and listing pages it also reports whether the Add to Cart button was clicked, alongside the techniques on screen beforehand, as separate counts. It never sends the page address, product, search, page text, prices, account details, any identifier for the user, or any time more precise than the day. Only pages judged to be shops are reported. Reports are batched on a six-hour timer and stored only as aggregate counts. Users can view the exact reports before any are sent, and switching sharing off deletes anything unsent. The data is used for research on how common these techniques are and how often people add items after seeing them.
+Optional and off by default. Pensa asks once, on its first card, with two equal answers; closing the card counts as no. When on, it reports which persuasion technique appeared on which shop (main domain only, e.g. shein.com), at which checkout stage, and on which day. On product and listing pages it also reports whether the Add to Cart button was clicked, alongside the techniques on screen beforehand, as separate counts. It never sends the page address, product, search, page text, prices, account details, any identifier for the user, or any time more precise than the day. Only pages judged to be shops are reported. Reports are batched on a six-hour timer and stored only as aggregate counts. Users can view the exact reports before any are sent, and switching sharing off deletes anything unsent. The data is used for research on how common these techniques are and how often people add items after seeing them.
 ```
 
 Chrome Web Store user-data policy also requires the in-product consent to be prominent and
 affirmative before collection starts. Settings → "Help measure these techniques" is that
 consent: unticked by default, and it names the shop-level collection in plain words rather
 than calling it anonymous statistics. The one-time question on the first card is the prominent
-disclosure: it states who builds Vero, what is shared (including the add-to-cart outcome), and
+disclosure: it states who builds Pensa, what is shared (including the add-to-cart outcome), and
 offers two equal answers with nothing preselected. See `CONSENT_COPY` in src/content/ui/card.ts.
 
 Certify in both cases: does not sell data, does not use it for unrelated purposes, does not
@@ -248,7 +248,7 @@ use it for creditworthiness.
 ## Privacy policy URL — **DONE**
 
 ```
-https://viditchhajed.github.io/vero-docs/privacy.html
+https://viditchhajed.github.io/pensa-docs/privacy.html
 ```
 
 Live and returning 200, served from a separate docs repo. Paste it into the listing's
@@ -282,7 +282,7 @@ committed policy disagree. Re-check the page after any edit to PRIVACY.md.
 **Suggested screenshots**, in order of usefulness to a reviewer:
 
 1. The card on a real product page, showing one question.
-2. The popup on a shopping page, saying Vero is running there and showing today's summary.
+2. The popup on a shopping page, saying Pensa is running there and showing today's summary.
 3. Settings → *What was noticed today*, showing the Noticed / Shown split.
 4. Settings → *What to watch for*, showing a switch per technique and the frequency control.
    This is the screenshot that answers "can I turn it down?", which is the first thing a
@@ -317,7 +317,7 @@ be judged. Flipping to Public later is one setting.
       wrong claims out of 170**, one detector wrong in every single firing, and a bug in the
       shared money parser underneath it. Two further runs found 2 more, and a line-by-line code
       audit then found a dozen defects the live runs could not see — including add-on
-      attribution that had never worked and a 400-character text cap that made Vero silent on
+      attribution that had never worked and a 400-character text cap that made Pensa silent on
       every travel and ticketing site. All are fixed and regression-tested; 157 claims stand on
       the repaired build. Tally and provenance in [EVAL.md](EVAL.md).
 - [x] Screenshots captured — `npm run screenshots`, four 1280×800 PNGs in `store/screenshots/`,
@@ -328,17 +328,17 @@ be judged. Flipping to Public later is one setting.
       file records short labels, never URLs with query strings. No history rewrite needed.
 - [x] LICENSE added (ISC, matching `package.json`) — a public repo without one grants nobody
       any rights
-- [x] Version bumped in `wxt.config.ts` — 1.0.0
-- [x] `npm run zip` — `.output/vero-1.0.0-chrome.zip`, 133 KB
+- [x] Version bumped in `wxt.config.ts` — 1.1.0 (renamed from Vero; 1.0.0 was published as Vero)
+- [x] `npm run zip` — `.output/pensa-1.1.0-chrome.zip`
 
 ### The zip to upload
 
-The prevalence sink is **deployed** at `https://vero-counts.viditchhajed.workers.dev/counts`
+The prevalence sink is **deployed** at `https://pensa-counts.viditchhajed.workers.dev/counts`
 and verified end to end: the shipped build posted a real batch, it landed in D1, and the
 research views read it back. So the upload is the build WITH the endpoint:
 
 ```bash
-TELEMETRY_ENDPOINT=https://vero-counts.viditchhajed.workers.dev/counts npm run zip
+TELEMETRY_ENDPOINT=https://pensa-counts.viditchhajed.workers.dev/counts npm run zip
 ```
 
 A zip from a plain `npm run build` has the send path compiled out entirely and will never
