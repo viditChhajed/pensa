@@ -3,7 +3,7 @@
  *
  * Parse 2-4 sibling plan/SKU cards, extract price and quantity/duration, compute unit price,
  * and flag two distinct things:
- *   1. An option that is weakly dominated — costs more per unit AND gives no more than
+ *   1. An option that is weakly dominated, costs more per unit AND gives no more than
  *      another option. Its only job is to make a neighbour look good.
  *   2. A "most popular" / "best value" badge sitting on an option that is NOT the best unit
  *      price. The badge is doing work the arithmetic does not support.
@@ -19,7 +19,7 @@ import { candidate, visibleCandidates } from "./util";
 const BADGE =
   /\b(?:most popular|best value|best deal|recommended|most chosen|our pick|popular choice|best seller)\b/;
 
-/** "3 months", "12 pack", "per month", "x2" — the denominator of a unit price. */
+/** "3 months", "12 pack", "per month", "x2", the denominator of a unit price. */
 const QUANTITY_PATTERNS: readonly RegExp[] = [
   /\b(\d{1,3})\s*(?:months?|mos?)\b/,
   /\b(\d{1,3})\s*(?:years?|yrs?)\b/,

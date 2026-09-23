@@ -22,7 +22,7 @@ function verdict(html: string, url = "https://shop.example.com/x") {
 describe("pages that are not shops", () => {
   /**
    * The one that prompted this. The popup used to announce "nothing commerce-shaped in
-   * /chat/67039775-1f20-47fe-9e59-ebb9fd9a77b7" — a verdict on a STRING. The page itself is
+   * /chat/67039775-1f20-47fe-9e59-ebb9fd9a77b7", a verdict on a STRING. The page itself is
    * unambiguous, and now it is the page that is read.
    */
   it("a chat app is not a shop", () => {
@@ -126,7 +126,7 @@ describe("the verdict explains itself", () => {
 describe("selling without a cart", () => {
   /**
    * The gate was built around retail cart furniture and scored booking.com, kayak.com,
-   * eventbrite.com and ticketmaster.com at exactly ZERO — Pensa was silent on the whole travel
+   * eventbrite.com and ticketmaster.com at exactly ZERO, Pensa was silent on the whole travel
    * and ticketing category, which is where drip pricing lives most heavily.
    */
   const listing = (n: number, price = "$189") =>
@@ -171,7 +171,7 @@ describe("selling without a cart", () => {
 describe("page-wide signals read the whole page", () => {
   it("sees a price far below the first 400 characters", () => {
     /**
-     * `collapse()` caps text at 400 characters, and the document-wide scan used it — so
+     * `collapse()` caps text at 400 characters, and the document-wide scan used it, so
      * `bodyText` held only the page header. Booking.com reported ZERO prices while showing 105,
      * and the step-indicator signal had only ever seen the top of a page.
      */

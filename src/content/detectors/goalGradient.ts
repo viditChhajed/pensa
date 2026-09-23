@@ -5,7 +5,7 @@
  * toward a goal rises as the goal appears closer, so a near-miss threshold pulls spend up.
  *
  * Precision note: a bare "Free shipping over $50" is a policy statement, not a goal gradient
- * — there is no progress and no personalised remainder. The detector requires either an
+ *, there is no progress and no personalised remainder. The detector requires either an
  * explicit remaining amount addressed to the shopper, or a progress element paired with
  * threshold copy.
  */
@@ -18,7 +18,7 @@ import { candidate, matchLexemes, visibleCandidates } from "./util";
 /** A personalised remainder: addressed to you, with an amount still to go. */
 // Note: these deliberately use `.{0,16}?` rather than `[^.]{0,16}`. The gap between the
 // verb and the goal is almost always an amount, and `[^.]` cannot cross the decimal point
-// in "$20.00" — which silently broke every pattern here on realistic copy.
+// in "$20.00", which silently broke every pattern here on realistic copy.
 /**
  * What sits between "only"/"you're" and "away"/"to go" must be an AMOUNT: money, or a count of
  * items. It used to be any 16 characters (`.{0,16}?`), which matched "only available in more
@@ -35,7 +35,7 @@ const REMAINDER_PATTERNS: readonly RegExp[] = [
   r(
     "\\badd\\s+(?:another\\s+)?AMOUNT\\s+(?:more\\s+)?to (?:get|unlock|qualify|receive|(?:your\\s+)?(?:cart|bag|basket))\\b",
   ),
-  // "Only $12 more and shipping's on us" — a remainder needs no destination word once it names an amount.
+  // "Only $12 more and shipping's on us", a remainder needs no destination word once it names an amount.
   r("\\b(?:only|just|another)\\s+AMOUNT\\s+more\\b"),
   r("\\bspend\\s+(?:another\\s+)?AMOUNT\\s+(?:more\\s+)?to (?:get|unlock|qualify)\\b"),
   r("(?:^|[^\\w.,])AMOUNT\\s+(?:more\\s+)?away from (?:free|a free|your)\\b"),
@@ -46,7 +46,7 @@ const REMAINDER_PATTERNS: readonly RegExp[] = [
   /\balmost there\b.{0,40}\bfree (?:shipping|delivery)\b|\bfree (?:shipping|delivery)\b.{0,40}\balmost there\b/,
 ];
 
-/** Threshold copy without a personalised remainder — needs a progress bar to count. */
+/** Threshold copy without a personalised remainder, needs a progress bar to count. */
 const THRESHOLD_COPY =
   /\bfree (?:shipping|delivery)\b|\bunlock (?:free|a )\b|\bqualif(?:y|ies) for\b|\bto reach\b/;
 
@@ -54,7 +54,7 @@ const THRESHOLD_COPY =
  * A spend threshold stated as a policy, in any of the shapes shops actually use.
  *
  * The first version of this matched "free shipping on orders over $50" and essentially
- * nothing else. Measured against 2,639 real snippets it found 3 of 72 threshold messages —
+ * nothing else. Measured against 2,639 real snippets it found 3 of 72 threshold messages,
  * recall 0.04. The corpus showed why: the copy comes in at least five families, and the
  * regex covered one of them.
  *
@@ -66,7 +66,7 @@ const THRESHOLD_COPY =
  *
  * So it is built from parts rather than as a list of sentences: an AMOUNT, a THRESHOLD
  * preposition, and a REWARD. That composes across currencies and word orders, which a
- * sentence list never will — nine of the misses were the same Uniqlo sentence in nine
+ * sentence list never will, nine of the misses were the same Uniqlo sentence in nine
  * currencies.
  */
 
@@ -77,7 +77,7 @@ const MONEY_ISH =
 /**
  * The word that turns an amount into a bar you have to clear.
  *
- * `with` was originally optional-qualified — `with (?:any|select|your)?` — which made a bare
+ * `with` was originally optional-qualified, `with (?:any|select|your)?`, which made a bare
  * "with" a threshold. Boohoo's product cards end "Extra 15% Off, With Code: 15EXTRA", so
  * every one of them qualified: money, a reward ("off"), and "with". That single `?` was 40
  * of 54 false positives and dropped precision from 1.00 to 0.49. `with` now has to be
@@ -91,12 +91,12 @@ const REWARD =
   /\bfree\b|\bcomplimentary\b|\bgift\b|\b\d+%?\s*off\b|\boff\b|\bsample|\begift\b|\bvoucher\b|\bpromo card\b|\breward|\bdelivery\b|\bshipping\b|\bcash\b/i;
 
 /**
- * Quantity thresholds — "buy 3, get the 4th free", "BOGO 25% off" — are DELIBERATELY not
+ * Quantity thresholds, "buy 3, get the 4th free", "BOGO 25% off", are DELIBERATELY not
  * matched, and that is a change of mind rather than an oversight.
  *
  * The mechanism is arguably the same: a bar that pulls the basket upward, in units instead
- * of money. But the labelling disagreed with ITSELF about them — one pass recorded BOGO as a
- * spend threshold, another recorded it as a separate technique — and a detector should not
+ * of money. But the labelling disagreed with ITSELF about them, one pass recorded BOGO as a
+ * spend threshold, another recorded it as a separate technique, and a detector should not
  * encode a judgement the labelling could not reach consensus on. Encoding it cost precision
  * and the evidence for it was split.
  *
@@ -114,7 +114,7 @@ function looksLikeAListingBlob(text: string): boolean {
  * The threshold MET, not just offered: "Success! Free Shipping Unlocked".
  *
  * Reported from the corpus and scored zero, because every rule here needs an amount and the
- * completion message has none — the number has served its purpose and been dropped. It is
+ * completion message has none, the number has served its purpose and been dropped. It is
  * still the same mechanism, and arguably the most interesting moment of it: the goal
  * gradient paid off, which is what makes the next threshold work.
  */
@@ -149,7 +149,7 @@ const WEIGHTS: Record<string, number> = {
   /**
    * 0.45 is chosen against the two thresholds, not picked for feel: above LOG_THRESHOLD
    * (0.35) so a bare policy is counted, and below the 0.75 surface threshold by enough that
-   * `hasAmount` — which a policy always has — cannot push it over. A policy can therefore be
+   * `hasAmount`, which a policy always has, cannot push it over. A policy can therefore be
    * measured and can never interrupt anyone.
    */
   thresholdPolicy: 0.45,
@@ -181,7 +181,7 @@ export const goalGradientDetector: Detector = {
       // Counted, never shown. See THRESHOLD_POLICY.
       const policy = remainder === 0 && looksLikeAPolicy(t) ? 1 : 0;
 
-      // A policy statement is not a goal gradient — but it is worth recording that the shop
+      // A policy statement is not a goal gradient, but it is worth recording that the shop
       // set a threshold at all, so it no longer drops out here.
       if (remainder === 0 && policy === 0 && !(threshold === 1 && progress === 1)) continue;
 

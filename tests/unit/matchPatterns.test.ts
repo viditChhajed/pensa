@@ -15,7 +15,7 @@ import denylistJson from "../../rulepacks/denylist.v1.json";
  *
  * What replaced it is the conversion the whole denylist guarantee now rests on: turning
  * denylist regexes into `exclude_matches`, which is the ONLY layer Chrome enforces for us.
- * `matchesPattern` survives too — the popup asks the worker whether the declared content
+ * `matchesPattern` survives too, the popup asks the worker whether the declared content
  * script matches this page, and that is the comparison behind the answer.
  */
 
@@ -77,7 +77,7 @@ describe("denylist -> exclude_matches", () => {
   it("refuses to approximate anything else, and reports it instead", () => {
     /**
      * The honest half. A match pattern cannot say "any label containing bank", "mychart
-     * under any TLD", or "a secure. subdomain in front of a bank name" — so those are NOT
+     * under any TLD", or "a secure. subdomain in front of a bank name", so those are NOT
      * in exclude_matches, Chrome does inject on them, and only the runtime `isDenied()` at
      * the top of the detector stops anything happening.
      *
@@ -105,7 +105,7 @@ describe("denylist -> exclude_matches", () => {
   it("never excludes a host the denylist does not actually deny", () => {
     /**
      * The conversion is allowed to be over-broad relative to reality (the cross product of
-     * a name alternation and a TLD alternation invents `bluesky.com`, which is fine — no
+     * a name alternation and a TLD alternation invents `bluesky.com`, which is fine, no
      * shopping happens there) but it must never be over-broad relative to the DENYLIST.
      * An exclusion for a host `isDenied()` would let through means Pensa is silently absent
      * somewhere it claims to work, with nothing anywhere saying so.
@@ -118,7 +118,7 @@ describe("denylist -> exclude_matches", () => {
       /**
        * The apex is checked only for multi-label hosts, and that is a real gap rather than a
        * convenience. `\.internal$` denies `foo.internal` and not the bare label `internal`,
-       * but a match pattern cannot say "subdomains but not the apex" — `*.internal` covers
+       * but a match pattern cannot say "subdomains but not the apex", `*.internal` covers
        * both. So the three bare-suffix rules (.local, .internal, .test) exclude one single
        * label hostname more than the denylist does. Single-label hosts are not reachable on
        * the public web, so this costs nothing; it is written down because the next person to

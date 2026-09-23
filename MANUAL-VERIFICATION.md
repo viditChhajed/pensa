@@ -3,11 +3,11 @@
 Everything machine-verifiable now runs in `npm run test:e2e` (real Chromium, real extension).
 **One link in the chain cannot be automated** and is listed first.
 
-## 1. The permission gesture — REQUIRES A HUMAN
+## 1. The permission gesture, REQUIRES A HUMAN
 
 `chrome.permissions.request()` raises a **native OS dialog**. It is not in the page DOM, so
 no browser automation can accept it. Calling it from a service worker fails outright for want
-of a user gesture — which is itself a real-browser confirmation of the plan's §1.4 finding.
+of a user gesture, which is itself a real-browser confirmation of the plan's §1.4 finding.
 
 ```bash
 npm run build
@@ -21,16 +21,16 @@ npm run build
 **PASS:** Chrome's permission prompt appears immediately.
 **FAIL:** No prompt. An `await` crept in ahead of `permissions.request()` and ate the
 gesture. The popup resolves the origin on open precisely so the click handler can be
-synchronous — check `src/entrypoints/popup/main.ts`.
+synchronous, check `src/entrypoints/popup/main.ts`.
 
 5. Grant, then reload the page. Open the service worker console from `chrome://extensions`.
 
 **PASS:** no `[pensa] content script registration failed`, and browsing the site produces
 a `ledger:<origin>` key under Application → Storage → Extension storage → Session.
 **FAIL (silent):** registration succeeded but nothing injected. Registration and injection
-are different facts — see plan §1.3.
+are different facts, see plan §1.3.
 
-## 2. Icon state — automated only for the rules, not the pixels
+## 2. Icon state, automated only for the rules, not the pixels
 
 `declarativeContent` rule installation is asserted in e2e; the rendered greyscale is not.
 
@@ -38,20 +38,20 @@ are different facts — see plan §1.3.
 - On `https://www.etsy.com` it should be **colour**.
 - On `https://www.chase.com` it should be **grey and never offer enablement** (denylist).
 
-## 3. Real-retailer spot-check (plan §10) — AUTOMATED PASS DONE, HUMAN PASS NOT RUN
+## 3. Real-retailer spot-check (plan §10), AUTOMATED PASS DONE, HUMAN PASS NOT RUN
 
 30–40 pages across ≥6 retailers, hand-tallying each detector's firings as correct or
 incorrect. Any detector with more than ~4 false positives gets its threshold raised or is
 disabled by default. Record the tally in `EVAL.md`.
 
-**An automated pass now exists and has run** — `npm run spot:check` drives the real build
+**An automated pass now exists and has run**, `npm run spot:check` drives the real build
 over live retailer pages and records every firing with the text it matched; the tally is in
 [EVAL.md](EVAL.md). It caught real false positives that the labelled corpus could not, and
 it is the reason two detectors were changed before launch.
 
 It is **not** this section. The automated pass reads the detector's own log; a person reads
 the page. It cannot tell you that a claim was technically true and still useless to a shopper
-— the failure that actually drives uninstalls — and it never sees the card, only the firing
+, the failure that actually drives uninstalls, and it never sees the card, only the firing
 behind it. So what stands:
 
 - A precision claim about *firings*, from the automated pass, is supported and is stated in
@@ -71,7 +71,7 @@ and it should be verified by eye, not just by absence of fetch calls in source.
 
 ## What IS automated
 
-`npm run test:e2e` — real Chromium, real extension, 13 tests:
+`npm run test:e2e`, real Chromium, real extension, 13 tests:
 
 - service worker boots; manifest **as Chrome parsed it** has empty `host_permissions` and no
   `content_scripts`
@@ -87,4 +87,4 @@ and it should be verified by eye, not just by absence of fetch calls in source.
 - detector work produces no long task over 200 ms
 
 `npm run build` fails the build on a reintroduced `host_permission`, a manifest content
-script, or any broad host pattern — verified by deliberately reintroducing each.
+script, or any broad host pattern, verified by deliberately reintroducing each.

@@ -2,7 +2,7 @@
  * Fixture normalisation and PII scrubbing (plan §6).
  *
  * Fixtures are captured from REAL retailer pages, which means they can contain real personal
- * data — the capturer's own if they were signed in, and third parties' regardless (reviewer
+ * data, the capturer's own if they were signed in, and third parties' regardless (reviewer
  * names, avatars, Q&A authors). Committing that to a repository is the kind of mistake that
  * is trivial to make and impossible to fully undo, so the scrub runs before commit and CI
  * fails the build on any hit.
@@ -48,13 +48,13 @@ interface Rule {
    * Receives the whole match plus its capture groups and returns the replacement.
    *
    * A function, always. An earlier version accepted a string and applied it by calling
-   * `match.replace(rule.pattern, ...)` inside the outer replace callback — but `pattern` is
+   * `match.replace(rule.pattern, ...)` inside the outer replace callback, but `pattern` is
    * a stateful global regex, so re-entering it there mutated `lastIndex` and the
    * substitution silently did nothing. Card numbers were reported as redacted while
    * remaining in the file, which is the worst failure mode a privacy control can have.
    */
   replace: (match: string, groups: string[]) => string;
-  /** Extra test beyond the regex — used to Luhn-check card-shaped runs. */
+  /** Extra test beyond the regex, used to Luhn-check card-shaped runs. */
   guard?: (m: string) => boolean;
 }
 
@@ -66,7 +66,7 @@ const RULES: Rule[] = [
   },
   {
     name: "card-number",
-    // Only replaced when it passes Luhn — order numbers are frequently 16 digits.
+    // Only replaced when it passes Luhn, order numbers are frequently 16 digits.
     pattern: /\b(?:\d[ -]?){13,19}\b/g,
     replace: () => PLACEHOLDER.card,
     guard: (m) => isLuhnValid(m),
@@ -117,7 +117,7 @@ const RULES: Rule[] = [
   },
 ];
 
-/** Reviewer names and avatars in JSON-LD — third-party personal data is still personal data. */
+/** Reviewer names and avatars in JSON-LD, third-party personal data is still personal data. */
 const JSONLD_PERSON_RULES: Rule[] = [
   {
     name: "jsonld-person-name",
@@ -136,7 +136,7 @@ const JSONLD_PERSON_RULES: Rule[] = [
  * Every placeholder is deliberately shaped so it CANNOT match the rule that produced it.
  *
  * This is not cosmetic. `scan-fixtures` fails CI on any hit, so if the replacement for a card
- * number were itself a valid card number — as "4111 1111 1111 1111" is — then every
+ * number were itself a valid card number, as "4111 1111 1111 1111" is, then every
  * correctly-scrubbed fixture would fail the gate forever, and the first thing anyone would do
  * is switch the gate off. `scrub` must be idempotent; there is a test asserting it.
  */
@@ -178,7 +178,7 @@ export function scrub(input: string): ScrubResult {
   return { output, hits };
 }
 
-/** Scan without modifying — what CI runs over the committed fixture tree. */
+/** Scan without modifying, what CI runs over the committed fixture tree. */
 export function findPii(input: string): ScrubHit[] {
   return scrub(input).hits;
 }
@@ -190,7 +190,7 @@ export interface NormaliseOptions {
 
 /**
  * Structural normalisation (plan §6). Strips what cannot be replayed and would only add
- * noise to a diff, while keeping JSON-LD — detectors read it.
+ * noise to a diff, while keeping JSON-LD, detectors read it.
  */
 export function normalise(html: string, opts: NormaliseOptions = {}): string {
   let out = html;
@@ -206,7 +206,7 @@ export function normalise(html: string, opts: NormaliseOptions = {}): string {
     "",
   );
 
-  // Inline event handlers — a fixture must never execute anything.
+  // Inline event handlers, a fixture must never execute anything.
   out = out.replace(/\son[a-z]+\s*=\s*"(?:[^"]*)"/gi, "");
   out = out.replace(/\son[a-z]+\s*=\s*'(?:[^']*)'/gi, "");
 

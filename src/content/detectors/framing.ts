@@ -1,5 +1,5 @@
 /**
- * framing.savings_ratio — the "Rule of 100".
+ * framing.savings_ratio, the "Rule of 100".
  *
  * The same discount reads as larger when expressed as a percentage on a cheap item and as an
  * absolute amount on an expensive one. When a page shows a was-price, a now-price AND a
@@ -10,7 +10,7 @@
  * page that simply states "$5 off" on a $20 item is not flagged.
  *
  * WHAT THIS DETECTOR HAS NOT EARNED YET. The live audit of 22 retailers produced nineteen
- * firings and every one of them was wrong — four more than the adjudication counted, because
+ * firings and every one of them was wrong, four more than the adjudication counted, because
  * three of the four it passed are wrong for reasons the quoted text does not show (see
  * tests/unit/framingPrecision.test.ts, which writes the arithmetic out). After the evidence
  * gate below, those nineteen become zero. That is a precision fix and nothing else: it does
@@ -36,7 +36,7 @@ import { candidate, visibleCandidates } from "./util";
  * "save $40", "you save $40", "40% off", "save 40%". A word on its own is not a claim.
  *
  * PERCENT_CLAIM deliberately has no leading `\b`. Sites concatenate price and badge into one
- * text node with no separator — SHEIN renders "$12.99flash sale$3.6010% off" — and a leading
+ * text node with no separator, SHEIN renders "$12.99flash sale$3.6010% off", and a leading
  * boundary fails on the "0" of "$3.60". The trailing `\b` is kept and is load-bearing: it is
  * what stops "74% offprettygarden" (two products glued together) from reading as a badge.
  */
@@ -87,7 +87,7 @@ const FLATTER_FACTOR = 2;
  * Struck-through, in anchoring.ts's sense.
  *
  * Duplicated rather than imported because anchoring.ts does not export it and this change is
- * scoped to framing. If a third detector ever needs it, it belongs in util.ts — say so then
+ * scoped to framing. If a third detector ever needs it, it belongs in util.ts, say so then
  * rather than making a third copy.
  */
 function isStruck(n: CandidateNode): boolean {
@@ -155,24 +155,24 @@ export const framingDetector: Detector = {
     /**
      * One claim per CONTAINER, quoting the container.
      *
-     * This scores `containerText` but used to attribute to — and quote — the node's own
+     * This scores `containerText` but used to attribute to, and quote, the node's own
      * text. On a Zappos product grid that meant one real was/now price pair produced five
      * separate firings, evidenced as "370", "237v1", "WL574V2", "603" and "V5 Runner": New
      * Balance model numbers, which is what the sibling spans inside the tile happen to
      * contain.
      *
      * Both halves were wrong. The claim was counted five times, and the card would have
-     * quoted a model number as its evidence — the same riddle the scarcity fallback was
+     * quoted a model number as its evidence, the same riddle the scarcity fallback was
      * fixed for: name the pattern, show something unrelated, ask the reader to trust you.
      *
      * THAT FIX DID NOT WORK, and it is worth being precise about why, because the obvious
-     * second fix is to tighten the same knob again. It fixed ATTRIBUTION — which node gets
-     * quoted, and how many times — and left RECOGNITION untouched. The re-audit shows the
+     * second fix is to tighten the same knob again. It fixed ATTRIBUTION, which node gets
+     * quoted, and how many times, and left RECOGNITION untouched. The re-audit shows the
      * result: the same tiles fired, once each instead of five times, and now quoted their
      * container faithfully. The evidence line went from "370" to "brand name new balance
      * product name 370 gender unisex color off white…". Better quoted, still wrong. Sixteen
      * of nineteen firings across 22 retailers quoted a product title, because the detector
-     * had never been asked whether a discount was being claimed at all — only whether two
+     * had never been asked whether a discount was being claimed at all, only whether two
      * prices and the letters "off" happened to share a box.
      *
      * So the gate below is on the EVIDENCE, not on the bookkeeping: a was/now pair written as
@@ -187,7 +187,7 @@ export const framingDetector: Detector = {
      * anchoring.reference_price already establishes what a reference price is, and
      * `computedStyle.textDecoration` rides along in the harvest snapshot for exactly this.
      * It corroborates a pair rather than gating it: strike-through is the strongest evidence
-     * available, but it is only available in a browser — the labelled corpus is plain text
+     * available, but it is only available in a browser, the labelled corpus is plain text
      * and would score zero on a strike-only rule.
      */
     const struckContainers = new Set<string>();
@@ -224,7 +224,7 @@ export const framingDetector: Detector = {
        * The detector's premise is "the page chose whichever framing of this discount looks
        * bigger", and that premise only holds if the stated number is the discount between the
        * two prices it found. It never checked. SHEIN's "$12.99 → $3.60, 10% off" fired as
-       * percent framing of a 72% drop — but that "10% off" is an extra coupon, not a framing of
+       * percent framing of a 72% drop, but that "10% off" is an extra coupon, not a framing of
        * the markdown at all. A claimed figure that does not match the computed one is about
        * something else, and says nothing about how this discount was framed.
        */
@@ -278,7 +278,7 @@ export const framingDetector: Detector = {
           },
           WEIGHTS,
           [showsPercent ? "percent-framing" : "absolute-framing"],
-          // Quote what was SCORED — the container — not the span it happened to attach to.
+          // Quote what was SCORED, the container, not the span it happened to attach to.
           n.containerText.length > 0 ? n.containerText : undefined,
         ),
       );

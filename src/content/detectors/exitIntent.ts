@@ -5,7 +5,7 @@
  * the tab being hidden. The offer is framed as something about to be lost rather than gained,
  * which is the prospect-theory asymmetry.
  *
- * The timing is the signal and it comes from the observer — a pure detector has no clock.
+ * The timing is the signal and it comes from the observer, a pure detector has no clock.
  * Copy matching alone would fire on any "Wait!" text anywhere on the page.
  */
 import type { DetectionCandidate } from "@/shared/schema";

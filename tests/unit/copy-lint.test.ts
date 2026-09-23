@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PROMPTS, pickPrompt } from "@/shared/copy/prompts";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
@@ -164,5 +166,43 @@ describe("pickPrompt", () => {
   it("never returns undefined for a max random value", () => {
     // Math.random() can return values that floor to length with FP rounding.
     expect(pickPrompt("scarcity.stock", new Set(), () => 0.9999999999)).not.toBeNull();
+  });
+});
+
+/**
+ * No em dashes, anywhere Pensa writes.
+ *
+ * A house style rule, asserted rather than remembered: they had spread through every file and
+ * every piece of user-visible copy. The two exceptions are deliberate and narrow.
+ */
+describe("house style: no em dashes", () => {
+  const ROOTS = ["src", "store/description.txt", "PRIVACY.md", "STORE-LISTING.md", "README.md"];
+
+  /** An em dash inside a character class matches RETAILER text (a price range, a title separator). */
+  const IN_CHARACTER_CLASS = /\[[^\]]*—[^\]]*\]/;
+
+  function walk(p: string, out: string[] = []): string[] {
+    const s = statSync(p);
+    if (s.isDirectory()) {
+      for (const e of readdirSync(p)) walk(join(p, e), out);
+    } else if (/\.(ts|tsx|html|css|md|txt|mjs|js)$/.test(p)) {
+      out.push(p);
+    }
+    return out;
+  }
+
+  it("has none in the extension or in published copy", () => {
+    const offenders: string[] = [];
+    for (const root of ROOTS) {
+      for (const file of walk(root)) {
+        readFileSync(file, "utf8")
+          .split("\n")
+          .forEach((line, i) => {
+            if (!line.includes("—") || IN_CHARACTER_CLASS.test(line)) return;
+            offenders.push(`${file}:${i + 1}  ${line.trim().slice(0, 80)}`);
+          });
+      }
+    }
+    expect(offenders, `em dash found:\n${offenders.join("\n")}`).toEqual([]);
   });
 });

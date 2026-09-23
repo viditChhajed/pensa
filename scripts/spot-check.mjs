@@ -5,13 +5,13 @@
  *
  * §10's gate is "more than ~4 false positives out of a detector's firings gets its threshold
  * raised or gets disabled by default". Answering that needs firings from REAL pages, with the
- * text each one matched, so a human — or something standing in for one — can say whether the
+ * text each one matched, so a human, or something standing in for one, can say whether the
  * page actually showed that.
  *
  * What this is NOT: the manual spot-check. It loads the extension into Chromium with host
  * permissions patched in, because the grant flow raises a native dialog no automation can
  * accept, and it reads the detector's own log rather than watching a card appear. It captures
- * what FIRED, which is what precision is computed over — but a person browsing would also
+ * what FIRED, which is what precision is computed over, but a person browsing would also
  * notice what the extension said about a page they were actually reading, and that is a
  * different and better signal. Recorded in EVAL.md as an automated audit, never as the §10
  * human gate.
@@ -45,7 +45,7 @@ const args = parseArgs(process.argv.slice(2));
  * Weighted toward the shops that actually use these techniques, plus tame ones.
  *
  * A precision audit run only on sites that shout would never surface the failure that
- * matters — firing on an ordinary page that is doing nothing.
+ * matters, firing on an ordinary page that is doing nothing.
  */
 const DEFAULT_SITES = [
   "glossier.com",
@@ -76,9 +76,9 @@ const sites = typeof args.sites === "string" ? args.sites.split(",") : DEFAULT_S
 const pagesPerSite = Number(args.pages ?? 4);
 const OUT = resolve("corpus", typeof args.out === "string" ? args.out : "spot-check.jsonl");
 
-/** `[pensa] <stage>: N detection(s) — id xN: "text [lexemes]" | id xN: "..."` */
+/** `[pensa] <stage>: N detection(s). id xN: "text [lexemes]" | id xN: "..."` */
 const DETECTION_LINE =
-  /^\[pensa\] (\w+): (\d+) detection\(s\)(?: \(\+\d+ repeat\(s\)[^)]*\))? — (.*)$/;
+  /^\[pensa\] (\w+): (\d+) detection\(s\)(?: \(\+\d+ repeat\(s\)[^)]*\))?\. (.*)$/;
 
 function parseDetections(line) {
   const m = DETECTION_LINE.exec(line);
@@ -182,7 +182,7 @@ for (const site of sites) {
    * The detector logs its findings once per pass and a page left open runs many, so glossier
    * produced 37 identical rows for one "Regular price $84" badge. §10 counts false positives
    * out of a detector's FIRINGS, and a wrong claim repeated by the logger is one wrong claim
-   * — counting it 37 times would make a single mistake look like a catastrophe and a single
+   *, counting it 37 times would make a single mistake look like a catastrophe and a single
    * correct detection look like a triumph.
    *
    * The event store is unaffected: events are written at digest time, not per pass. This is

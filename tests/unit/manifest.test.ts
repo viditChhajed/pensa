@@ -10,7 +10,7 @@ import denylistJson from "../../rulepacks/denylist.v1.json";
  * These assertions used to guard the opposite product: `host_permissions` had to be EMPTY,
  * because a declared host permission meant an install prompt listing 150 sites. Pensa now
  * asks for `https://*` at install and accepts that prompt deliberately, so the old
- * assertions would fail every build — but the thing they were protecting was never "ask for
+ * assertions would fail every build, but the thing they were protecting was never "ask for
  * nothing", it was "never ship a reach nobody argued for, and never ship it without the
  * denylist attached". That is what is asserted now, and it is if anything more load-bearing:
  * under the old model a mistake here produced a scary prompt, under this one it produces an
@@ -23,7 +23,7 @@ describe("built manifest", () => {
   /**
    * Absence of a build is a FAILURE, not a reason to skip.
    *
-   * These used to `skipIf` when no build was present — so an interrupted or forgotten
+   * These used to `skipIf` when no build was present, so an interrupted or forgotten
    * `wxt build` produced a green suite that had verified nothing about the permission
    * model. Observed: a broken .output left seven of these silently skipped while the run
    * reported all green.
@@ -32,7 +32,7 @@ describe("built manifest", () => {
   it("has a build to check at all", () => {
     expect(
       available,
-      `No built manifest at ${MANIFEST}. Run \`npm run build\` first — these assertions ` +
+      `No built manifest at ${MANIFEST}. Run \`npm run build\` first, these assertions ` +
         "are the permission-model regression net and must never be skipped silently.",
     ).toBe(true);
   });
@@ -60,7 +60,7 @@ describe("built manifest", () => {
     //
     // `declarativeContent` is gone: it lit the toolbar icon on plausible shopping URLs back
     // when a lit icon meant "you can turn Pensa on here". Nothing is turned on per site any
-    // more, the action is enabled everywhere, and the popup opens on every page — so the
+    // more, the action is enabled everywhere, and the popup opens on every page, so the
     // page rules decided nothing.
     //
     // `scripting` is gone too: it survived only to unregister a script left by the per-site
@@ -100,7 +100,7 @@ describe("built manifest", () => {
     it.skipIf(!available)("is declared in the manifest, exactly once", () => {
       // It used to be registered at runtime, per granted origin, because declaring one
       // implicitly granted its match patterns at install. That is no longer a cost worth
-      // avoiding — the patterns are granted at install anyway — and a manifest entry cannot
+      // avoiding, the patterns are granted at install anyway, and a manifest entry cannot
       // fail to register in a service worker nobody is watching.
       expect(scripts).toHaveLength(1);
       expect(scripts[0]?.js).toEqual(["detector.js"]);
@@ -141,7 +141,7 @@ describe("built manifest", () => {
       ]) {
         expect(
           excludes.some((p) => matchesPattern(p, new URL(url))),
-          `${url} is not excluded — Chrome would inject the detector there`,
+          `${url} is not excluded, Chrome would inject the detector there`,
         ).toBe(true);
       }
     });
@@ -157,7 +157,7 @@ describe("built manifest", () => {
       ]) {
         expect(
           excludes.some((p) => matchesPattern(p, new URL(url))),
-          `${url} is excluded — Pensa would be silently dead on a site it claims to cover`,
+          `${url} is excluded, Pensa would be silently dead on a site it claims to cover`,
         ).toBe(false);
       }
     });

@@ -3,7 +3,7 @@
 ## Why this exists
 
 Every recall miss recorded in [EVAL.md](EVAL.md) run 1 was a phrasing I invented that no real
-site uses — *"only 3 left AT THIS PRICE"*, *"add $2.77 more TO CART FOR"*. The lexicons and
+site uses, *"only 3 left AT THIS PRICE"*, *"add $2.77 more TO CART FOR"*. The lexicons and
 the fixtures came out of the same imagination, so the unit tests agreed with themselves and
 the field did not.
 
@@ -24,7 +24,7 @@ npm run corpus:train      # fit and gate the models      (seconds)
 ## 1. Collect
 
 Visits ~50 shops, follows product links two levels deep, scrolls each page so lazy-loaded
-badges render, and runs **the shipped harvest** — esbuild-bundled from `src/content/harvest.ts`
+badges render, and runs **the shipped harvest**, esbuild-bundled from `src/content/harvest.ts`
 at collect time, so the model trains on exactly the text distribution it will see in
 production. A separate "good enough" extractor here would be a silent and very hard bug.
 
@@ -35,13 +35,13 @@ npm run corpus:collect -- --sites shein.com,temu.com --pages 12
 
 The site list is weighted toward travel, ticketing and fast fashion on purpose. The first
 run used twenty tame retailers and produced **six** snippets matching any scarcity vocabulary
-out of 1093 — REI does not run countdown timers, and a corpus drawn from shops that do not
+out of 1093, REI does not run countdown timers, and a corpus drawn from shops that do not
 use a technique cannot teach a model to recognise it. The tame shops stay in the list,
 because a model trained only on shops that shout will call an ordinary product page a dark
 pattern.
 
 Text is scrubbed before it is written (email, phone, address, postcode, card-shaped digit
-runs, JWTs, order numbers) and deduplicated across the whole corpus — retail markup repeats
+runs, JWTs, order numbers) and deduplicated across the whole corpus, retail markup repeats
 one string dozens of times, and labelling the same sentence thirteen times is thirteen times
 the work for one example's worth of signal.
 
@@ -50,7 +50,7 @@ the crawl being refused, not the collector failing. It fails loudly if the harve
 itself is broken, because "0 snippets from every site" and "every site blocked us" look
 identical otherwise.
 
-## 2. Label — automated, with one human check
+## 2. Label, automated, with one human check
 
 ```bash
 npm run corpus:export     # stratified batches -> corpus/batches/
@@ -60,12 +60,12 @@ npm run corpus:ingest     # merge into corpus/labels.jsonl
 
 Hand-labelling 500 items was the original plan and it was the wrong ask: most snippets are
 obvious, and a person clicking "no" four hundred times is expensive attention spent where it
-adds nothing. The automated pass reads **every message-shaped snippet** — 4,957 of them,
-capped at 120 per site so eBay does not teach the model its house style — and asks which of
+adds nothing. The automated pass reads **every message-shaped snippet**, 4,957 of them,
+capped at 120 per site so eBay does not teach the model its house style, and asks which of
 the six patterns each one is, if any.
 
 Note this is NOT the tiered queue the interactive tool serves. Those tiers exist to spend a
-person's attention well, and they inherit the loose regexes' blind spots — fatal here, since
+person's attention well, and they inherit the loose regexes' blind spots, fatal here, since
 the entire reason to widen the labelling is to find positives the lexicons never recruited.
 
 ### What automated labels are, and are not
@@ -104,7 +104,7 @@ npm run label     # opens http://localhost:5173
 |---|---|
 | <kbd>F</kbd> | yes, this is the pattern |
 | <kbd>J</kbd> | no |
-| <kbd>D</kbd> | no — but it IS a different technique |
+| <kbd>D</kbd> | no, but it IS a different technique |
 | <kbd>Space</kbd> | skip |
 | <kbd>U</kbd> | undo the last answer |
 
@@ -112,13 +112,13 @@ npm run label     # opens http://localhost:5173
 something not on the list and press Enter.
 
 **This is where most of the value comes from.** Yes/no throws away the most informative thing
-a person notices — that a snippet is a countdown while they were being asked about stock.
+a person notices, that a snippet is a countdown while they were being asked about stock.
 That is a positive example for another pattern, spotted for free, and with nowhere to put it
 the answer becomes "no" and the observation is lost. A <kbd>D</kbd> answer is recorded once
 and used twice: a negative for the pattern asked about, a positive for the one named.
 
-The free-text box is the other half. It is how a technique the taxonomy does not have — a
-checkout donation prompt, a decoy tier, anything nobody wrote down — gets recorded instead of
+The free-text box is the other half. It is how a technique the taxonomy does not have, a
+checkout donation prompt, a decoy tier, anything nobody wrote down, gets recorded instead of
 discarded. `npm run corpus:train` reports what was typed and how often. Every recall failure
 this project has had came from a list written in advance; this is the one place you can write
 outside it.
@@ -127,22 +127,22 @@ Starting over: `npm run label -- --reset` discards every answer and says how man
 
 </details>
 
-One item, one keystroke, advances itself. Answers are written to disk immediately — close the
+One item, one keystroke, advances itself. Answers are written to disk immediately, close the
 tab whenever, reopen and it resumes at the next unlabelled item.
 
 **Six patterns, ~300 items each.** Only the ones driven by *wording*: scarcity, countdown,
 live activity, confirmshaming, spend thresholds and instalments. Reference prices, charm
-pricing and preselected options are structural — a strikethrough, a price ending, a ticked
-box — so a text model adds nothing to them and they are not worth your time.
+pricing and preselected options are structural, a strikethrough, a price ending, a ticked
+box, so a text model adds nothing to them and they are not worth your time.
 
 **Not everything is shown to you.** The raw corpus is ~95% navigation chrome ("Camp Chairs",
 "All Tops"). Items are recruited into three tiers and interleaved:
 
-- **A** — the current lexicon already matches. Fast to confirm, and the only place the
+- **A**, the current lexicon already matches. Fast to confirm, and the only place the
   existing detectors' *false positives* can be found.
-- **B** — shares vocabulary with the pattern but does not match. **The valuable tier**: this
+- **B**, shares vocabulary with the pattern but does not match. **The valuable tier**: this
   is exactly where recall is being lost.
-- **C** — superficially resembles the pattern and almost certainly is not one. Teaches the
+- **C**, superficially resembles the pattern and almost certainly is not one. Teaches the
   boundary; without these a model trained on A and B calls everything positive.
 
 Interleaved rather than grouped, because forty consecutive obvious noes trains a reflex, and
@@ -159,7 +159,7 @@ Fits one model per pattern and **refuses to emit weights for one that has not ea
 - fewer than 40 positives → skipped; a 4096-dimension model with less than that memorises
 - held-out precision < 0.80 or recall < 0.50 → rejected
 
-Plan §10 governs over §8 — a detector that cries wolf gets raised or disabled — and there is
+Plan §10 governs over §8, a detector that cries wolf gets raised or disabled, and there is
 no reason a model should be exempt from the rule the hand-written detectors live under.
 
 The held-out split is **by site, not by row**. Splitting rows at random lets the same sentence
@@ -168,13 +168,13 @@ has effectively memorised. A site-wise split asks the only question that matters
 work on a shop it has never seen?
 
 Output is `corpus/models.json`. **Nothing is wired into the extension by this step**, and
-that is deliberate — see below.
+that is deliberate, see below.
 
 ## What is deliberately NOT automatic
 
 **The models do not ship until someone decides they should.** The card's whole promise is
 *here is the sentence that triggered this*. A lexicon match points at exact words. A model
-score does not — it can say 0.83 and not say why. When these are wired in, they should raise
+score does not, it can say 0.83 and not say why. When these are wired in, they should raise
 confidence in findings the lexicons already made rather than surface findings on their own,
 or the card ends up asserting something it cannot show you.
 
@@ -186,6 +186,6 @@ test should only change when the wiring is a decision rather than an accident.
 `corpus/` is gitignored, and should stay that way even after the repo goes public: it holds
 real text from real pages, scrubbed but not audited line by line.
 
-`corpus/labels.jsonl` is the expensive artifact — an hour of human judgement that cannot be
+`corpus/labels.jsonl` is the expensive artifact, an hour of human judgement that cannot be
 regenerated. `candidates.jsonl` can be re-collected any time. **Back the labels up somewhere
 outside the repo.**

@@ -119,8 +119,8 @@ test("the summary counts detections, and splits noticed from shown", async () =>
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
   await ensureSchema(page);
-  // Clear first. `detected` is an exact count, so anything already in the store — including
-  // rows the extension itself recorded while another spec ran — would make this flaky in one
+  // Clear first. `detected` is an exact count, so anything already in the store, including
+  // rows the extension itself recorded while another spec ran, would make this flaky in one
   // direction only, which is the worst kind.
   await page.evaluate(
     () => new Promise((res) => chrome.runtime.sendMessage({ type: "clear-data" }, res)),

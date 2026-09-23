@@ -7,7 +7,7 @@
  * "this appeared later than the price did."
  *
  * Lives in the service worker, keyed by origin. Service workers die, so it persists to
- * `chrome.storage.session` — which is cleared when the browser closes, which is the right
+ * `chrome.storage.session`, which is cleared when the browser closes, which is the right
  * lifetime for a shopping session.
  */
 import {
@@ -82,7 +82,7 @@ export async function saveLedger(ledger: SessionLedger): Promise<void> {
 /**
  * Record entry into a funnel stage along with what the prices looked like there.
  *
- * A stage is only recorded ONCE per session — the first sighting. Re-recording on every
+ * A stage is only recorded ONCE per session, the first sighting. Re-recording on every
  * re-render would overwrite the PDP price with the cart price and erase the very delta the
  * drip detector exists to find.
  */

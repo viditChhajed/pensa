@@ -2,12 +2,12 @@
  * Per-site prevalence telemetry (plan §11, §16, §18G), revised.
  *
  * The product is two things at once: a tool for one shopper, and an instrument for measuring
- * how common these techniques are. v1 of this module measured it by CATEGORY only — it could
+ * how common these techniques are. v1 of this module measured it by CATEGORY only, it could
  * say "countdowns are common on travel sites" and never "this site shows countdowns". The
  * owner decided per-site prevalence is worth collecting, so the record now names the shop.
  *
  * What leaves, and nothing else (`TelemetryRecord` is `.strict()`, so an unknown key throws
- * rather than passing through — that is a privacy control, not a style rule):
+ * rather than passing through, that is a privacy control, not a style rule):
  *
  *     pattern id, detector id, a confidence QUARTILE, funnel stage,
  *     the shop's REGISTRABLE DOMAIN, its category, rulepack version, the epoch DAY
@@ -19,18 +19,18 @@
  *
  * The rules this module enforces:
  *
- *   Nothing is even RECORDED without consent. Not queued-then-discarded — a queue that fills
+ *   Nothing is even RECORDED without consent. Not queued-then-discarded, a queue that fills
  *   while consent is off is a queue that leaks the moment someone turns it on, and switching
  *   it on consents to future sharing, not retroactive.
  *
  *   Only shops can be named. A detection only exists on a page that passed the commerce gate,
  *   so a record's `site` is always somewhere that was selling something.
  *
- *   Sent on a clock, in batches, never on a detection — a request timed to a detection says
+ *   Sent on a clock, in batches, never on a detection, a request timed to a detection says
  *   when someone was shopping even when the payload cannot.
  *
  * What was REMOVED, and why it is not a weakening: v1 held any cohort with fewer than K
- * records in the local queue. That looked like k-anonymity and was not one — k-anonymity is
+ * records in the local queue. That looked like k-anonymity and was not one, k-anonymity is
  * about k distinct PEOPLE sharing a quasi-identifier, and one person repeating a record
  * twenty times is still one person. It could not protect anybody, and at per-site
  * granularity it would have withheld essentially every record, leaving the dataset empty.
@@ -66,7 +66,7 @@ export function isOutcome(r: AnyRecord): r is OutcomeRecord {
 /**
  * The shop a record may name, or null if it may not name one.
  *
- * https only — the permission Pensa holds is https, and a record naming an http origin could
+ * https only, the permission Pensa holds is https, and a record naming an http origin could
  * only have come from a test build or a hand-written row. The registrable domain only, so
  * subdomains merge and no path, query or page identity can travel.
  */
@@ -82,7 +82,7 @@ export function siteOf(origin: string): { site: string; category: string } | nul
 }
 
 /**
- * Parse rows on the way out of IndexedDB — never cast them.
+ * Parse rows on the way out of IndexedDB, never cast them.
  *
  * The codebase rule is that nothing persisted is trusted on read-back, and it earns its keep
  * hardest here: a row written by an older version, or hand-edited, must not reach a network
@@ -118,7 +118,7 @@ function quartileOf(confidence: number): 1 | 2 | 3 | 4 {
 /**
  * Turn a detection into a transmittable record, or refuse.
  *
- * Returns null rather than a partial record for anything that cannot be anonymised — an
+ * Returns null rather than a partial record for anything that cannot be anonymised, an
  * unrecognised origin most often. A caller that wants to send something anyway has to add a
  * field here deliberately, in a function whose whole subject is what may not be sent.
  */
@@ -207,7 +207,7 @@ export interface FlushResult {
 }
 
 /**
- * Send what is ready. Called on a schedule, never on a page event — a request timed to a
+ * Send what is ready. Called on a schedule, never on a page event, a request timed to a
  * detection tells an observer when you were shopping even if it says nothing about where.
  */
 export async function flush(
@@ -242,8 +242,8 @@ export async function flush(
     return { sent: 0, held: queued.length, reason: "too_small" };
   }
 
-  // At most MAX_SEND per request, oldest first. This used to send the whole queue — up to
-  // QUEUE_CAP, 5,000 — against a server that refuses any batch over 500, so a queue that ever
+  // At most MAX_SEND per request, oldest first. This used to send the whole queue, up to
+  // QUEUE_CAP, 5,000, against a server that refuses any batch over 500, so a queue that ever
   // grew past 500 (a few days offline) was rejected on every flush from then on and never
   // drained. The remainder goes on the next alarm.
   const ready = queued.slice(0, MAX_SEND);

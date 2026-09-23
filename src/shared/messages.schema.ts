@@ -25,7 +25,7 @@ const WireMoney = z.object({
   confidence: z.number().min(0).max(1),
 });
 
-/** Money crosses the boundary as a decimal STRING — JSON has no BigInt. See wire.ts. */
+/** Money crosses the boundary as a decimal STRING, JSON has no BigInt. See wire.ts. */
 const WirePriceSnapshot = z.object({
   displayedPrice: WireMoney.optional(),
   subtotal: WireMoney.optional(),

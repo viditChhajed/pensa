@@ -2,14 +2,14 @@
  * The send path, end to end: real extension -> real HTTP -> the real sink handler.
  *
  * Every other telemetry test asserts something does NOT happen. That is the important half,
- * but it leaves the half that does happen completely unexercised — and a sender that has
+ * but it leaves the half that does happen completely unexercised, and a sender that has
  * never sent is a sender nobody has checked. `TELEMETRY_ENDPOINT` was hardcoded empty, so
  * the only way to exercise it was to edit the source, which is the same as not testing it.
  * It is a build-time value now, and this test builds with one.
  *
  * What it proves that a unit test cannot: that the batch survives JSON, chrome's alarm
  * plumbing and a real fetch from a service worker, and that what arrives is EXACTLY the
- * eight version-2 fields — checked by the same handler that would run in production, which
+ * eight version-2 fields, checked by the same handler that would run in production, which
  * rejects anything else with a 422.
  */
 import { execFileSync } from "node:child_process";
@@ -26,7 +26,7 @@ let server: Server;
 let context: BrowserContext;
 let extensionId: string;
 
-/** Everything the sink accepted, and every raw body it saw — including rejected ones. */
+/** Everything the sink accepted, and every raw body it saw, including rejected ones. */
 const stored: CountRow[] = [];
 const storedOutcomes: OutcomeRow[] = [];
 const bodies: unknown[] = [];
@@ -143,7 +143,7 @@ test("a consented batch reaches the sink, and carries exactly eight fields", asy
   await page.waitForTimeout(800);
 
   // Fire the REAL alarm listener rather than reaching into the module, so the scheduled path
-  // is what gets exercised — the six-hour timing is the thing that keeps a send from being
+  // is what gets exercised, the six-hour timing is the thing that keeps a send from being
   // correlated with a detection, and it should not be bypassed by its own test.
   const [sw] = context.serviceWorkers();
   await sw?.evaluate(() => chrome.alarms.create("telemetry", { when: Date.now() + 500 }));
@@ -157,7 +157,7 @@ test("a consented batch reaches the sink, and carries exactly eight fields", asy
   // The sink returns 422 on an extra key, so anything in `stored` already passed the strict
   // check. Assert the shape here too, because a silently-empty store would otherwise read
   // as success.
-  expect(stored.length, "the sink accepted nothing — it rejected the batch").toBeGreaterThan(0);
+  expect(stored.length, "the sink accepted nothing, it rejected the batch").toBeGreaterThan(0);
   for (const record of body.records) {
     expect(Object.keys(record).sort()).toEqual([
       "confidenceQuartile",
@@ -169,7 +169,7 @@ test("a consented batch reaches the sink, and carries exactly eight fields", asy
       "rulepackVersion",
       "site",
     ]);
-    // The site travels by design now — as the registrable domain and nothing finer.
+    // The site travels by design now, as the registrable domain and nothing finer.
     expect(record.site).toBe("booking.com");
   }
 

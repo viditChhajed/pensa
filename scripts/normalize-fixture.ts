@@ -4,7 +4,7 @@
  *
  *   npx tsx scripts/normalize-fixture.ts tests/fixtures/<detector>/<pos|neg>/<slug>.html
  *
- * Prints every redaction it made. Read that list before committing — the regexes are a first
+ * Prints every redaction it made. Read that list before committing, the regexes are a first
  * pass, not a guarantee, and a human eye on the diff is part of the protocol.
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -40,7 +40,7 @@ function main(): void {
 
   if (totalHits > 0) {
     console.log(
-      `\n${totalHits} redaction(s). Read the diff before committing — this scrub is a first pass, not a guarantee.`,
+      `\n${totalHits} redaction(s). Read the diff before committing, this scrub is a first pass, not a guarantee.`,
     );
   }
 }

@@ -44,7 +44,7 @@ export interface Rect {
 }
 
 /**
- * A control the card must not sit on top of — or, if `critical` is false, one it would
+ * A control the card must not sit on top of, or, if `critical` is false, one it would
  * merely be impolite to sit on top of.
  *
  * The distinction is the whole fix. See `choosePlacement`.
@@ -118,14 +118,14 @@ export function positionOf(anchor: Anchor, viewport: Viewport, size: Viewport): 
  * Selector for things a card must never cover, no matter what.
  *
  * Every form field qualifies: on a checkout page they are the task. Buttons and links
- * qualify only when their name puts them on the purchase path — see PURCHASE_INTENT.
+ * qualify only when their name puts them on the purchase path, see PURCHASE_INTENT.
  */
 export const FIELD =
   'input:not([type="hidden"]), select, textarea, [contenteditable=""], [contenteditable="true"]';
 export const CLICKABLE = 'button, a, [role="button"], [role="link"], [type="submit"], [onclick]';
 
 /**
- * Names that put a control on the purchase path. Deliberately generous — a false "critical"
+ * Names that put a control on the purchase path. Deliberately generous, a false "critical"
  * costs one candidate position, a false "ordinary" covers a button someone needed.
  */
 export const PURCHASE_INTENT =
@@ -211,7 +211,7 @@ export interface Placement {
  *   - NEVER overlap a critical control: any form field, any submit, anything focused, and
  *     any button or link whose name puts it on the purchase path.
  *   - Among the positions that satisfy that, prefer the one covering the fewest ordinary
- *     controls — but do not refuse to render because that number is above zero. The card is
+ *     controls, but do not refuse to render because that number is above zero. The card is
  *     small, dismissible and keyboard reachable, and anything it does cover is one click
  *     away from being uncovered.
  *
@@ -228,7 +228,7 @@ export function choosePlacement(
   // nine nav links when a different anchor sat on one.
   //
   // A card always beats a pill, though. The pill shows a count and no prompts, so trading
-  // four real questions for two uncovered footer links is a bad deal — an earlier version
+  // four real questions for two uncovered footer links is a bad deal, an earlier version
   // made exactly that trade on ikea.
   let best: Placement | null = null;
   for (let n = Math.min(itemCount, 4); n >= 1; n--) {
@@ -282,7 +282,7 @@ export function cardSize(itemCount: number, viewport: Viewport): Viewport {
  * How much the page can currently accommodate, measured BEFORE the worker ranks anything.
  *
  * The worker has to know this up front. It previously recorded `surfaced: true` and only
- * then handed the items to the card, which could still refuse to place them — so the event
+ * then handed the items to the card, which could still refuse to place them, so the event
  * log claimed a card had been shown that the user never saw, and the popup's Noticed/Shown
  * split was wrong. Measuring first makes the record accurate in a single round trip.
  */
@@ -334,17 +334,17 @@ export function readControls(viewport: Viewport): Control[] {
  * Where the digest card goes: directly under the extension's own toolbar icon, always.
  *
  * This replaces the search for a corner that covers nothing clickable. That search was
- * correct about safety and wrong about legibility — a card that appears in whichever corner
+ * correct about safety and wrong about legibility, a card that appears in whichever corner
  * happened to be free reads as a stray page element, with nothing connecting it to the
  * extension that produced it. Reported directly: "I don't like how the card was in another
  * part of the page."
  *
  * The icon lives in browser chrome, which a content script cannot see, so the anchor is the
- * viewport's top-right — the point directly below where Chrome puts extension actions.
+ * viewport's top-right, the point directly below where Chrome puts extension actions.
  *
  * The trade is deliberate and was made explicitly: the card may now cover page content.
  * `choosePlacement` is retained and still tested, because the collision geometry is what
- * `measureCapacity` uses and what an opt-in "avoid page controls" mode would need — but the
+ * `measureCapacity` uses and what an opt-in "avoid page controls" mode would need, but the
  * shipped card no longer consults it. A dismiss control is therefore mandatory, not
  * optional, and the card no longer disappears on a timer.
  */
@@ -363,7 +363,7 @@ function iconAnchoredPlacement(itemCount: number): Placement {
 
 /**
  * Rendered content, decided by the service worker. The card does no copy selection of its
- * own — variant sampling needs session state (which prompts were already shown), and that
+ * own, variant sampling needs session state (which prompts were already shown), and that
  * lives in the worker, not in a page that reloads constantly.
  */
 export interface CardItem {
@@ -385,7 +385,7 @@ export interface CardItem {
  *   - The two answers are the SAME element with the same class. Not a filled button and a
  *     grey link; `interference.visual_asymmetry` would flag that, and should.
  *   - No default. Nothing is focused, nothing is pre-selected, nothing happens on a timer.
- *   - Closing the card without answering is an answer — no — and it is never asked again.
+ *   - Closing the card without answering is an answer, no, and it is never asked again.
  *   - It says what is shared, including the shop's name and whether the item was added to the
  *     cart, in the question itself, not behind a link.
  */
@@ -425,8 +425,8 @@ export class DigestCard {
 
   /**
    * Renders and returns what was ACTUALLY displayed. Layout can shift between the capacity
-   * measurement and the render, so placement is re-checked here and this return value — not
-   * the earlier estimate — is what gets recorded.
+   * measurement and the render, so placement is re-checked here and this return value, not
+   * the earlier estimate, is what gets recorded.
    */
   show(items: CardItem[], opts: ShowOptions = {}): PlacementMode {
     if (items.length === 0) return "suppressed";
@@ -437,7 +437,7 @@ export class DigestCard {
 
     // `pointer-events: none` on the host is necessary but NOT sufficient: the card inside
     // re-enables pointer events, so wherever the card actually renders it still wins the
-    // hit test. Verified in a real browser — a checkout button at bottom-right was covered.
+    // hit test. Verified in a real browser, a checkout button at bottom-right was covered.
     // So the position is chosen by hit-testing the page first (see findSafeCorner).
     const placement = iconAnchoredPlacement(items.length);
     this.applyPosition(host, placement);

@@ -2,7 +2,7 @@
  * The cross-stage pipeline, end to end: PDP -> cart -> checkout, on one origin, in one
  * session, with fees that appear only at the last step.
  *
- * `pricing.drip` is the highest-severity pattern in the taxonomy and it has never fired —
+ * `pricing.drip` is the highest-severity pattern in the taxonomy and it has never fired,
  * not in any manual spot-check, and until now nothing exercised the whole chain it depends
  * on. That chain is long and every link has already broken at least once: the stage has to
  * be classified correctly (it was wrong 3 times in 4), a price snapshot has to be extracted
@@ -100,7 +100,7 @@ test("fees disclosed only at checkout produce a pricing.drip finding", async () 
   await page.waitForTimeout(2500);
 
   await page.goto("http://shop.example.com/drip-checkout.html", { waitUntil: "domcontentloaded" });
-  // Entering checkout is itself a trigger — no click required.
+  // Entering checkout is itself a trigger, no click required.
   await page.waitForTimeout(6000);
 
   const stageLines = logs.filter((l) => l.includes("stage ->")).join("\n");
@@ -118,7 +118,7 @@ test("fees disclosed only at checkout produce a pricing.drip finding", async () 
 
 test("an add-on the shopper never chose produces a basket.sneak finding", async () => {
   // The OTHER cross-stage detector, and the other one never demonstrated. It shares the
-  // root cause drip had — a sibling-labelled row that no candidate could read — so proving
+  // root cause drip had, a sibling-labelled row that no candidate could read, so proving
   // drip works does not prove this does. `basket.sneak` additionally needs the add-to-cart
   // trigger to have reached the ledger, which is a different link again.
   const { page, logs } = await openJourney();

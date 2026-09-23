@@ -45,8 +45,8 @@ export const DENYLIST_COVERAGE = toExcludeMatches(denylist);
  * Absolute suppression. Checked before anything else, and never overridden.
  *
  * This is the RUNTIME half of a two-layer guarantee. The manifest's `exclude_matches` stops
- * Chrome injecting on the hosts a match pattern can name; everything else in the denylist —
- * every regex with a wildcard inside a DNS label or no TLD anchor — reaches this function
+ * Chrome injecting on the hosts a match pattern can name; everything else in the denylist,
+ * every regex with a wildcard inside a DNS label or no TLD anchor, reaches this function
  * and nothing else. See `denylistPatterns.ts` for exactly which is which.
  */
 export function isDenied(url: URL): boolean {

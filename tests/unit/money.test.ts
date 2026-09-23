@@ -71,7 +71,7 @@ describe("prices glued to the text that follows them", () => {
   });
 
   it("still reads a grouped number with no decimals", () => {
-    // Yen has no subunit, so 1200 minor units IS ¥1,200 — not a tenth of it.
+    // Yen has no subunit, so 1200 minor units IS ¥1,200, not a tenth of it.
     expect(parsePrices("¥1,200")[0]?.amount).toBe(1_200n);
     expect(parsePrices("$1,200")[0]?.amount).toBe(120_000n);
   });

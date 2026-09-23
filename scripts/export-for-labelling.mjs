@@ -3,8 +3,8 @@
  *
  *   node scripts/export-for-labelling.mjs [--chunks 6] [--per-site 120]
  *
- * Deliberately NOT the tiered queue that `npm run label` serves. Those tiers — lexicon
- * matches, vocabulary near-misses, hard negatives — exist to spend a HUMAN's attention where
+ * Deliberately NOT the tiered queue that `npm run label` serves. Those tiers, lexicon
+ * matches, vocabulary near-misses, hard negatives, exist to spend a HUMAN's attention where
  * it is worth most, and they cap the set at what a person will finish. They also inherit the
  * loose regexes' blind spots, which is fatal here: the whole reason to widen the labelling is
  * to find positives the lexicons never recruited.
@@ -34,7 +34,7 @@ const LABELS = resolve("corpus/labels.jsonl");
  * Keys already labelled, so a re-export after a bigger crawl asks only about what is new.
  *
  * Without this, growing the corpus from 36 sites to 48 would mean re-labelling the 2,639
- * snippets already done — the same judgements, at the same cost, for no extra information.
+ * snippets already done, the same judgements, at the same cost, for no extra information.
  */
 const alreadyLabelled = new Set();
 if (existsSync(LABELS)) {
@@ -52,7 +52,7 @@ if (existsSync(LABELS)) {
  * Does this read like something said to the shopper, rather than a name or a label?
  *
  * Same test the human queue uses, and for the same reason: "Camp Chairs" and
- * "@user's instagram image of …" are not messages, and a labeller — person or model — asked
+ * "@user's instagram image of …" are not messages, and a labeller, person or model, asked
  * whether a perfume name is a scarcity claim learns the task is arbitrary.
  */
 function looksLikeAMessage(text) {

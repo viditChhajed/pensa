@@ -12,7 +12,7 @@ import {
 /**
  * The submitted build's scope, enforced rather than asserted in prose.
  *
- * Tier-2 page detectors and the §18A temporal engine were built ahead of schedule — real
+ * Tier-2 page detectors and the §18A temporal engine were built ahead of schedule, real
  * scope drift against plan §13, which puts both in v1.1. These tests make the boundary a
  * property of the artifact: the deferred code must be absent from the BUILT BUNDLES, not
  * merely disabled by a flag a future edit could flip without noticing.
@@ -75,7 +75,7 @@ describe("v1 submission scope", () => {
 
 describe("built bundles", () => {
   /**
-   * Absence of a build is a FAILURE, not a reason to skip — the same lesson the manifest
+   * Absence of a build is a FAILURE, not a reason to skip, the same lesson the manifest
    * suite already learned the hard way, where a broken .output left seven assertions
    * silently skipped while the run reported green. These assertions are the only thing
    * keeping the shipped scope a property of the artifact rather than a claim in a comment,
@@ -84,7 +84,7 @@ describe("built bundles", () => {
   it("has a build to check at all", () => {
     expect(
       built,
-      `No build at ${OUT}. Run \`npm run build\` first — these assertions are the scope ` +
+      `No build at ${OUT}. Run \`npm run build\` first, these assertions are the scope ` +
         "regression net and must never be skipped silently.",
     ).toBe(true);
   });
@@ -105,8 +105,8 @@ describe("built bundles", () => {
 
   it.skipIf(!built)("ships a registered detector for every pattern the scope file claims", () => {
     // Asserted on `<patternId>@1`, which is a string literal and survives minification.
-    // An earlier version of this checked internal function names — `contrastAsymmetry`,
-    // `relativeLuminance` — which the bundler renames, so it could only ever have passed by
+    // An earlier version of this checked internal function names, `contrastAsymmetry`,
+    // `relativeLuminance`, which the bundler renames, so it could only ever have passed by
     // accident.
     //
     // It also used to assert ABSENCE. Tier 2 and the §18A engine were held for "v1.1 during

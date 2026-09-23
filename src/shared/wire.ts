@@ -2,14 +2,14 @@
  * Wire encoding for cross-context messages.
  *
  * `chrome.runtime.sendMessage` serialises as JSON, and JSON cannot represent BigInt. Money
- * is BigInt minor units everywhere else in this codebase — deliberately, because float error
- * in fee reconciliation manufactures phantom charges — so it MUST be converted at the
+ * is BigInt minor units everywhere else in this codebase, deliberately, because float error
+ * in fee reconciliation manufactures phantom charges, so it MUST be converted at the
  * boundary and converted back on the other side.
  *
  * This is not theoretical. The `stage` message previously carried a raw PriceSnapshot, so
  * `JSON.stringify` threw, `send()` caught and returned null, and the message silently never
- * arrived. The ledger therefore never recorded a price snapshot and `pricing.drip` — the
- * highest-value detector in the product — could never fire in a real browser. Every unit
+ * arrived. The ledger therefore never recorded a price snapshot and `pricing.drip`, the
+ * highest-value detector in the product, could never fire in a real browser. Every unit
  * test passed the whole time, because none of them crossed the messaging boundary.
  */
 import type { LineItem, Money, PriceSnapshot } from "./schema";

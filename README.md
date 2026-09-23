@@ -5,9 +5,9 @@ and, at add-to-cart or checkout, asks a question about what was actually on scre
 
 **Design principle: observe and question, never accuse.** It reports what a page displayed
 ("this page showed a countdown timer") and asks a question. It never asserts intent,
-deception, or illegality — an ethical constraint first, and a store-review one second.
+deception, or illegality, an ethical constraint first, and a store-review one second.
 
-## Status — ready to submit, unlisted
+## Status, ready to submit, unlisted
 
 Working locally and verified in real Chromium. Build, screenshots, listing copy and privacy
 policy are all done ([STORE-LISTING.md](STORE-LISTING.md)); the policy is live and generated
@@ -21,15 +21,15 @@ unlisted listing is the honest place to be while that is still true.
 
 | | |
 |---|---|
-| Patterns shipped | **19** — 13 on-page + 2 cross-stage + 4 derived from visit history |
+| Patterns shipped | **19**, 13 on-page + 2 cross-stage + 4 derived from visit history |
 | Unit tests | 608 |
 | Real-browser e2e | 48 passing, 3 skipped (sites unreachable from this network) |
 | Bundle | 225 KB gzipped across all bundles, but the number that matters is the content script on every page load: **31 KB**. The service worker is 182 KB, most of it the Public Suffix List that names shops correctly, loaded once per worker wake and never in a page |
 | `host_permissions` | `https://*/*`, granted at install, with banking/health/government/webmail excluded in two layers |
 | Network requests | **zero with telemetry off** (the shipped default), asserted; with it on, the only reachable address is the declared endpoint, also asserted |
 | Card placement | 12/12 samples across 4 live retailers × 3 scroll depths |
-| Detector recall | measured against 29,742 label rows over 4,957 distinct snippets from 44 shops — `npm run eval:detectors`. The corpus itself is **not distributed** (it is real retailer page text); see [CORPUS.md](CORPUS.md) to rebuild it, and `tests/eval/baseline.json` for the committed numbers |
-| Precision | 157 firings across 22 live sites, read claim by claim, most recently against the post-audit build — [EVAL.md](EVAL.md). Across three runs 29 wrong claims were found and fixed, each with a regression test. Plus 0 confirmed false positives in ~44 hand-checked firings across 6 retailers |
+| Detector recall | measured against 29,742 label rows over 4,957 distinct snippets from 44 shops, `npm run eval:detectors`. The corpus itself is **not distributed** (it is real retailer page text); see [CORPUS.md](CORPUS.md) to rebuild it, and `tests/eval/baseline.json` for the committed numbers |
+| Precision | 157 firings across 22 live sites, read claim by claim, most recently against the post-audit build, [EVAL.md](EVAL.md). Across three runs 29 wrong claims were found and fixed, each with a regression test. Plus 0 confirmed false positives in ~44 hand-checked firings across 6 retailers |
 
 **On the page (13):** `anchoring.reference_price`, `pricing.charm`, `scarcity.stock`,
 `urgency.countdown`, `defaults.preselected`, `social_proof.live_activity`,
@@ -41,24 +41,24 @@ Installment framing (`bnpl.installments`) was removed in 1.1.0. Splitting a smal
 payments changes nobody's decision, and pay-later options often genuinely help people; a card
 questioning them was noise at best.
 
-**Across a checkout flow (2):** `pricing.drip`, `basket.sneak` — these live in the service
+**Across a checkout flow (2):** `pricing.drip`, `basket.sneak`, these live in the service
 worker and take a session ledger rather than a page, so they are not in the content-script
 registry.
 
 **Across repeat visits (4):** `temporal.evergreen_countdown`, `temporal.stock_nonmonotonic`,
-`temporal.reference_price_ungrounded`, `temporal.social_proof_synthetic` — claims about how
+`temporal.reference_price_ungrounded`, `temporal.social_proof_synthetic`, claims about how
 something *changed* between visits, so they are derived in the worker from the observation
 store and cannot be page detectors. They say nothing on a first visit, by construction.
 
 Tier 2 and the temporal set were originally held for v1.1 (plan §13). That boundary moved
 deliberately: both were built and tested alongside Tier 1, and the spot-check made the cost
-concrete — flyfrontier's fare grid is a textbook asymmetric-dominance decoy and the extension
+concrete, flyfrontier's fare grid is a textbook asymmetric-dominance decoy and the extension
 produced zero detections on it, because the only detector that could see it was excluded from
 the bundle. `tests/unit/scope.test.ts` now asserts the shipped set is *present* in the built
 bundles, and that the temporal four are in the worker and never in the page registry.
 
 `src/shared/classifier.ts` is unwired scaffolding with no trained weights. It ships nothing,
-and a test asserts its identifiers are absent from the build — a partially-trained classifier
+and a test asserts its identifiers are absent from the build, a partially-trained classifier
 scoring real pages would be worse than no classifier.
 
 ### Measured on real copy
@@ -66,7 +66,7 @@ scoring real pages would be worse than no classifier.
 `npm run eval:detectors` runs the shipped detectors over 4,957 labelled snippets collected
 from 44 shops and reports precision and recall per pattern. Before that instrument existed,
 every number this project had came from fixtures written against lexicons written from the
-same imagination — they agreed with each other and with nothing else.
+same imagination, they agreed with each other and with nothing else.
 
 | pattern | recall | precision | |
 |---|---|---|---|
@@ -74,7 +74,7 @@ same imagination — they agreed with each other and with nothing else.
 | `urgency.countdown` | 0.71 | 0.92 | |
 | `social_proof.live_activity` | 0.58 | 1.00 | |
 | `scarcity.stock` | 0.54 | 1.00 | |
-| `confirmshaming.decline_copy` | — | — | not measurable by this harness; see below |
+| `confirmshaming.decline_copy` |, |, | not measurable by this harness; see below |
 
 Against the first measurement, before any of this was rewritten:
 
@@ -85,31 +85,31 @@ Against the first measurement, before any of this was rewritten:
 | `social_proof.live_activity` | 0.00 | **0.58** |
 | `scarcity.stock` | 0.43 | **0.54** |
 
-Precision was not traded for it — it sits between 0.92 and 1.00, and every one of those
+Precision was not traded for it, it sits between 0.92 and 1.00, and every one of those
 rewrites was driven by real copy the corpus produced rather than by phrasings anyone imagined.
 
-Those are at the LOG threshold — what gets counted. The surface threshold, which is what
+Those are at the LOG threshold, what gets counted. The surface threshold, which is what
 interrupts anyone, is far stricter and its precision is 1.00 across the board.
 
 Read them as **agreement, not correctness**: the labels were produced by a model, not a
 person, so a detector agreeing with them is not the same as being right. They support "this
-change made it worse", which is the property worth having while lexicons are rewritten —
+change made it worse", which is the property worth having while lexicons are rewritten, 
 `tests/eval/baseline.json` is a ratchet and a regression past 0.02 fails.
 
 **`confirmshaming` cannot be measured here, and that is the harness, not the detector.**
 Every snippet is rendered as a plain `<div>`, and confirmshaming requires its node to be a
-decline CONTROL — it correctly declines to fire on a div. Checked separately: all three of
+decline CONTROL, it correctly declines to fire on a div. Checked separately: all three of
 the corpus's instances ("I Will Pay Full Price!", "I don't want my mystery offer", "NO
 THANKS, I'LL RISK IT") score 1.00 wrapped in a `<button>`. Reporting it as 0.00 would send
 the next reader to fix something that already works.
 
-The structural detectors — `anchoring`, `charm`, `defaults`, `interference`, `decoy` — are
+The structural detectors, `anchoring`, `charm`, `defaults`, `interference`, `decoy`, are
 NOT covered by this either, and that is now measured rather than assumed. The labelling flagged
 **163** snippets as reference-price anchoring, which is more evidence than any of the six
 text patterns had. **Zero** of them carry a strikethrough in the corpus.
 
-They are not mislabelled. The harvested node is the container — "EGOWide Leg Low Rise
-Trousers£21.60£27.00-20%" — and the `<s>` sits on a child the corpus flattens away, so the
+They are not mislabelled. The harvested node is the container, "EGOWide Leg Low Rise
+Trousers£21.60£27.00-20%", and the `<s>` sits on a child the corpus flattens away, so the
 style recorded is the wrapper's. Measuring these needs the subtree, not the text, which is a
 different collection format and a different privacy question: storing DOM structure from real
 pages is a bigger commitment than storing scrubbed sentences.
@@ -117,7 +117,7 @@ pages is a bigger commitment than storing scrubbed sentences.
 Worth doing, not done, and the 163 labels are already sitting in `corpus/auto/` for whoever
 does it.
 
-### Known gaps — not claimed as done
+### Known gaps, not claimed as done
 
 - **Precision is measured on firings, not on experience.** An automated audit
   (`npm run spot:check`) drove this build over 64 pages on 22 live sites and every claim was
@@ -125,7 +125,7 @@ does it.
   regression-tested, and it is the reason four detectors and the shared money parser changed
   before launch. But it reads
   the detector's own log rather than the card, so it cannot tell you that a claim was
-  technically true and useless to a shopper — the failure that actually drives uninstalls.
+  technically true and useless to a shopper, the failure that actually drives uninstalls.
   The hand pass plan §10 asked for (30–40 pages, judging each card) has **not** been run
   against this build; what has is 6 retailers and ~44 firings with zero confirmed false
   positives. Every threshold is still a hand-set guess, marked `confidenceBasis: "hand_set"`
@@ -148,14 +148,14 @@ does it.
   all. Within a single pass truncation still follows document order, and nodes that appeared
   or changed while you were looking are exempt from the budget because they carry the
   highest-value signals. Bounding boxes are re-read every pass and deliberately never cached
-  — they are viewport-relative, so a scroll would make a cached one wrong with no mutation to
+, they are viewport-relative, so a scroll would make a cached one wrong with no mutation to
   notice.
 - **Telemetry is built end to end but not deployed.** `server/handler.ts` is a host-agnostic
-  `(Request) => Response` with 11 tests asserting it disbelieves its client — it re-checks
+  `(Request) => Response` with 11 tests asserting it disbelieves its client, it re-checks
   every limit the extension already applies, because a public URL has to hold against a
   modified extension or a curl command. It reads no header but `content-type`, and a test
   enforces that: an IP plus an hour bucket plus a site category re-identifies a person.
-  `server/cloudflare/` has the Worker, the D1 schema and [DEPLOY.md](server/DEPLOY.md) —
+  `server/cloudflare/` has the Worker, the D1 schema and [DEPLOY.md](server/DEPLOY.md), 
   about 20 minutes. The step that matters most is not in this repo: Cloudflare logs the
   client IP by default and that has to be turned off before deploying.
 - **The client holds everything locally.** The queue, the consent gate, the
@@ -167,7 +167,7 @@ does it.
   written for either case.
 - **Plan §14.4's post-first-digest consent screen is deliberately not built.** §14.4 asks for
   a one-screen telemetry ask after the first digest. Interrupting someone to request consent
-  to send data to a server that does not exist is a worse thing to do than not asking — in a
+  to send data to a server that does not exist is a worse thing to do than not asking, in a
   product whose central argument is about unnecessary interruption. The consent lives in
   Settings, unticked, next to a line saying no server is connected. If an endpoint is ever
   added, the §14.4 screen is the right way to ask for it and should be built then.
@@ -188,13 +188,13 @@ It did not start this way. The original design (plan §14.2) asked for one origi
 from the popup, which kept the permission narrow and made the tool close to useless: a
 shopper had to already suspect a page before they could ask Pensa to look at it, which is
 backwards for something whose whole job is to notice what you did not. And the list is
-always wrong — these techniques run on small independent shops and regional storefronts as
+always wrong, these techniques run on small independent shops and regional storefronts as
 readily as on the large retailers any list would name.
 
 The permission is therefore broad, and the constraint lives in what the code does with it:
 
 - **Banking, health, government and webmail are refused absolutely**, in two independent
-  layers — excluded from the content script's match patterns so Chrome never injects there,
+  layers, excluded from the content script's match patterns so Chrome never injects there,
   and refused again at runtime before the script reads anything. The build fails if the
   denylist is empty.
 - **`https` only.** Plain `http` is outside the requested permission.
@@ -245,14 +245,14 @@ npm run compile
 
 - **`host_permissions` must be exactly `["https://*/*"]`.** Not `<all_urls>`, not
   `*://*/*`, not `http://*/*`. The build throws otherwise, and `tests/unit/manifest.test.ts`
-  guards it. The point of the assertion is no longer to keep the permission small — that
-  argument was lost on purpose — but to keep `http` and non-web schemes out of it.
+  guards it. The point of the assertion is no longer to keep the permission small, that
+  argument was lost on purpose, but to keep `http` and non-web schemes out of it.
 - **The denylist is the load-bearing control now, so it must never be allowed to become
   empty.** It is enforced twice, and the build fails if it is empty. Anything that weakens
   it is a bigger change than it looks, because it is the only thing standing between a broad
   permission and a bank's page.
 - **The overlay must never cover a checkout button.** `pointer-events: none` on the host is
-  necessary but not sufficient — the card re-enables them. Placement is chosen by rectangle
+  necessary but not sufficient, the card re-enables them. Placement is chosen by rectangle
   intersection against every interactive element in the viewport. See
   `tests/unit/card-position.test.ts`, which encodes a failure found in a real browser.
 - **Prices are bigint minor units, never floats.** Reconciliation is

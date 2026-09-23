@@ -3,7 +3,7 @@
  *
  * Loads the ACTUAL built extension into real Chromium via a persistent context. Everything
  * before this file was jsdom, which computes no layout, no real styles, and no extension
- * runtime — so the whole class of bug the plan warns about (silent registration failures,
+ * runtime, so the whole class of bug the plan warns about (silent registration failures,
  * CSS bleed, forced synchronous layout) was structurally invisible until now.
  *
  * What this CANNOT cover, and why:
@@ -59,7 +59,7 @@ test.describe("extension runtime", () => {
      * reversed: Pensa now asks for every https site at install and shows Chrome's warning.
      *
      * The assertion is still worth having, for a narrower reason. It pins the permission to
-     * https exactly — not `<all_urls>`, not a scheme wildcard — so plain http pages and
+     * https exactly, not `<all_urls>`, not a scheme wildcard, so plain http pages and
      * non-web schemes stay outside what was granted, and a careless widening has to be
      * deliberate enough to edit this line.
      */
@@ -80,7 +80,7 @@ test.describe("extension runtime", () => {
      *
      * Once the broad permission is granted at install, `exclude_matches` is the only thing
      * that stops Chrome injecting Pensa into a bank. An empty or missing exclusion list would
-     * not fail any other test in this suite — the extension would simply work, everywhere,
+     * not fail any other test in this suite, the extension would simply work, everywhere,
      * including where it must never run.
      */
     const [sw] = context.serviceWorkers();
@@ -104,7 +104,7 @@ test.describe("extension runtime", () => {
      * And the honest half, asserted so nobody later "fixes" it by widening a pattern.
      *
      * `mail.google.com` is denied, but it CANNOT appear here. The rule that catches it is
-     * "a `mail.` label under any TLD", and a match pattern cannot express a wildcard TLD —
+     * "a `mail.` label under any TLD", and a match pattern cannot express a wildcard TLD,
      * the only pattern that would cover it is `*.google.com`, which would also exclude every
      * other Google property and is a different rule from the one the denylist states.
      *
@@ -151,7 +151,7 @@ test.describe("grant -> register -> INJECT", () => {
   test.skip("granting an origin registers the script AND injects it", async () => {
     // SKIPPED, and it must stay skipped: `chrome.permissions.request()` raises a NATIVE OS
     // dialog. It is not in the page DOM, so no browser automation can accept it, and calling
-    // it from a service worker fails for want of a user gesture — which is itself a
+    // it from a service worker fails for want of a user gesture, which is itself a
     // real-browser confirmation of the plan's §1.4 finding.
     //
     // The path downstream of a grant IS covered, in injection.spec.ts, using a test-only
@@ -184,7 +184,7 @@ test.describe("grant -> register -> INJECT", () => {
     const injected = await page.evaluate(
       () => (globalThis as Record<string, unknown>).__pensaDetectorInjected__ === true,
     );
-    expect(injected, "script registered but never injected — the §1.3 silent failure").toBe(true);
+    expect(injected, "script registered but never injected, the §1.3 silent failure").toBe(true);
     await page.close();
   });
 });

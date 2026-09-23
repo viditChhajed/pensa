@@ -2,7 +2,7 @@
  * Is this page a shop? Answered from the PAGE, not from its address.
  *
  * What this replaces. The old model asked the user to enable Pensa site by site, and the
- * popup explained itself with a URL score — "nothing commerce-shaped in /chat/67039775…,
+ * popup explained itself with a URL score, "nothing commerce-shaped in /chat/67039775…,
  * so you may see nothing here". That line was answering a question nobody asked, on a page
  * that was obviously not a shop, using the only evidence available at the time: a string.
  * You cannot inspect a page to decide whether to ask permission to inspect the page, so
@@ -17,14 +17,14 @@
  * So: read the page, decide, and if it is not a shop, shut down and record nothing.
  *
  * WHAT COUNTS AS EVIDENCE, and why it is weighted this way. The strong signals are the ones
- * a non-shop has no reason to fake — Product/Offer JSON-LD exists to be read by shopping
+ * a non-shop has no reason to fake, Product/Offer JSON-LD exists to be read by shopping
  * crawlers, and a cart line item with a quantity stepper and a remove button is furniture
  * that only a cart has. The weak signals are shapes a blog or a news site can produce by
  * accident: a price-shaped string, the word "cart" in a nav.
  *
  * DIRECTION OF ERROR. A false negative costs one page of missed detections. A false positive
  * costs a card interrupting someone on a page that was never selling anything, which is the
- * failure that gets an extension uninstalled — and, now that Pensa reads every https page,
+ * failure that gets an extension uninstalled, and, now that Pensa reads every https page,
  * the failure that would make it feel like spyware. So the threshold is set to need real
  * evidence, and every ambiguous case resolves to "not a shop".
  */
@@ -41,8 +41,8 @@ export interface CommerceVerdict {
 }
 
 /**
- * Schema.org types that mean someone is selling something. `Product` alone is not enough —
- * a review site marks up Products too — so an Offer, or a price, has to come with it. That
+ * Schema.org types that mean someone is selling something. `Product` alone is not enough,
+ * a review site marks up Products too, so an Offer, or a price, has to come with it. That
  * check lives in `hasProductJsonLd`, which the harvester already computes.
  */
 function jsonLdSellsSomething(blocks: readonly unknown[]): boolean {
@@ -97,7 +97,7 @@ export function classifyCommerce(meta: DocumentMeta): CommerceVerdict {
    *
    * Everything above assumes a retail cart: a product page, priced rows with steppers, an order
    * summary. Travel, lodging and ticketing have none of those, and the first version of this gate
-   * scored booking.com, kayak.com, eventbrite.com and ticketmaster.com at exactly ZERO — Pensa was
+   * scored booking.com, kayak.com, eventbrite.com and ticketmaster.com at exactly ZERO, Pensa was
    * silent on all four, which is where drip pricing and dated urgency live most heavily.
    *
    * A booking control plus a price is the equivalent structure; per-unit pricing ("$189/night")
@@ -117,7 +117,7 @@ export function classifyCommerce(meta: DocumentMeta): CommerceVerdict {
   else if (meta.pricedTextCount >= 8) add(0.5, "several prices");
   /**
    * A booking control counts only beside money. On its own it was worth half a signal, which
-   * added to the half already given for a checkout control — so a travel ARTICLE with a "Book
+   * added to the half already given for a checkout control, so a travel ARTICLE with a "Book
    * now" button and a "Proceed to the next article" link scored exactly 1.0 and was judged a
    * shop. Two weak signals that are both just button wording are not evidence of a shop.
    */

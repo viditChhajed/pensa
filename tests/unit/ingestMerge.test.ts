@@ -9,13 +9,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  *
  * This test exists because the script did exactly that. It kept only rows without
  * `source: "auto"` and rewrote the file from scratch, so a second run against a fresh set of
- * batches destroyed the entire previous automated pass — 2,639 labelled items and 201
+ * batches destroyed the entire previous automated pass, 2,639 labelled items and 201
  * positives, replaced by 59, with the source batches already cleared to make room for the
  * new export.
  *
  * "Preserve the valuable rows" was the intent; "preserve the human rows" was the code. Those
  * are the same thing only if automated labels are worthless, which is the opposite of why
- * the script exists. No review would have caught it — the behaviour is only visible on the
+ * the script exists. No review would have caught it, the behaviour is only visible on the
  * SECOND run, and the first run looked perfect.
  */
 

@@ -33,7 +33,7 @@ const MAX_TEXT = 400;
  *
  * A fixed count was the wrong instrument, and measuring showed why: rei has 1437 qualifying
  * nodes and reads them in 55ms, while newegg has 3807 and takes 347ms. One number cannot
- * serve both — at 1200 rei was needlessly truncated, and without a limit newegg spent seven
+ * serve both, at 1200 rei was needlessly truncated, and without a limit newegg spent seven
  * times its whole frame budget in a single phase.
  */
 const MAX_CANDIDATES = 4000;
@@ -49,14 +49,14 @@ const MAX_CANDIDATES = 4000;
  * Known bias, stated rather than hidden: truncation follows document order, so what gets
  * dropped is the bottom of a long page. The salience gate already requires a node to have
  * been on screen, and the digest fires at cart and checkout where pages are shorter, so this
- * costs least where it matters most — but it is a real limitation and not a rounding error.
+ * costs least where it matters most, but it is a real limitation and not a rounding error.
  */
 const HARVEST_BUDGET_MS = 35;
 /**
  * Computed styles, kept ACROSS passes. Plan §18C, the affordable half of it.
  *
  * `pass()` re-harvests the whole document every time, so a busy SPA re-resolves style for
- * thousands of unchanged elements continuously — measured at 1839ms on target.com, and the
+ * thousands of unchanged elements continuously, measured at 1839ms on target.com, and the
  * reason the time budget above has to truncate newegg at roughly 2700 of its 3900 candidates.
  * A page that is blind past node 2700 stays blind, pass after pass, because every pass
  * starts from the same cold state and stops in the same place.
@@ -65,14 +65,14 @@ const HARVEST_BUDGET_MS = 35;
  * so the budget is spent on the ones that were skipped, and after two or three passes the
  * whole page has been seen.
  *
- * STYLES ONLY, and that is not a shortcut — it is the correctness boundary.
+ * STYLES ONLY, and that is not a shortcut, it is the correctness boundary.
  * `getBoundingClientRect` is VIEWPORT-relative, so a cached box is wrong the instant the
  * page scrolls, with no mutation to invalidate it. Boxes are therefore re-read every pass;
  * they are also the cheap half, which is how this was found in the first place: budgeting
  * only the rects changed newegg's harvest by nothing at all.
  *
  * Invalidation is by dirty subtree (`invalidateStyles`, fed from the MutationObserver's
- * roots) plus an epoch counter for changes that produce no mutation record at all — a
+ * roots) plus an epoch counter for changes that produce no mutation record at all, a
  * resize re-evaluates every media query and is not something any element reports.
  */
 interface CachedStyle {
@@ -97,13 +97,13 @@ export function invalidateStyles(roots: Iterable<Element>): void {
    * The first version bailed to a global epoch bump whenever any single root had more than
    * 2000 descendants. On a loading retail page a high-up container is dirty almost every
    * batch, so that path fired continuously and the cache hit rate measured on newegg was
-   * exactly ZERO across every pass — a cache that is flushed before it is ever read is worse
+   * exactly ZERO across every pass, a cache that is flushed before it is ever read is worse
    * than no cache, because it costs a WeakMap write per node for nothing.
    *
    * Walking is cheap; `querySelectorAll("*")` over a few thousand elements is microseconds,
    * far less than re-resolving style for even a handful of them. So walk, and keep the
    * global flush only for the genuinely pathological case where the dirty set approaches the
-   * whole document — at which point there is nothing worth preserving anyway.
+   * whole document, at which point there is nothing worth preserving anyway.
    */
   let budget = 50_000;
   let rootCount = 0;
@@ -123,7 +123,7 @@ export function invalidateStyles(roots: Iterable<Element>): void {
       // page that simply never repeats a node look identical from the outside, and the
       // first version of this fired on every batch without anything saying so.
       console.warn(
-        `[pensa] style cache flushed entirely — ${rootCount} dirty root(s) covering more ` +
+        `[pensa] style cache flushed entirely: ${rootCount} dirty root(s) covering more ` +
           "than 50k elements between them",
       );
       styleEpoch++;
@@ -159,7 +159,7 @@ const MAX_PATH_DEPTH = 12;
 const CURRENCY_CHARS = "$£€¥₹";
 
 /**
- * Lexicon trigger letters. Deliberately coarse — the point is rejecting >95% of nodes for
+ * Lexicon trigger letters. Deliberately coarse, the point is rejecting >95% of nodes for
  * almost no cost, not being precise. Precision is the detector's job.
  */
 const TRIGGER_WORDS = [
@@ -200,7 +200,7 @@ const TRIGGER_WORDS = [
   "selling fast",
   "in carts",
   // These are shipped scarcity patterns whose text carries no digit, no currency glyph and
-  // none of the words above — so the prefilter rejected the node and the detector never saw
+  // none of the words above, so the prefilter rejected the node and the detector never saw
   // it. The pattern existed and could not fire, which is the same shape of dead code that
   // hid pricing.drip. Found by probing "Premium seats, going fast", which scored nothing.
   "going fast",
@@ -225,7 +225,7 @@ const TRIGGER_WORDS = [
   "to go",
   /**
    * Deadline copy stated in words. "ends" was here; "ending" was not, and `includes("ends")`
-   * does not match "ending" — so "Summer sale ending soon" was rejected by the prefilter and
+   * does not match "ending", so "Summer sale ending soon" was rejected by the prefilter and
    * no detector ever saw it.
    *
    * That is the third time this list has been wrong in the same way, each time found by
@@ -245,19 +245,19 @@ const TRIGGER_WORDS = [
   "back in stock",
   /**
    * "Buy now, pay later" and "will fill up fast" both scored ZERO, and neither was a
-   * detector bug — the prefilter dropped the node before any detector was offered it.
+   * detector bug, the prefilter dropped the node before any detector was offered it.
    * Neither phrase has a digit, a currency glyph or any word above. "buy now, pay later" is
    * the category's own name.
    *
    * Fourth occurrence of this exact failure. `tests/unit/prefilter.test.ts` guards the
-   * canonical examples, so these are now in that list too — a lexeme added to a detector
+   * canonical examples, so these are now in that list too, a lexeme added to a detector
    * without a matching example here is a lexeme that can still never fire.
    */
   "pay later",
   "pay over time",
   "fill up fast",
   "selling out",
-  /** "Success! Free Shipping Unlocked" — the threshold-met message carries no amount. */
+  /** "Success! Free Shipping Unlocked", the threshold-met message carries no amount. */
   "unlocked",
   /** Past-tense, consequence-shaped and capacity copy, none of which had a trigger word. */
   "viewed",
@@ -302,7 +302,7 @@ export function collapse(raw: string): string {
  * Whole-page text, for the signals that ask "does this page contain X anywhere".
  *
  * `collapse` caps at MAX_TEXT, which is right for one node's text and catastrophic for the
- * document's: it left `bodyText` holding only the first few hundred characters — the header.
+ * document's: it left `bodyText` holding only the first few hundred characters, the header.
  * `hasStepIndicator` has therefore only ever seen the top of a page, and the price counts added
  * for the commerce gate read 0 on a Eventbrite listing that plainly showed "From $221.98".
  * The cap here exists only to bound the regex work on a pathological page.
@@ -390,7 +390,7 @@ function accessibleName(el: Element): string {
  * Resolve the background a node is painted against.
  *
  * The ancestor walk is DISABLED in v1, and the reason is a measured one. It called
- * getComputedStyle on up to 12 ancestors for every one of up to 3000 candidates — tens of
+ * getComputedStyle on up to 12 ancestors for every one of up to 3000 candidates, tens of
  * thousands of style resolutions per pass. Measured on real storefronts that produced passes
  * of 1839ms on target.com and a sustained ~100ms on ikea, against a 50ms budget.
  *
@@ -399,18 +399,18 @@ function accessibleName(el: Element): string {
  * registry. So v1 was paying the single largest cost in the harvest for a value nothing it
  * ships actually reads.
  *
- * When §18E ships, restore the walk — but do it for the handful of paired accept/decline
+ * When §18E ships, restore the walk, but do it for the handful of paired accept/decline
  * controls that detector identifies, not for every candidate on the page.
  */
 /**
  * Resolving a true painted background costs a getComputedStyle per ancestor. Doing it for
  * every candidate meant tens of thousands of style resolutions per pass and was the single
- * largest cost in the harvest — measured at 1839ms on target.com.
+ * largest cost in the harvest, measured at 1839ms on target.com.
  *
  * But `interference.visual_asymmetry` genuinely needs it: contrast against a transparent
  * element resolves to the wrong colour, and its whole claim is that one button is far more
  * prominent than the other. So the walk is back, restricted to what that detector actually
- * pairs — interactive controls — which is a few dozen nodes rather than a thousand.
+ * pairs, interactive controls, which is a few dozen nodes rather than a thousand.
  */
 const BACKGROUND_WALK_MAX_HOPS = 8;
 
@@ -472,7 +472,7 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
       ) {
         return NodeFilter.FILTER_REJECT;
       }
-      // Interactive controls are always candidates — defaults/confirmshaming need them.
+      // Interactive controls are always candidates, defaults/confirmshaming need them.
       if (tag === "INPUT" || tag === "BUTTON" || tag === "SELECT" || tag === "A") {
         return NodeFilter.FILTER_ACCEPT;
       }
@@ -512,7 +512,7 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
   // Layout AND style together, bounded by time rather than by count.
   //
   // Both in the same loop deliberately. getBoundingClientRect turns out to be cheap once
-  // layout has been computed once; getComputedStyle is what actually costs — budgeting only
+  // layout has been computed once; getComputedStyle is what actually costs, budgeting only
   // the rects changed newegg's harvest by nothing at all, because the expense was still
   // ahead in a separate pass. Measuring what is slow before limiting it is the whole point.
   //
@@ -570,7 +570,7 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
     const dropped = selected.splice(stoppedAt);
 
     // Ephemeral nodes are exempt from the budget. They are appended after the tree walk, so
-    // they sit at the very end of `selected` and a time limit would drop them first — and a
+    // they sit at the very end of `selected` and a time limit would drop them first, and a
     // just-inserted toast or a countdown that rewrites itself is the single highest-value
     // thing on the page. Silencing `urgency.countdown` to save 2ms is the wrong trade, and
     // there are never many of them, so reading all of them cannot itself blow the budget.
@@ -588,7 +588,7 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
     // truncation looks exactly like a page that simply had fewer candidates.
     console.warn(
       `[pensa] harvest budget (${HARVEST_BUDGET_MS}ms) hit at ${stoppedAt} of ` +
-        `${stoppedAt + dropped.length} candidates — ${dropped.length - rescued} not read` +
+        `${stoppedAt + dropped.length} candidates, ${dropped.length - rescued} not read` +
         (rescued > 0 ? `, ${rescued} ephemeral node(s) read anyway` : "") +
         // Whether this page is converging matters more than the truncation itself: a rising
         // cache share means the next pass reaches further, and a flat one means it never
@@ -615,8 +615,8 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
   // <span>$12.00</span><span>25% off</span> yields "$12.0025% off", which runs the digits
   // together and defeats every word-boundary regex downstream. Join on element boundaries.
   //
-  // MEMOISED BY PARENT. Candidates overwhelmingly share parents — a price row, a plan card,
-  // a form label all produce several candidates under one element — and joinedText walks the
+  // MEMOISED BY PARENT. Candidates overwhelmingly share parents, a price row, a plan card,
+  // a form label all produce several candidates under one element, and joinedText walks the
   // parent's whole subtree. Computing it per candidate re-walked the same subtrees over and
   // over and was the dominant cost of the pass: measured at 1839ms on target.com against a
   // 50ms budget.
@@ -787,7 +787,7 @@ export function readDocumentMeta(doc: Document, url: string): DocumentMeta {
  *
  * Checkout detection used to require autocomplete="address-line1" and friends, which assumes
  * a SHIPPING checkout. booking.com's "Enter your details" is first name, last name, email
- * and country — a hotel booking has no street address — so its checkout page classified as
+ * and country, a hotel booking has no street address, so its checkout page classified as
  * `browse`, the stage never changed, the checkout-intent trigger never fired, and no card
  * ever appeared. Travel, ticketing and digital goods all check out this way.
  */
@@ -849,7 +849,7 @@ const QTY_HINT = /\b(qty|quantity)\b/i;
  *
  * Every signal here is deliberately independent of the URL. A page with repeated priced
  * rows carrying quantity steppers and remove buttons is a cart whether it lives at /cart,
- * /products/body-spritz or /event/0500648A9C927EA6 — and all three of those were seen in
+ * /products/body-spritz or /event/0500648A9C927EA6, and all three of those were seen in
  * the field.
  */
 function readStructuralSignals(doc: Document) {
@@ -898,7 +898,7 @@ function readStructuralSignals(doc: Document) {
      *
      * A hotel, flight or event page has no add-to-cart control, no quantity stepper and no
      * cart rows, so the commerce gate scored booking.com, kayak.com, eventbrite.com and
-     * ticketmaster.com at ZERO and Pensa went silent on all four — measured, not guessed.
+     * ticketmaster.com at ZERO and Pensa went silent on all four, measured, not guessed.
      * Those are the categories with the worst drip pricing in the taxonomy, which made this
      * the most expensive blind spot available.
      */
@@ -916,7 +916,7 @@ function readStructuralSignals(doc: Document) {
   // These two scans used to call joinedText (and, for line items, querySelectorAll) once per
   // element over essentially the whole document. Both are O(subtree) per element, so the
   // scans were quadratic and readDocumentMeta became the single most expensive phase of a
-  // pass — measured at 96ms on ikea against a 50ms budget for the entire pass.
+  // pass, measured at 96ms on ikea against a 50ms budget for the entire pass.
   //
   // Computing every element's joined text once, children before parents, makes it linear.
   // Text is capped because nothing here cares about a string longer than a cart row.
@@ -963,7 +963,7 @@ function readStructuralSignals(doc: Document) {
   /**
    * Is this element inside something the shopper cannot see?
    *
-   * Shopify themes render the cart drawer into every product page and hide it until opened —
+   * Shopify themes render the cart drawer into every product page and hide it until opened,
    * `display: none` in older themes, `visibility: hidden` plus a transform in Dawn. Its rows
    * were counted anyway, so a product page opened with items already in the cart was judged a
    * CART page before the shopper did anything: stage-dependent detectors ran as if at the cart,

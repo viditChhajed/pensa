@@ -30,7 +30,7 @@ function walk(dir: string, out: string[] = []): string[] {
 function main(): void {
   const files = walk(ROOT);
   if (files.length === 0) {
-    console.log(`no fixtures under ${ROOT}/ — nothing to scan`);
+    console.log(`no fixtures under ${ROOT}/, nothing to scan`);
     return;
   }
 

@@ -11,7 +11,7 @@ import { TAXONOMY } from "@/shared/taxonomy";
  * Every shipped detector must have an off switch.
  *
  * `disabledDetectors` has been honoured by the digest since it was written, and for that
- * whole time nothing in the UI could set it — the escape hatch §10 relies on for "raise
+ * whole time nothing in the UI could set it, the escape hatch §10 relies on for "raise
  * thresholds or default-disable anything noisy" existed only in code the user could not
  * reach. This test exists so adding the seventeenth detector cannot silently re-create that:
  * a pattern that ships without appearing here is one a user cannot turn off, and a false

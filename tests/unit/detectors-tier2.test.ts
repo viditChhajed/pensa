@@ -179,7 +179,7 @@ describe("nagging.repeat_interstitial", () => {
     expect(b).toBeGreaterThan(a);
   });
 
-  it("emits at most one candidate — nagging is a page property", () => {
+  it("emits at most one candidate, nagging is a page property", () => {
     const ctx = contextFrom(`<div><p>One $1.00</p><p>Two $2.00</p><p>Three $3.00</p></div>`, {
       signals: { modalInsertionCount: 3, modalsInsertedAt: [1, 2, 3] },
     });

@@ -7,7 +7,7 @@ import { DEFAULT_SETTINGS, type DetectionEvent } from "@/shared/schema";
  *
  * These are not tests of a data pipeline, they are tests of a promise. `TelemetryRecord` is
  * `.strict()` precisely so an accidentally-added field throws rather than passing through,
- * and `toRecord` is the only place a detection becomes something transmittable — so it is
+ * and `toRecord` is the only place a detection becomes something transmittable, so it is
  * the one function where "we do not send X" has to be true rather than intended.
  */
 
@@ -60,7 +60,7 @@ describe("what a telemetry record carries", () => {
   });
 
   it("names the shop by registrable domain, and nothing finer", () => {
-    // v2 sends the site on purpose — that is what per-site prevalence is. What it must not
+    // v2 sends the site on purpose, that is what per-site prevalence is. What it must not
     // send is anything below the registrable domain: the subdomain can be a tenant name, and
     // the path is which product somebody looked at.
     const r = toRecord(event({ origin: "https://secure.checkout.booking.com" }));
@@ -100,7 +100,7 @@ describe("what a telemetry record carries", () => {
 
   it("includes shops the bundled list does not name, as category `other`", () => {
     // v1 refused these, because the category WAS the anonymity. The site is now sent
-    // explicitly, so refusing unlisted shops would only drop the long tail of small stores —
+    // explicitly, so refusing unlisted shops would only drop the long tail of small stores,
     // which is where a lot of these techniques live.
     const r = toRecord(event({ origin: "https://some-tiny-shop.com" }));
     expect(r?.site).toBe("some-tiny-shop.com");

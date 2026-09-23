@@ -2,7 +2,7 @@
  * pricing.charm
  *
  * Lowest-severity detector in the set, and the one most likely to be noise if it surfaces
- * on every page — nearly all retail pricing is charm pricing. It earns its place in the
+ * on every page, nearly all retail pricing is charm pricing. It earns its place in the
  * LOG path (prevalence is genuinely interesting) far more than in the surfacing path,
  * which is why its severity weight is 0.20 and it dedupes to one candidate per page.
  */
@@ -33,12 +33,12 @@ export const charmDetector: Detector = {
     // Ranking every priced node by rendered area picked the biggest box on the page, which
     // on a grid is a container whose text is every child run together. Observed on shein:
     // the match was logged as "Customers Also Viewed 10 #KnitEssentials -15% SHEIN PETITE
-    // Balle" — a blob with no price in the visible sample at all; the charm price was
+    // Balle", a blob with no price in the visible sample at all; the charm price was
     // further along in text that the log truncated. The evidence was meaningless, and a
     // shopper shown that would have no idea what the extension was pointing at.
     //
-    // Two guards, because either alone leaks. A price node's text is short — that rejects
-    // blobs. And no candidate deeper in the subtree may carry the same price — that rejects
+    // Two guards, because either alone leaks. A price node's text is short, that rejects
+    // blobs. And no candidate deeper in the subtree may carry the same price, that rejects
     // a tight wrapper around a real price node, which is short enough to pass the first.
     const MAX_PRICE_TEXT = 60;
 

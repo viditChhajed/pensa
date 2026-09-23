@@ -1,5 +1,5 @@
 /**
- * Funnel stage classifier — content-first.
+ * Funnel stage classifier, content-first.
  *
  * The previous version scored URL path tokens at 0.5-0.6, which meant the URL decided the
  * answer and everything else was decoration. In the field it was right once in four:
@@ -10,11 +10,11 @@
  *     Reserve Tickets button. Also `pdp`.
  *   - Frontier's fare-selection and upsell pages classified as `browse`.
  *
- * That is not a gap in the URL list — it is the wrong input. Retailers route by product for
+ * That is not a gap in the URL list, it is the wrong input. Retailers route by product for
  * good reasons and nothing obliges them to change the path when the page becomes a cart.
  *
  * So: STRUCTURE decides, URL breaks ties. A page with repeated priced rows carrying
- * quantity controls is a cart whatever its path says, and negative evidence counts — a page
+ * quantity controls is a cart whatever its path says, and negative evidence counts, a page
  * with a quantity stepper and a Remove control is not a product page no matter how much
  * Product JSON-LD it carries.
  *
@@ -28,7 +28,7 @@ import type { DocumentMeta } from "./types";
 type Scores = Record<FunnelStage, number>;
 
 /**
- * URL contributes at most ~0.2 — enough to separate two structurally identical pages,
+ * URL contributes at most ~0.2, enough to separate two structurally identical pages,
  * never enough to overrule what is actually on the page.
  */
 const URL_WEIGHT = 0.2;

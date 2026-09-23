@@ -25,7 +25,7 @@ import { urgencyDetector } from "./urgency";
  * Every page detector that ships.
  *
  * Tier 2 was held back for "v1.1 during store review", which was a schedule decision rather
- * than a quality one — all five were built and tested at the same time as Tier 1. The spot
+ * than a quality one, all five were built and tested at the same time as Tier 1. The spot
  * check made the cost concrete: flyfrontier's fare grid is a textbook asymmetric-dominance
  * decoy, four bundles priced so the middle one looks obvious, and the extension produced
  * ZERO detections on that page because the only detector that could see it was excluded
@@ -60,7 +60,7 @@ export interface DetectorRun {
 }
 
 /**
- * Stage-gated, one detector per yield. A detector that throws is skipped and reported —
+ * Stage-gated, one detector per yield. A detector that throws is skipped and reported,
  * one broken detector must never take down detection for the whole page.
  */
 export function* runDetectors(

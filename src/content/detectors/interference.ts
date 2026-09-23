@@ -100,7 +100,7 @@ export const interferenceDetector: Detector = {
       });
       if (accepts.length === 0 || declines.length === 0) continue;
 
-      // The most prominent accept against the least prominent decline — the pairing a
+      // The most prominent accept against the least prominent decline, the pairing a
       // shopper's eye actually resolves.
       const accept = accepts.reduce((a, b) => (area(b) > area(a) ? b : a));
       const decline = declines.reduce((a, b) => (area(b) < area(a) ? b : a));
@@ -139,7 +139,7 @@ export const interferenceDetector: Detector = {
         [labelOf(accept).slice(0, 40), labelOf(decline).slice(0, 40)],
       );
 
-      // Carry the measured numbers as evidence — they are the entire claim.
+      // Carry the measured numbers as evidence, they are the entire claim.
       c.evidence.computedStyle = {
         ...c.evidence.computedStyle,
         ...(contrastEvidence !== undefined ? { contrastRatio: contrastEvidence } : {}),

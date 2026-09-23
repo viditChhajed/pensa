@@ -4,7 +4,7 @@
  * The same product has to be recognisable across PDP -> cart -> checkout even though the
  * URL changes and an SPA re-renders everything. Resolution order, most to least reliable:
  *
- *   1. JSON-LD `@id` / `productID` / `sku` / `gtin*` — authoritative when present
+ *   1. JSON-LD `@id` / `productID` / `sku` / `gtin*`, authoritative when present
  *   2. Structured markup attributes (`data-sku`, `itemprop=sku`)
  *   3. A hash of the URL path template plus the product title
  *

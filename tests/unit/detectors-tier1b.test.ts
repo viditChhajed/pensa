@@ -109,9 +109,7 @@ describe("goal_gradient.threshold", () => {
     expect(hits, "a policy statement is worth counting").toHaveLength(1);
 
     const score = hits[0]?.rawScore ?? 0;
-    expect(score, "below the log threshold — it would not be recorded at all").toBeGreaterThan(
-      0.35,
-    );
+    expect(score, "below the log threshold, it would not be recorded at all").toBeGreaterThan(0.35);
     expect(score, "a shipping policy must never interrupt anyone").toBeLessThan(0.75);
     expect(hits[0]?.subSignals.personalisedRemainder, "there is no remainder here").toBe(0);
   });

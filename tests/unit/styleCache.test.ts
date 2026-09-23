@@ -5,7 +5,7 @@ import { harvest, harvestStats, invalidateAllStyles, invalidateStyles } from "@/
  * Plan §18C, the half that ships: computed style memoised across passes.
  *
  * Without it every pass starts cold, so the time budget stops at the same node every time
- * and a dense page stays permanently blind past it — newegg was read to roughly 2700 of its
+ * and a dense page stays permanently blind past it, newegg was read to roughly 2700 of its
  * 3900 candidates, pass after pass, forever. With it the second pass spends its budget on
  * what the first one skipped, and coverage converges instead of repeating.
  *
@@ -62,7 +62,7 @@ describe("style memo across harvest passes", () => {
     // changes makes every descendant's cached snapshot wrong even though only the wrapper
     // mutated. Invalidating the root alone would leave those serving stale colours.
     // Both must be candidates for the assertion to mean anything. The wrapper needs direct
-    // text that the character-class prefilter accepts — "Now " alone has no digits and no
+    // text that the character-class prefilter accepts, "Now " alone has no digits and no
     // currency mark, so the wrapper is never harvested and has nothing cached to invalidate.
     document.body.innerHTML = `<div id="w">Was $29.99 <span id="inner">$19.99</span></div>`;
     harvest(document);
@@ -92,7 +92,7 @@ describe("style memo across harvest passes", () => {
 
   it("never caches a box, because a scroll moves every one of them", () => {
     // THE correctness boundary of this cache. getBoundingClientRect is viewport-relative, so
-    // a cached box is wrong the moment the page scrolls — and a scroll produces no mutation
+    // a cached box is wrong the moment the page scrolls, and a scroll produces no mutation
     // record, so nothing would ever invalidate it. Boxes are re-read every pass even when
     // the style beside them came from cache.
     document.body.innerHTML = `<div id="a">$19.99</div>`;

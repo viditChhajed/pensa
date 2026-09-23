@@ -12,7 +12,7 @@
  *
  * Note the manifest rewrite below: the shipped build declares no host_permissions by design
  * (see plan §1.2), so a headless run would never inject. This grants https://*\/* to the
- * COPY in a temp dir only — the build in .output is not modified, and nothing here is what
+ * COPY in a temp dir only, the build in .output is not modified, and nothing here is what
  * users install.
  */
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";

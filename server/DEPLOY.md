@@ -1,4 +1,4 @@
-# Deploying the prevalence sink — Cloudflare Workers + D1
+# Deploying the prevalence sink, Cloudflare Workers + D1
 
 About ten minutes. Everything runs from the repo root. Nothing in the extension contacts this
 until step 6, and a plain `npm run build` still produces an extension that sends nothing.
@@ -27,8 +27,8 @@ Copy the `database_id` it prints into `server/cloudflare/wrangler.toml`, replaci
 npm run sink:schema
 ```
 
-This creates `counts` — whose primary key **is** the cohort (site, technique, stage, day…), so
-no row finer than that can exist — plus four views: `site_prevalence`, `pattern_reach`,
+This creates `counts`, whose primary key **is** the cohort (site, technique, stage, day…), so
+no row finer than that can exist, plus four views: `site_prevalence`, `pattern_reach`,
 `pattern_by_stage`, and `site_prevalence_public`. **Anything you publish comes from
 `site_prevalence_public`**, which only releases a shop/technique pair once 20 independent
 batches have reported it.
@@ -40,7 +40,7 @@ technique's add rate beside its shop's baseline, and the `lift` between them), a
 the comment on `pattern_add_rate` in schema.sql says why. The schema file is safe to re-run on
 an existing database: every statement is `create … if not exists`.
 
-## 4. Confirm request logging is off — before deploying
+## 4. Confirm request logging is off, before deploying
 
 The service never reads a header other than `content-type` (a unit test enforces it). That is
 worth nothing if the platform logs the address anyway, and **an IP beside a shop name and a
@@ -83,7 +83,7 @@ Must print `204`. Then:
 curl -s -o /dev/null -w '%{http_code}\n' -X POST "$W/counts" -H 'content-type: application/json' -d '{"v":2,"records":[{"patternId":"scarcity.stock","detectorId":"x","confidenceQuartile":4,"funnelStage":"pdp","site":"shein.com/p/123","originCategory":"fast_fashion","rulepackVersion":"1","dayBucket":'$DAY'}]}'
 ```
 
-Must print `422` — a path in `site`. If it prints anything else, **stop**: the strict check is
+Must print `422`, a path in `site`. If it prints anything else, **stop**: the strict check is
 not running and PRIVACY.md is not being enforced. Delete the test row afterwards:
 
 ```bash
@@ -96,7 +96,7 @@ npx wrangler d1 execute pensa-counts --remote --config server/cloudflare/wrangle
 TELEMETRY_ENDPOINT=https://pensa-counts.<you>.workers.dev/counts npm run build && npm run zip
 ```
 
-Build-time only. Upload **that** zip — a zip from a plain `npm run build` sends nothing.
+Build-time only. Upload **that** zip, a zip from a plain `npm run build` sends nothing.
 
 ## 8. Update the listing to match
 

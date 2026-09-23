@@ -33,8 +33,8 @@ const KIND_LEXICON: readonly (readonly [LineItemKind, readonly RegExp[]])[] = [
       /\bconvenience fee\b/,
       /\bresort fee\b/,
       // Lodging and short-let fees, added before testing choicehotels. These are the
-      // best-known drip charges in the industry — a destination fee is the one the FTC and
-      // several state AGs have actually litigated over — and every one of them classified
+      // best-known drip charges in the industry, a destination fee is the one the FTC and
+      // several state AGs have actually litigated over, and every one of them classified
       // as `unknown`, reaching fees[] only via the summary-row fallback rather than being
       // recognised for what it is.
       /\bdestination fee\b/,
@@ -130,8 +130,8 @@ export function extractPriceSnapshot(ctx: PageContext, capturedAt = Date.now()):
     if (label.trim().length === 0) {
       // THE reason pricing.drip never fired on any site.
       //
-      // A summary row is almost always two sibling elements — `<span>Subtotal</span>` and
-      // `<span>$40.00</span>` — and harvest only accepts elements with DIRECT text, so the
+      // A summary row is almost always two sibling elements, `<span>Subtotal</span>` and
+      // `<span>$40.00</span>`, and harvest only accepts elements with DIRECT text, so the
       // row itself is never a candidate. The label span carries no digit or currency and
       // fails the prefilter. Only the bare amount survives, and reading one candidate's text
       // can never see a label that lives in its sibling. Subtotal, total and every fee came
@@ -181,7 +181,7 @@ export function extractPriceSnapshot(ctx: PageContext, capturedAt = Date.now()):
       // `unknown` rows are kept: an unexplained charge is exactly what reconciliation is for.
       // A label borrowed from an ancestor is a guess, and on a product page the ancestor is
       // often just the product's own name ("Ticket $40.00"). If that guess does not classify
-      // and does not sit in a money summary, it was not a fee — it was the headline price,
+      // and does not sit in a money summary, it was not a fee, it was the headline price,
       // and dropping it silently costs drip the base it reconciles against.
       if (kind === "unknown" && labelFromAncestor && !looksLikeSummaryRow(n, ctx)) {
         if (!largestProductPrice || price.amount > largestProductPrice.amount) {

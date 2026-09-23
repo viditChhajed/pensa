@@ -5,7 +5,7 @@
  *
  * Each parallel crawler owns its own file because the dedup set lives in memory per process:
  * two of them appending to one file would each believe they had seen only their own lines.
- * Deduplication therefore has to happen here, once, across everything — on the same
+ * Deduplication therefore has to happen here, once, across everything, on the same
  * digit-normalised key the crawler uses, so "Only 3 left" and "Only 7 left" collapse exactly
  * as they would have in a single-process run.
  */

@@ -2,7 +2,7 @@
  * Merge a page observation into the persistent per-offer history (plan §18A, worker side).
  *
  * Caps every array so a heavily-visited product cannot grow without bound, and keeps the
- * NEWEST samples — recent behaviour is what a claim is about.
+ * NEWEST samples, recent behaviour is what a claim is about.
  */
 
 import type { PageObservation } from "@/content/observations";

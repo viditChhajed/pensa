@@ -41,7 +41,7 @@ export const PathTemplate = z
 export const Sha256 = z.string().regex(/^[0-9a-f]{64}$/);
 
 /**
- * Money is minor units as bigint. Never a float, ever — `0.1 + 0.2` reconciliation errors
+ * Money is minor units as bigint. Never a float, ever, `0.1 + 0.2` reconciliation errors
  * would silently corrupt every drip-pricing finding. BigInt is structured-clone-safe, so
  * IndexedDB stores it directly; it is excluded from every telemetry payload, so the fact
  * that `JSON.stringify` cannot serialize it never comes up.
@@ -75,7 +75,7 @@ export const LineItem = z.object({
   kindConfidence: z.number().min(0).max(1),
   /*
    * No `userAttributed` flag. It used to live here, was set by the content script, and was
-   * hardcoded false — the page cannot know which add-ons the shopper chose, because that
+   * hardcoded false, the page cannot know which add-ons the shopper chose, because that
    * choice may have been made on an earlier page. Attribution is now computed in the worker
    * against the session ledger's `userChoices`, where that history actually exists.
    */
@@ -111,7 +111,7 @@ export type ComputedStyleEvidence = z.infer<typeof ComputedStyleEvidence>;
 export const Evidence = z.object({
   /** Depth-capped CSS path. Stable enough to re-find a node, short enough to store. */
   selectorPath: z.string().max(512),
-  /** SHA-256 of NORMALIZED matched text — the hash, not the text. */
+  /** SHA-256 of NORMALIZED matched text, the hash, not the text. */
   textHash: Sha256,
   /** LOCAL ONLY. Never included in any egress payload. */
   textSample: z.string().max(240).optional(),
@@ -130,7 +130,7 @@ export const Salience = z.object({
   visibleMs: z.number().nonnegative(),
   viewportFraction: z.number().min(0).max(1),
   scrollDepthAtFirstView: z.number().min(0).max(1),
-  /** Self-removing node (a toast) — gates at 400ms rather than 800ms. */
+  /** Self-removing node (a toast), gates at 400ms rather than 800ms. */
   ephemeral: z.boolean().default(false),
 });
 export type Salience = z.infer<typeof Salience>;
@@ -138,7 +138,7 @@ export type Salience = z.infer<typeof Salience>;
 // --------------------------------- detection ---------------------------------
 
 /**
- * The pre-persistence output of a pure detector. No id, no sessionId, no origin — a
+ * The pre-persistence output of a pure detector. No id, no sessionId, no origin, a
  * detector cannot know those, which is exactly what keeps it a pure function over a
  * serialized DOM and therefore runnable in Node.
  */
@@ -167,8 +167,8 @@ export const SuppressionReason = z.enum([
   /**
    * Found while browsing rather than at add-to-cart, so no card was ever due.
    *
-   * Detections used to reach the log ONLY when a trigger fired, which made the local record —
-   * and the prevalence dataset built on it — a measure of what shoppers saw at the moment they
+   * Detections used to reach the log ONLY when a trigger fired, which made the local record,
+   * and the prevalence dataset built on it, a measure of what shoppers saw at the moment they
    * added to cart, not of what shops display. These rows are the rest of that picture.
    */
   "passive_scan",
@@ -219,7 +219,7 @@ export type UserInitiatedAdd = z.infer<typeof UserInitiatedAdd>;
  * Recorded page-side from real `change`/`click` events on controls whose label names an
  * add-on family (see src/shared/addons.ts), and kept per origin for the session. This is
  * what lets `basket.sneak` and `pricing.drip` tell "a warranty appeared in the cart" apart
- * from "the shopper added a warranty" — a distinction the previous code claimed to make and
+ * from "the shopper added a warranty", a distinction the previous code claimed to make and
  * never did.
  */
 export const UserChoice = z.object({
@@ -272,7 +272,7 @@ export type OfferKeySource = z.infer<typeof OfferKeySource>;
 
 /**
  * Keyed [origin, offerKey]. 5k records, LRU eviction, 90-day TTL. Every value is numeric
- * or hashed — no free text reaches this store, because it is the longest-lived thing on disk.
+ * or hashed, no free text reaches this store, because it is the longest-lived thing on disk.
  */
 export const OfferObservation = z.object({
   origin: Origin,
@@ -316,7 +316,7 @@ export type OfferObservation = z.infer<typeof OfferObservation>;
  * The §11 egress shape. Built now; transmitted by nothing in v1.
  *
  * Note what is absent, and keep it absent: no origin, no path, no sessionId, no text,
- * no money, no precise timestamp. `.strict()` here is a privacy control — an unknown key
+ * no money, no precise timestamp. `.strict()` here is a privacy control, an unknown key
  * on this object is a leak, so it should throw rather than pass through.
  */
 export const TelemetryRecord = z
@@ -326,12 +326,12 @@ export const TelemetryRecord = z
     confidenceQuartile: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
     funnelStage: FunnelStage,
     /**
-     * The registrable domain of the shop — `shein.com`, never `us.shein.com/p/123`.
+     * The registrable domain of the shop, `shein.com`, never `us.shein.com/p/123`.
      *
      * v1 sent only an allowlist CATEGORY here and withheld the site entirely, which made the
      * dataset able to say "countdowns are common on travel sites" and never "this site shows
      * countdowns". Per-site prevalence is what the owner decided to collect, so the site is
-     * now sent — as the registrable domain only, so subdomains merge and no path, query or
+     * now sent, as the registrable domain only, so subdomains merge and no path, query or
      * page identity ever travels.
      *
      * It can only ever name a SHOP. A detection exists only on a page that passed the
@@ -369,7 +369,7 @@ export const PAGE_BASELINE = "_page" as const;
  *
  * A product or listing page view becomes 1 + k of these when it ends: one `_page` baseline and
  * one per technique that passed the salience gate BEFORE any add-to-cart click. Split into
- * independent rows on purpose — the set of techniques a single page showed together is a
+ * independent rows on purpose, the set of techniques a single page showed together is a
  * fingerprint of that page, and co-occurrence is not needed for a per-technique rate.
  *
  * What this measures is association, not effect. Pages that show countdowns differ from pages
@@ -470,7 +470,7 @@ export type DigestFrequency = z.infer<typeof DigestFrequency>;
 
 export const Settings = z.object({
   digestFrequency: DigestFrequency.default("every_checkout"),
-  /** Off by default. Not a preselected checkbox — see §11. */
+  /** Off by default. Not a preselected checkbox, see §11. */
   telemetryConsent: z.boolean().default(false),
   telemetryConsentAskedAt: z.number().int().optional(),
   disabledDetectors: z.array(z.string()).default([]),

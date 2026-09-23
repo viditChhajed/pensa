@@ -19,8 +19,8 @@ const EPHEMERAL_WINDOW_MS = 15_000;
 /**
  * Ceiling on how many elements the text-history and ephemeral maps may hold.
  *
- * Both are `Map<Element, …>` and nothing used to remove from either, so on a long-lived page —
- * a chat app, a feed, anything that rewrites itself for hours — they grew without bound and
+ * Both are `Map<Element, …>` and nothing used to remove from either, so on a long-lived page,
+ * a chat app, a feed, anything that rewrites itself for hours, they grew without bound and
  * kept every detached element alive. When a map passes this size, disconnected elements past
  * their useful window go first, then the oldest entries, down to three quarters of the cap.
  */
@@ -28,7 +28,7 @@ const MAX_TRACKED_ELEMENTS = 2000;
 
 /**
  * A modal counts once, when it becomes visible. If it is hidden and shown AGAIN after this
- * long, that is a second interruption and counts again — the same newsletter popup coming
+ * long, that is a second interruption and counts again, the same newsletter popup coming
  * back is the literal shape of nagging. The floor is there because modals flicker while they
  * animate, and a fade-out/fade-in must not read as two visits.
  */
@@ -40,7 +40,7 @@ const MAX_NEST_WALK = 6;
 /** Floor between full re-checks of the watched set, so the style reads stay bounded. */
 const WATCH_SWEEP_MS = 300;
 /**
- * A modal that appears this soon after a click or a keypress was ASKED for — a bag drawer, a
+ * A modal that appears this soon after a click or a keypress was ASKED for, a bag drawer, a
  * size guide, a search overlay. Plenty of them carry `role="dialog"`, and counting those as
  * interruptions would be the same fabrication in a new costume: nagging is about what the
  * page imposes, not about what the shopper opened.
@@ -68,7 +68,7 @@ export interface ObserverState {
    * The name is now half a lie and is kept anyway: it is the shared `PageSignals` contract,
    * and renaming a field across the content script for accuracy of wording is not worth a
    * merge conflict with work in flight. What it means is documented here rather than implied
-   * by a name — insertion is no longer the event, appearing on screen is.
+   * by a name, insertion is no longer the event, appearing on screen is.
    */
   modalsInsertedAt: number[];
   /** Last mouseleave toward the viewport top, or a visibilitychange to hidden. */
@@ -99,8 +99,8 @@ export class PageObserver {
    * Off until the detector has confirmed the page is a shop. Before that, the observer still
    * notices that the page changed (so a storefront that renders late gets re-checked) and
    * still tracks modal appearances (timestamps and element references only, capped), but it
-   * holds no text. On a page that never turns out to be a shop — a chat, an inbox, a document
-   * — nothing it displayed is ever copied into memory by Pensa.
+   * holds no text. On a page that never turns out to be a shop, a chat, an inbox, a document
+   *, nothing it displayed is ever copied into memory by Pensa.
    */
   private recording = false;
 
@@ -207,7 +207,7 @@ export class PageObserver {
         this.state.dirtyRoots.add(r.target);
         // A modal is normally revealed by a class, a style or `hidden` landing on the modal
         // itself, so that case is answered immediately and exactly. Anything else might have
-        // revealed one from an ancestor, which only the sweep can see — and the sweep is
+        // revealed one from an ancestor, which only the sweep can see, and the sweep is
         // throttled, because attribute mutations arrive continuously on a live page and
         // reading layout on every one of them is how a content script becomes the jank.
         if (this.modalWatch.has(r.target) || this.hasDialogSignature(r.target)) {
@@ -234,18 +234,18 @@ export class PageObserver {
    * Decide what one element means for the interruption count.
    *
    * The unit being counted used to be an INSERTION, and that was the second bug in this file
-   * — the first fix (49e7995, "Stop nagging fabricating interruptions nobody saw") added the
+   *, the first fix (49e7995, "Stop nagging fabricating interruptions nobody saw") added the
    * visibility check but left the event wrong, which took the count from a fabricated 7 to a
    * still-wrong 2. A live re-probe of the two sites that flagged it says exactly where the
    * extra one comes from, and it is not the hidden "Customise preferences" panel the
    * visibility check already rejects:
    *
-   *   boohoo.com / prettylittlething.us — `div.cky-overlay`, the dim scrim, is inserted as a
+   *   boohoo.com / prettylittlething.us, `div.cky-overlay`, the dim scrim, is inserted as a
    *   sibling of the banner. Empty, full-viewport, fixed, z-index above everything: the
    *   overlay branch below calls it a modal. Then the banner arrives and is called one too.
    *   One cookie notice, two "interstitials".
    *
-   *   temu.com — the same shape inverted: an empty full-viewport wrapper is inserted first
+   *   temu.com, the same shape inverted: an empty full-viewport wrapper is inserted first
    *   and the CAPTCHA card is inserted INTO it a moment later. Parent and child, counted
    *   separately. One security check, two "interstitials".
    *
@@ -255,7 +255,7 @@ export class PageObserver {
    * banner that every one of those shops shows.
    *
    * So: a scrim is not a message (`isBackdrop`), a wrapper and its contents are one thing
-   * (`partOfShownModal`), and the event is the modal APPEARING rather than being inserted —
+   * (`partOfShownModal`), and the event is the modal APPEARING rather than being inserted,
    * which also, at last, counts the newsletter popup that was mounted hidden at load and
    * revealed ten seconds later, and the one that is hidden and brought back.
    */
@@ -267,7 +267,7 @@ export class PageObserver {
       if (watch) {
         if (watch.hiddenSince === null) watch.hiddenSince = now;
       } else if (this.hasDialogSignature(el)) {
-        // Mounted hidden. Not an interruption yet, and it may never be one — but a reveal is
+        // Mounted hidden. Not an interruption yet, and it may never be one, but a reveal is
         // one click away and there is no insertion left to catch it by.
         this.watchModal(el, { shown: false, hiddenSince: now });
       }
@@ -316,7 +316,7 @@ export class PageObserver {
         : now - this.state.lastExitIntentAt;
     const onExit = sinceExit <= EXIT_INTENT_WINDOW_MS;
 
-    // Asked for, not imposed — unless it answered an exit gesture, which is the one case
+    // Asked for, not imposed, unless it answered an exit gesture, which is the one case
     // where a modal arriving right after the shopper did something is the point.
     if (
       !onExit &&
@@ -337,7 +337,7 @@ export class PageObserver {
 
   /**
    * A scrim dims; an interstitial says something. An element with no text and nothing to
-   * click is the dark rectangle behind the modal, not the modal — and counting the furniture
+   * click is the dark rectangle behind the modal, not the modal, and counting the furniture
    * of one interruption as a second interruption is what this whole fix is about.
    */
   private isBackdrop(el: Element): boolean {
@@ -358,13 +358,13 @@ export class PageObserver {
    * `div#onetrust-banner-sdk` (458x147), the wrapper qualifies through the
    * contains-a-showing-dialog branch, the child qualifies through its own role, and depending
    * on how the vendor reveals them neither is necessarily recorded first. Two elements 2px
-   * apart, one cookie banner, "2 interstitials" — and OneTrust is on a large share of the web
+   * apart, one cookie banner, "2 interstitials", and OneTrust is on a large share of the web
    * while FLAG_AT is 2.
    *
    * So containment is answered structurally instead of historically: the outermost
    * modal-shaped element is the interruption, and anything nested inside one is furniture.
    * It returns the element to credit rather than a boolean, because the outer one may never
-   * have been recorded — an empty wrapper is a backdrop when it arrives and a modal once its
+   * have been recorded, an empty wrapper is a backdrop when it arrives and a modal once its
    * contents land.
    * The walk is bounded because this runs on mutations, and an unbounded climb reading
    * computed style at each step is how a content script becomes the jank it is measuring.
@@ -395,7 +395,7 @@ export class PageObserver {
     return false;
   }
 
-  /** Attributes only — no layout is read, because this runs on every attribute mutation. */
+  /** Attributes only, no layout is read, because this runs on every attribute mutation. */
   private hasDialogSignature(el: Element): boolean {
     const role = el.getAttribute("role");
     return (
@@ -463,7 +463,7 @@ export class PageObserver {
      * `nagging.repeat_interstitial` fired 22 times on a single Glossier session, reporting
      * "7 interstitials" on a page that showed none.
      *
-     * Two faults, both the same shape — treating presence in the DOM as presence on screen:
+     * Two faults, both the same shape, treating presence in the DOM as presence on screen:
      *
      *   `querySelector('dialog')` matched any element CONTAINING a dialog anywhere in its
      *   subtree, and sites keep closed dialogs mounted permanently. Every wrapper inserted

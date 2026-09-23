@@ -5,7 +5,7 @@
  * classifier deciding a cart line is `optional_addon`, the page listener noticing that the
  * shopper ticked or clicked something add-on-shaped, and the worker deciding whether a given
  * add-on line was the shopper's own choice. If those three drift, attribution silently stops
- * matching — which is precisely how the previous version failed: it compared hashes of
+ * matching, which is precisely how the previous version failed: it compared hashes of
  * add-to-cart BUTTON labels against hashes of cart LINE labels, two strings that can never be
  * equal, and so treated every add-on in every cart as one the shopper never asked for.
  *

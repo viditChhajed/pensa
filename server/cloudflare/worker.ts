@@ -15,7 +15,7 @@ export interface Env {
 /**
  * D1-backed counters. No rows, only totals.
  *
- * A store of individual records can be correlated after the fact — by hour, by category, by
+ * A store of individual records can be correlated after the fact, by hour, by category, by
  * anyone who later gains access to it. A store of counters cannot, and the aggregate is the
  * only thing this project ever wanted.
  *
@@ -30,7 +30,7 @@ function d1Store(env: Env): Store {
        * Collapse the batch to one write per cohort FIRST, and bump `reporters` once per cohort.
        *
        * This used to bind one statement per record, each doing `reporters = reporters + 1`.
-       * A single batch of 30 identical reports therefore counted as 30 independent reporters —
+       * A single batch of 30 identical reports therefore counted as 30 independent reporters, 
        * found by sending one real batch through the deployed worker and reading back
        * `reporters = 30`. That quietly defeated the publication floor: `site_prevalence_public`
        * releases a shop/technique pair once 20 batches have reported it, and one person's one
@@ -137,7 +137,7 @@ export default {
      * `*` is correct here and is not a weakening: there is nothing to protect. The endpoint
      * accepts anonymous counters, holds no session, sets no cookie, returns no body, and
      * reads nothing back. A same-origin policy defends a user's authenticated state, and
-     * there is none — the request carries `credentials: "omit"` from the client precisely so
+     * there is none, the request carries `credentials: "omit"` from the client precisely so
      * that stays true.
      */
     if (request.method === "OPTIONS") {

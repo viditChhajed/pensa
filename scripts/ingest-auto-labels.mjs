@@ -4,7 +4,7 @@
  *   node scripts/ingest-auto-labels.mjs
  *
  * Every row is stamped `source: "auto"`, and that is not bookkeeping. Labels produced by a
- * model are legitimate TRAINING data — the text is real, collected from 36 real shops, and
+ * model are legitimate TRAINING data, the text is real, collected from 36 real shops, and
  * judging real sentences is a different act from inventing them, which is what produced the
  * lexicon misses in the first place.
  *
@@ -30,13 +30,13 @@ const VALID = new Set(TRAINABLE.map((p) => p.id));
  * EVERY existing label, not just the hand-made ones.
  *
  * The first version kept only rows without `source: "auto"` and rewrote the file from
- * scratch. Running it a second time — after a bigger crawl, against a fresh set of batches —
+ * scratch. Running it a second time, after a bigger crawl, against a fresh set of batches,
  * therefore DISCARDED the entire previous automated pass: 2,639 labelled items and 201
  * positives, replaced by 59. The batch files they came from had already been cleared to make
  * room for the new export, so there was nothing left to re-read.
  *
  * "Preserve the valuable rows" was the intent and "preserve the human rows" was the code,
- * and those are only the same thing if the automated labels are worthless — which is
+ * and those are only the same thing if the automated labels are worthless, which is
  * precisely the opposite of why this script exists.
  *
  * Hand labels still win over automated ones for the same key; a newer automated label wins
@@ -143,13 +143,13 @@ if (missing.length > 0) {
  * Merge, never replace. New rows overwrite the same key; everything else survives.
  *
  * Writing to a temp file and renaming means a crash mid-write cannot leave a truncated
- * labels file behind — which, given what the previous version of this script did to an
+ * labels file behind, which, given what the previous version of this script did to an
  * afternoon of labelling, is worth the two extra lines.
  */
 for (const row of out) existing.set(`${row.patternId}|${row.key}`, row);
 const merged = [...existing.values()];
 // The rename is the point. The previous version wrote straight to LABELS, and the comment
-// above claimed a temp file that the code never created — so the protection this paragraph
+// above claimed a temp file that the code never created, so the protection this paragraph
 // describes did not exist until now.
 const tmp = `${LABELS}.tmp`;
 writeFileSync(tmp, merged.map((r) => JSON.stringify(r)).join("\n") + (merged.length ? "\n" : ""));

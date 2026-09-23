@@ -8,7 +8,7 @@
  * runtime `isDenied()` bail-out in the detector runs after injection has already happened.
  *
  * The conversion is deliberately incomplete, and says so. A match pattern can express
- * "this host and its subdomains" and nothing else — no substring wildcards inside a DNS
+ * "this host and its subdomains" and nothing else, no substring wildcards inside a DNS
  * label, no "this label under any TLD", no alternation. Most of the denylist is regexes of
  * exactly those shapes, so most of it CANNOT be expressed here. What comes back in
  * `inexpressible` is not covered by Chrome at all and is covered only by the runtime check.

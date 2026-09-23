@@ -4,7 +4,7 @@ import { findPii, isLuhnValid, normalise, scrub } from "../../scripts/fixture-li
 /**
  * The scrub is a privacy control, not a formatting convenience, so it is tested rather than
  * trusted. Fixtures come from real retailer pages and can contain the capturer's own data
- * (if signed in) and third parties' regardless — reviewer names, avatars, Q&A authors.
+ * (if signed in) and third parties' regardless, reviewer names, avatars, Q&A authors.
  * Committing that is trivial to do and impossible to fully undo.
  */
 
@@ -90,7 +90,7 @@ describe("scrub", () => {
     expect(scrub(input).output).toBe(input);
   });
 
-  it("is IDEMPOTENT — a scrubbed file must re-scan clean", () => {
+  it("is IDEMPOTENT, a scrubbed file must re-scan clean", () => {
     // The CI gate fails on any hit. If a placeholder matched the rule that produced it,
     // every correctly-scrubbed fixture would fail forever and the gate would get switched
     // off. "4111 1111 1111 1111" is itself Luhn-valid, which is exactly that trap.

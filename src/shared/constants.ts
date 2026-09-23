@@ -26,7 +26,7 @@ export const BUILD_STAMP: string =
  * Where anonymous prevalence counts are POSTed. Empty means nowhere.
  *
  * It lives here, in the one module with no imports of its own, so the egress tests can read
- * the single source of truth without pulling in the allowlist JSON behind `urlScore` — and
+ * the single source of truth without pulling in the allowlist JSON behind `urlScore`, and
  * so that "which addresses may this extension contact" is answerable by reading one line
  * rather than by tracing a call graph.
  *
@@ -43,7 +43,7 @@ export const TELEMETRY_ENDPOINT: string =
  * Telemetry batching and anonymity limits.
  *
  * Here rather than in `background/telemetry.ts` for the same reason as the endpoint: this is
- * the one module with no imports, so a test — or a reviewer — can read the numbers that
+ * the one module with no imports, so a test, or a reviewer, can read the numbers that
  * govern what leaves the device without pulling in the allowlist JSON behind `urlScore`.
  * A limit nobody can cite is a limit nobody can check.
  */
@@ -56,7 +56,7 @@ export const MAX_BATCH_AGE_MS = 24 * 60 * 60 * 1000;
 export const QUEUE_CAP = 5000;
 /*
  * K_FLOOR lived here and is gone. It held back any cohort with fewer than 20 records in ONE
- * person's local queue, which is not k-anonymity — that is about 20 distinct people — and at
+ * person's local queue, which is not k-anonymity, that is about 20 distinct people, and at
  * per-site granularity it withheld nearly everything. The floor that means something is
  * server-side: `site_prevalence_public` in server/cloudflare/schema.sql.
  */

@@ -5,20 +5,20 @@
  *
  * These were believed impossible to automate for one specific reason: the card only appears
  * on a site the user has GRANTED, and the grant flow raises a native permission dialog that
- * no automation can accept. `scripts/spot-check.mjs` already answered that — copy the build
+ * no automation can accept. `scripts/spot-check.mjs` already answered that, copy the build
  * to a temp dir, patch the COPY's manifest, and load it with `--load-extension`. Everything
  * here is downstream of that trick, so the launch code is deliberately the same.
  *
  * Two manifest edits are made to the copy, both in that spirit, and both worth naming:
  *
- *   - `host_permissions` is set to ONE site — exactly the `https://*.<domain>/*` pattern a
- *     real grant produces — rather than the wildcard spot-check uses. That is what makes the
+ *   - `host_permissions` is set to ONE site, exactly the `https://*.<domain>/*` pattern a
+ *     real grant produces, rather than the wildcard spot-check uses. That is what makes the
  *     four images one coherent and true story: a single site was enabled, a card appeared on
  *     it, its settings page lists it, and the popup still OFFERS enablement on a different
  *     site, which it would not do if everything were granted.
  *   - `permissions` gains `tabs`. The popup learns which site it is being asked about from
  *     `chrome.tabs.query`, and in production the right to read that URL comes from
- *     `activeTab` — granted only when the user clicks the toolbar button, which is the one
+ *     `activeTab`, granted only when the user clicks the toolbar button, which is the one
  *     gesture automation cannot make. Without this the popup renders "No page to check."
  *     and the shot is of nothing. The popup's own code and markup are untouched.
  *
@@ -31,7 +31,7 @@
  *   - The seeded summary rows are small and lopsided on purpose. A table showing hundreds of
  *     catches, or one where everything found was shown, would misrepresent the product.
  *
- * Consent banners are DECLINED, never accepted — including through a "manage preferences"
+ * Consent banners are DECLINED, never accepted, including through a "manage preferences"
  * dialog when the banner offers no direct refusal, which is how Shopify's does it. Marketing
  * modals are closed, which is not consent and is what any shopper does.
  */
@@ -81,7 +81,7 @@ const wait = (page, ms) => page.waitForTimeout(ms);
  * Copy the build somewhere writable and patch the copy. `.output` is never touched.
  *
  * The shipped manifest already holds the broad https permission, so a live-retailer run needs no host
- * permission patched in at all — the screenshots show the permission a user actually grants.
+ * permission patched in at all, the screenshots show the permission a user actually grants.
  * Two patches remain, both for the capture harness rather than the product:
  *
  *   `tabs`, because the popup learns its page from `chrome.tabs.query` and in production that
@@ -89,7 +89,7 @@ const wait = (page, ms) => page.waitForTimeout(ms);
  *
  *   `fixtureOrigin`, for the fallback only. The fixture is served over plain http from a host
  *   the denylist does not refuse (localhost IS refused, deliberately), so both the permission
- *   and the declared content script's `matches` have to be widened to it — widening only the
+ *   and the declared content script's `matches` have to be widened to it, widening only the
  *   permission buys the right to read a page nothing is injected into.
  */
 function stageBuild(fixtureOrigin) {
@@ -132,7 +132,7 @@ const DECLINE =
   /^(reject|decline|refuse)( all| cookies| non-essential| optional)?$|^(only |strictly )?(necessary|essential)( cookies| only)?$|^no,? thanks$|^continue without/i;
 /** Banners that hide their refusal one dialog deep. Shopify's is the common case. */
 const PREFERENCES = /^(manage )?(preferences|cookie settings|cookie preferences|customi[sz]e)$/i;
-/** Newsletter and welcome modals. Closing one is not consent — it is what a shopper does. */
+/** Newsletter and welcome modals. Closing one is not consent, it is what a shopper does. */
 const CLOSE = /^close( dialog| modal| popup)?$|^dismiss$/i;
 
 async function labelledControls(page) {
@@ -213,7 +213,7 @@ const ATC_NAME = /\badd to (cart|bag|basket|order)\b|\badd item\b|\badd to my ba
 /**
  * The PDP's own add-to-cart, not an upsell tile's.
  *
- * A Shopify product page can carry twenty buttons reading "Add to bag" — one for the product
+ * A Shopify product page can carry twenty buttons reading "Add to bag", one for the product
  * and nineteen for the "you might also like" grid. Widest wins: the primary CTA is the
  * full-width one under the price, and the tiles are small.
  */
@@ -245,7 +245,7 @@ async function clickAddToCart(page) {
       .catch(() => false);
     if (real) return label;
     // A leftover overlay makes Playwright refuse the click as "intercepted". Dispatching
-    // the click on the element itself is still a genuine click on the genuine button — it
+    // the click on the element itself is still a genuine click on the genuine button, it
     // bubbles, the site's handler runs, and the extension's capture-phase listener sees it.
     // It is not a synthetic trigger; it just is not routed through the mouse.
     const dispatched = await handle
@@ -287,7 +287,7 @@ async function captureLiveCard(ctx, url) {
 
     // The digest polls for up to 5s for the drawer, then the worker ranks and replies.
     await page.waitForFunction(CARD_PRESENT, undefined, { timeout: 25_000 });
-    // Let the drawer finish animating — a half-open drawer behind the card looks broken —
+    // Let the drawer finish animating, a half-open drawer behind the card looks broken,
     // and sweep once more, since some modals only fire after an add-to-cart.
     await wait(page, 1500);
     await clearOverlays(page);
@@ -308,7 +308,7 @@ async function captureLiveCard(ctx, url) {
 /**
  * The fallback: this repo's own cart-drawer fixture, served over http.
  *
- * Same serving trick as `tests/e2e/digest-loop.spec.ts` — route everything, fulfil the one
+ * Same serving trick as `tests/e2e/digest-loop.spec.ts`, route everything, fulfil the one
  * path from disk. The card is real and the pipeline that produced it is real; the shop is
  * not, which is why the run prints it and the report has to repeat it.
  */
@@ -345,7 +345,7 @@ async function captureFixtureCard(ctx) {
  * is that most of what is found is NOT shown, so a table where every row had been surfaced
  * would misrepresent the product, and three-figure counts would misrepresent a day. Every
  * pattern id here is one that actually ships. The real detections from the card run above
- * are in this table too — these rows sit alongside them, they do not replace them.
+ * are in this table too, these rows sit alongside them, they do not replace them.
  */
 const SEED = [
   ["anchoring.reference_price", "pdp", 0, true, "none"],
@@ -370,7 +370,7 @@ const SEED_ORIGINS = ["https://shop.example", "https://store.example", "https://
 
 async function seedSummary(page) {
   // Dexie creates its object stores only when something opens the database, so ask the
-  // worker for a summary first. Writing before that fails with NotFoundError — the exact
+  // worker for a summary first. Writing before that fails with NotFoundError, the exact
   // trap documented at length in tests/e2e/retention.spec.ts.
   await page.evaluate(
     () => new Promise((res) => chrome.runtime.sendMessage({ type: "get-summary" }, res)),
@@ -444,7 +444,7 @@ async function shootAt(page, y, file) {
  * Nudge the fold so it lands between two switches rather than through the middle of one.
  *
  * A row sliced across its description line reads as a rendering fault. There is only ever a
- * few dozen pixels of slack — capped so the "Pensa" heading never leaves the top of the page,
+ * few dozen pixels of slack, capped so the "Pensa" heading never leaves the top of the page,
  * which is the one thing the shot cannot afford to lose.
  */
 async function switchFold(page) {
@@ -475,7 +475,7 @@ async function sectionTop(page, headingText) {
  *
  * `sharp` is not a dependency and pulling in an image library to pad a PNG would be a poor
  * trade, so the browser does it: capture the popup, then render it as a data URI on a page
- * sized to exactly 1280x800 and shoot that. Nothing is resampled — the popup is rendered at
+ * sized to exactly 1280x800 and shoot that. Nothing is resampled, the popup is rendered at
  * 2x through CSS `zoom` before capture, so the text in the final image is real 2x text
  * rather than a 320px-wide capture blown up and blurred.
  *
@@ -486,7 +486,7 @@ async function sectionTop(page, headingText) {
  *
  * It is shot on the SAME shop the card fired on, so it shows the real state: running, and
  * checking this page. It used to be shot on a second, ungranted site to show an "Enable on
- * this site" button — a button that no longer exists, so the old image depicted a product
+ * this site" button, a button that no longer exists, so the old image depicted a product
  * that is not the one being submitted.
  */
 async function capturePopup(ctx, sw, extensionId, shopUrl) {
@@ -563,7 +563,7 @@ for (const { url } of targets) {
   const staged = await launch(stageBuild());
   if (await captureLiveCard(staged.ctx, url)) {
     ({ ctx, sw, extensionId } = staged);
-    cardSource = `live retailer — ${url}`;
+    cardSource = `live retailer, ${url}`;
     popupSite = url;
     break;
   }
@@ -572,11 +572,11 @@ for (const { url } of targets) {
 }
 
 if (!ctx) {
-  if (targets.length > 0) console.log("no live retailer cooperated — falling back to the fixture");
+  if (targets.length > 0) console.log("no live retailer cooperated, falling back to the fixture");
   const staged = await launch(stageBuild("http://shop.example.com/*"));
   ({ ctx, sw, extensionId } = staged);
   await captureFixtureCard(ctx);
-  cardSource = "FIXTURE — tests/e2e/pages/cart-drawer.html over http://shop.example.com";
+  cardSource = "FIXTURE, tests/e2e/pages/cart-drawer.html over http://shop.example.com";
   popupSite = "http://shop.example.com/cart-drawer.html";
 }
 

@@ -131,7 +131,7 @@ describe("mergeObservation", () => {
       );
     }
     expect(rec?.stockSightings.length).toBeLessThanOrEqual(64);
-    // Keeps the NEWEST samples — a claim is about recent behaviour.
+    // Keeps the NEWEST samples, a claim is about recent behaviour.
     expect(rec?.stockSightings.at(-1)?.n).toBe(199);
   });
 });

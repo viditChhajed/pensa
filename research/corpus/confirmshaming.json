@@ -1,7 +1,7 @@
 {
   "label": "confirmshaming",
   "_note": "Decline-control copy. label 1 = the decline is phrased so that choosing it means saying something unflattering about yourself. label 0 = a plain, neutral decline, or ordinary page prose. The negatives are the important half: a classifier that fires on every 'No thanks' button on the web makes the extension unusable, so neutral declines are heavily represented.",
-  "_provenance": "Hand-written by the author from patterns observed in the wild and documented in Gray et al. (2018) and Mathur et al. (2019). NOT sampled from a corpus, and small — see EVAL.md. Any performance number from this set is an upper bound on a convenience sample, not an estimate of field accuracy.",
+  "_provenance": "Hand-written by the author from patterns observed in the wild and documented in Gray et al. (2018) and Mathur et al. (2019). NOT sampled from a corpus, and small, see EVAL.md. Any performance number from this set is an upper bound on a convenience sample, not an estimate of field accuracy.",
   "examples": [
     { "text": "No thanks, I don't want to save money", "label": 1 },
     { "text": "No thanks, I hate saving money", "label": 1 },

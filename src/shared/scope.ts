@@ -2,7 +2,7 @@
  * What the v1 submission actually ships.
  *
  * The plan (§13) scopes Tier-2 PAGE detectors and the §18A temporal engine to "post-
- * submission / v1.1 during review". Both were built early — real scope drift — so this file
+ * submission / v1.1 during review". Both were built early, real scope drift, so this file
  * makes the boundary a fact about the code rather than a claim in a status report.
  *
  * Enforcement is by EXCLUSION FROM THE IMPORT GRAPH, not a runtime flag: the deferred
@@ -16,7 +16,7 @@
  * The page detectors that run inside the content script.
  *
  * Tier 2 was originally held for "v1.1 during store review". That was a schedule decision,
- * not a quality one — all five were built and tested alongside Tier 1 — and the spot check
+ * not a quality one, all five were built and tested alongside Tier 1, and the spot check
  * made its cost concrete: flyfrontier's fare grid is a textbook asymmetric-dominance decoy
  * and the extension produced zero detections on it, because the only detector that could see
  * it was excluded from the bundle.
@@ -57,8 +57,8 @@ export const SHIPPED_DETECTOR_COUNT = SHIPPED_DETECTORS.length;
  * rather than a scheduling one.
  *
  * These cannot be evaluated from a single page. Each one is a claim about how something
- * CHANGED between visits — a countdown that resets, a stock count that rises, a "was" price
- * never actually charged — so they are derived in the service worker from the observation
+ * CHANGED between visits, a countdown that resets, a stock count that rises, a "was" price
+ * never actually charged, so they are derived in the service worker from the observation
  * store, not by a detector looking at a DOM. The store ships and accumulates from the first
  * visit; see `background/temporal.ts`.
  */

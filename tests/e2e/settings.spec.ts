@@ -96,7 +96,7 @@ test("every shipped pattern renders a switch, and all of them start on", async (
   await page.close();
 });
 
-test("switching a pattern off — CLICKED FROM THE UI — stops it being shown AND recorded", async () => {
+test("switching a pattern off, CLICKED FROM THE UI, stops it being shown AND recorded", async () => {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
   await page.waitForSelector("#patterns input[data-pattern]");
@@ -106,7 +106,7 @@ test("switching a pattern off — CLICKED FROM THE UI — stops it being shown A
   await page.waitForTimeout(600);
   expect(
     JSON.stringify(before),
-    "the digest never produced this claim even with the switch ON — the test would pass vacuously",
+    "the digest never produced this claim even with the switch ON, the test would pass vacuously",
   ).toContain("temporal.stock_nonmonotonic");
   expect(await recordedPatterns(page)).toContain("temporal.stock_nonmonotonic");
 

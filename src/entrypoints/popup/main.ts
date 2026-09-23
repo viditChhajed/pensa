@@ -4,7 +4,7 @@
  * It used to be the enablement surface: an "Enable on this site" button, a live user
  * gesture carefully preserved through to `chrome.permissions.request()`, and a revoke
  * control once a site was granted. All of that is gone. Pensa now holds `https://` for every
- * site at install, so there is nothing left to ask for and nothing left to take back — the
+ * site at install, so there is nothing left to ask for and nothing left to take back, the
  * only per-site control that ever existed was the permission itself, and settings has no
  * per-site flag to wire this to instead.
  *
@@ -12,7 +12,7 @@
  * instead of inferred from a permission: is Pensa running on this page, or not, and why not.
  *
  * `activeTab` is what lets this read the current tab's URL on pages the host permission
- * does NOT cover — http://, chrome://, a PDF viewer — so a page Pensa cannot run on can still
+ * does NOT cover, http://, chrome://, a PDF viewer, so a page Pensa cannot run on can still
  * be told apart from a popup that failed to load.
  */
 
@@ -60,7 +60,7 @@ async function init(): Promise<void> {
    *
    * This is the most important sentence in the popup. Everywhere else Pensa runs by default
    * now, which makes the places it does not run the only thing a person cannot infer. The
-   * copy says both halves — it does not run here, and it is not reading this page — because
+   * copy says both halves, it does not run here, and it is not reading this page, because
    * "not running" is a claim about behaviour and "not reading" is the one people care about.
    */
   if (isDenied(parsed)) {
@@ -73,7 +73,7 @@ async function init(): Promise<void> {
 
   if (parsed.protocol !== "https:") {
     // Honest about the edge the permission deliberately does not cover. Pensa asks for
-    // https:// only, so a plaintext page — or a chrome:// page, or a local file — is one it
+    // https:// only, so a plaintext page, or a chrome:// page, or a local file, is one it
     // has no access to at all.
     statusEl.textContent = `Pensa does not run on ${parsed.hostname || "this page"}.`;
     detailEl.textContent =
@@ -83,12 +83,12 @@ async function init(): Promise<void> {
   }
 
   // The hostname as the shopper reads it, minus a leading "www.". The popup used to call
-  // registrableDomain here, which now pulls in the Public Suffix List — ~100 KB to open a
+  // registrableDomain here, which now pulls in the Public Suffix List, ~100 KB to open a
   // popup, for a label the address bar already shows.
   const domain = parsed.hostname.replace(/^www\./, "");
   // Provisional, until the checks below settle it. It used to be final: "Pensa is running on
   // X. Patterns found on this page will appear when you add to cart." was written first, and
-  // the shop verdict appended beneath it — so on a page that is not a shop the popup said it
+  // the shop verdict appended beneath it, so on a page that is not a shop the popup said it
   // was running and would report patterns, then in the next line that it was idle and
   // recording nothing. Now the verdict writes the headline.
   statusEl.textContent = `Checking ${domain}…`;
@@ -99,7 +99,7 @@ async function init(): Promise<void> {
    *
    * Chrome's per-extension site access can be narrowed to "on click" or to a list of sites
    * from chrome://extensions, and the extension is never told. The symptom is a popup
-   * saying it is watching a site while nothing whatsoever runs on it — indistinguishable
+   * saying it is watching a site while nothing whatsoever runs on it, indistinguishable
    * from the detectors genuinely finding nothing. The worker answers from the manifest
    * Chrome actually loaded, so this also catches a page the denylist exclusions cover by a
    * pattern the local `isDenied()` above did not.
@@ -120,7 +120,7 @@ async function init(): Promise<void> {
       line.textContent = report.error ?? "";
     } else {
       line.textContent = report.error
-        ? `Not running here — ${report.error}.`
+        ? `Not running here: ${report.error}.`
         : "Not running on this page yet. Reload it to start.";
     }
     if (line.textContent) detailEl.after(line);
@@ -133,11 +133,11 @@ async function init(): Promise<void> {
 /**
  * Whether Pensa is actually working on this page, or idling.
  *
- * This replaces a line that reported a URL SCORE — "nothing commerce-shaped in
+ * This replaces a line that reported a URL SCORE, "nothing commerce-shaped in
  * /chat/67039775…, so you may see nothing here. That check only reads the address, never the
  * page." It existed because the old permission model had to guess from the address: you
  * cannot inspect a page to decide whether to ask permission to inspect the page. It read as
- * nonsense on an obviously non-shopping page, and it was nonsense — the address was never
+ * nonsense on an obviously non-shopping page, and it was nonsense, the address was never
  * the question.
  *
  * Pensa now reads the page and decides from what is on it. So this reports the decision
@@ -149,7 +149,7 @@ function renderPageKind(domain: string, active: boolean): void {
     statusEl.textContent = `Pensa is checking ${domain}.`;
     detailEl.textContent = "If it notices anything, you will see a card when you add to cart.";
   } else {
-    // Also what a shop shows in the first moments, before Pensa has finished reading it —
+    // Also what a shop shows in the first moments, before Pensa has finished reading it,
     // hence "yet" rather than a flat verdict.
     statusEl.textContent = `Pensa is idle on ${domain}.`;
     detailEl.textContent =
@@ -161,7 +161,7 @@ function renderPageKind(domain: string, active: boolean): void {
 void init();
 
 /**
- * Today's summary (plan T30). Read on the user's own schedule rather than pushed at them —
+ * Today's summary (plan T30). Read on the user's own schedule rather than pushed at them,
  * the interruption has structurally bad retention, so the value has to accrue somewhere the
  * user chooses to look.
  */

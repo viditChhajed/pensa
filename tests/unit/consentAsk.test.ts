@@ -48,7 +48,7 @@ describe("the sharing question", () => {
     // Same class and nothing else: no primary/secondary, no inline style on either.
     expect(new Set(buttons.map((b) => b.className))).toEqual(new Set(["answer"]));
     expect(buttons.every((b) => !b.getAttribute("style"))).toBe(true);
-    // Focus goes to the close control, as before — never to an answer.
+    // Focus goes to the close control, as before, never to an answer.
     expect(buttons.includes(root?.activeElement as HTMLButtonElement)).toBe(false);
   });
 

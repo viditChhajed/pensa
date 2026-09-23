@@ -4,7 +4,7 @@ import { DEFAULT_SETTINGS } from "@/shared/schema";
 /**
  * `flush()` against a queue larger than the server will take in one request.
  *
- * It used to send the whole queue — up to QUEUE_CAP, 5,000 rows — to a server that refuses
+ * It used to send the whole queue, up to QUEUE_CAP, 5,000 rows, to a server that refuses
  * anything over 500. So once a queue passed 500 (a few days offline was enough), every flush
  * from then on got a 400 and nothing ever drained. These tests fail against that code.
  */

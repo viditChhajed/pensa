@@ -31,7 +31,7 @@ async function inExtensionPage<T>(fn: string): Promise<T> {
 }
 
 test("BigInt money survives a real IndexedDB round trip", async () => {
-  // structured clone DOES carry BigInt (unlike JSON) — which is exactly why money is stored
+  // structured clone DOES carry BigInt (unlike JSON), which is exactly why money is stored
   // raw here but must be string-encoded on the messaging boundary. Proving it, not assuming.
   const out = await inExtensionPage<{ back: string; type: string }>(`(async () => {
     const db = await new Promise((res, rej) => {
@@ -62,7 +62,7 @@ test("the offers store accumulates across visits and yields a temporal claim", a
 
   // NOTE: the messages are sent from an EXTENSION PAGE, not from the service worker.
   // chrome.runtime.sendMessage does not deliver to the sender's own onMessage listener, so
-  // driving this from sw.evaluate() silently delivered nothing — which is what the first
+  // driving this from sw.evaluate() silently delivered nothing, which is what the first
   // version of this test did, and it looked exactly like a broken write path.
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
@@ -129,7 +129,7 @@ test("the offers store accumulates across visits and yields a temporal claim", a
   expect(stored.timers, "timer sightings were not persisted").toBe(2);
 });
 
-test("delete all my data — CLICKED FROM THE OPTIONS UI — empties IndexedDB", async () => {
+test("delete all my data, CLICKED FROM THE OPTIONS UI, empties IndexedDB", async () => {
   // Deliberately drives the real button rather than calling clear-data directly. The
   // underlying handler was already covered; what was not covered is whether the control the
   // user actually sees is wired to it. A privacy control that is not connected to its button
@@ -157,7 +157,7 @@ test("delete all my data — CLICKED FROM THE OPTIONS UI — empties IndexedDB",
   await page.waitForTimeout(400);
 
   const before = await countOffers(page);
-  expect(before, "nothing to delete — the test would pass vacuously").toBeGreaterThan(0);
+  expect(before, "nothing to delete, the test would pass vacuously").toBeGreaterThan(0);
 
   // The actual user action.
   await page.locator("#clear").click();
@@ -206,7 +206,7 @@ test("an accumulated history produces a temporal claim in the digest", async () 
    * The link the previous test does not cover.
    *
    * That one proves observations accumulate in IndexedDB. This proves an accumulated history
-   * actually reaches a digest — a different claim, and precisely the gap that hid
+   * actually reaches a digest, a different claim, and precisely the gap that hid
    * pricing.drip for the whole build: its store worked, its engine passed its unit tests, and
    * nothing connected the two.
    *

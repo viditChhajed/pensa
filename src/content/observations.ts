@@ -31,7 +31,7 @@ const STOCK_RE =
 const VIEWER_RE =
   /\b(\d{1,4})\s*(?:other\s+)?(?:people|shoppers|customers|users|others)\s+(?:are\s+)?(?:viewing|looking at|watching)\b|\b(\d{1,4})\s+(?:sold|bought|purchased) in the (?:last|past)\b/;
 
-/** Variant availability, not scarcity — same exclusion the scarcity detector applies. */
+/** Variant availability, not scarcity, same exclusion the scarcity detector applies. */
 const VARIANT_RE =
   /\b\d{1,3} (?:sizes?|colou?rs?|styles?|variants?|options?|shades?) (?:left|remaining|available)\b/;
 
@@ -51,7 +51,7 @@ function isStruck(decoration: string, tag: string): boolean {
 
 /**
  * `nowEpoch` is passed in rather than read, so this stays pure and a fixture can pin it.
- * A countdown showing 02:14:31 at time T claims a deadline of T + 8071s — an absolute point,
+ * A countdown showing 02:14:31 at time T claims a deadline of T + 8071s, an absolute point,
  * which is the only form comparable across visits.
  */
 export function extractObservations(ctx: PageContext, nowEpoch: number): PageObservation {
@@ -109,7 +109,7 @@ export function extractObservations(ctx: PageContext, nowEpoch: number): PageObs
         if (isStruck(n.style.textDecorationLine, n.tagName)) {
           out.referencePrices.push({ minor: p.amount.toString() });
         } else if (n.box.w * n.box.h > 400) {
-          // The headline price, by rendered area — not every price on the page.
+          // The headline price, by rendered area, not every price on the page.
           out.prices.push({ minor: p.amount.toString(), currency: p.currency });
         }
       }

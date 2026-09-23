@@ -69,7 +69,7 @@ export interface CandidateNode {
   /**
    * Nearest ancestor ELEMENT, whether or not it is itself a candidate. Most wrappers
    * (`<div class="price">`, `<label>`) carry no qualifying text of their own and so never
-   * become candidates — but they are exactly the grouping key detectors need, and the text
+   * become candidates, but they are exactly the grouping key detectors need, and the text
    * they contain is exactly the context a control's label lives in.
    */
   readonly containerPath: string | null;
@@ -79,8 +79,8 @@ export interface CandidateNode {
    * price, plus other words. Empty when there is no such ancestor.
    *
    * `containerText` is only the immediate parent, which is not enough. A summary row is
-   * commonly `<div><span>Subtotal</span><span class="amt"><b>$40.00</b></span></div>` — the
-   * amount is two levels below the label — so a one-level lookup finds "$40.00" and no
+   * commonly `<div><span>Subtotal</span><span class="amt"><b>$40.00</b></span></div>`, the
+   * amount is two levels below the label, so a one-level lookup finds "$40.00" and no
    * label at all. That is bounded and cached, not a walk to the document root, because
    * widening it would pair a price with the whole cart.
    */
@@ -101,8 +101,8 @@ export interface CandidateNode {
  *
  * These exist because URL-based stage classification failed 3 of 4 times in the field.
  * Shopify keeps /products/ on its bag drawer; Ticketmaster keeps /event/ on a page with a
- * subtotal and a Reserve button. What a page IS shows up in its structure — repeated line
- * items with quantity controls, a money summary ending in a total, a card field — long
+ * subtotal and a Reserve button. What a page IS shows up in its structure, repeated line
+ * items with quantity controls, a money summary ending in a total, a card field, long
  * before it shows up in its URL.
  */
 export interface DocumentMeta {
@@ -116,7 +116,7 @@ export interface DocumentMeta {
   readonly hasPostalCodeField: boolean;
   readonly hasAddressCluster: boolean;
   /**
-   * Identity fields — a name AND an email. Who you are, not where to ship.
+   * Identity fields, a name AND an email. Who you are, not where to ship.
    *
    * Travel, ticketing and digital checkouts collect no street address, so an address-only
    * test called them `browse` and the checkout-intent trigger never fired.
@@ -136,7 +136,7 @@ export interface DocumentMeta {
   readonly addToCartCtaCount: number;
   readonly checkoutCtaCount: number;
   readonly placeOrderCtaCount: number;
-  /** "Book now", "Select room", "Get tickets" — selling without a cart. */
+  /** "Book now", "Select room", "Get tickets", selling without a cart. */
   readonly bookingCtaCount: number;
   /** Prices quoted per night, per person, per ticket or one-way. */
   readonly perUnitPriceRows: number;

@@ -3,7 +3,7 @@
  *
  * The sensitivity control ships here in v1 rather than v1.1 because perceived nagging is the
  * largest uninstall driver, and shipping a nagging detector without one would be a poor
- * look. The telemetry consent is an unticked box for the same reason — this product flags
+ * look. The telemetry consent is an unticked box for the same reason, this product flags
  * preselected checkboxes.
  */
 
@@ -30,19 +30,19 @@ const pendingWrap = document.getElementById("pendingWrap") as HTMLDetailsElement
 const FREQUENCY_CHOICES: { value: DigestFrequency; label: string }[] = [
   { value: "every_checkout", label: "Every time I reach checkout" },
   { value: "once_per_site", label: "Once per site, per browsing session" },
-  { value: "never_interrupt", label: "Never interrupt me — I will check the summary" },
+  { value: "never_interrupt", label: "Never interrupt me. I will check the summary" },
   { value: "off", label: "Turn detection off entirely" },
 ];
 
 /**
- * "Sites you have enabled" is gone, because nothing is enabled any more — Pensa holds every
+ * "Sites you have enabled" is gone, because nothing is enabled any more, Pensa holds every
  * https site from the moment it is installed, and there was never a per-site switch other
  * than the permission itself. A list of granted origins would now show one entry reading
  * "every site", which is true and useless.
  *
  * What replaces it is the only per-site fact left that a person cannot see for themselves:
  * where Pensa REFUSES to run. It is read out of the manifest Chrome actually loaded rather
- * than re-derived from the rulepack, so this list is the real one — if the exclusions ever
+ * than re-derived from the rulepack, so this list is the real one, if the exclusions ever
  * shipped empty, this page would say so instead of describing a list that is not there.
  */
 function renderSites(): void {
@@ -71,17 +71,17 @@ function renderSites(): void {
   /**
    * The honest footnote. `exclude_matches` can only name whole hosts, so most of the
    * denylist cannot go in the manifest at all and is checked in code instead, at the top of
-   * the detector, before a single element is read. Saying how many there are — and that
-   * Chrome is not the one enforcing them — is the difference between a checkable claim and
+   * the detector, before a single element is read. Saying how many there are, and that
+   * Chrome is not the one enforcing them, is the difference between a checkable claim and
    * a reassuring one.
    */
   const noteEl = document.getElementById("sitesNote") as HTMLParagraphElement;
   noteEl.textContent =
-    `${excluded.length} host patterns above are refused by Chrome itself — Pensa's code is ` +
+    `${excluded.length} host patterns above are refused by Chrome itself. Pensa's code is ` +
     `never loaded there. A further ${DENYLIST_COVERAGE.inexpressible.length} rules cannot be ` +
     "written as a Chrome pattern (things like “any site with 'bank' in its name” or “a " +
     "mychart. address on any domain”). Those are checked by Pensa, on page load, before " +
-    "anything is read — a weaker guarantee than the list above, and worth knowing apart.";
+    "anything is read, a weaker guarantee than the list above, and worth knowing apart.";
 }
 
 function renderFrequency(current: DigestFrequency): void {
@@ -220,8 +220,8 @@ async function renderSummary(): Promise<void> {
  * The queue, rendered verbatim.
  *
  * Consent to "anonymous statistics" means nothing if the person consenting cannot see the
- * rows. This renders the actual records that would be POSTed — the same objects, no
- * summary — so the claim in the paragraph above is checkable rather than merely stated.
+ * rows. This renders the actual records that would be POSTed, the same objects, no
+ * summary, so the claim in the paragraph above is checkable rather than merely stated.
  */
 async function renderPending(): Promise<void> {
   const reply = await send<{ records: Record<string, unknown>[]; endpoint: string }>({
@@ -292,7 +292,7 @@ interface ExportRow {
  * this is meant to reach.
  *
  * This is the only path by which anything leaves the device, and a person clicked it. It is
- * a download to their own disk, not a network request — the zero-egress guarantee is about
+ * a download to their own disk, not a network request, the zero-egress guarantee is about
  * what the extension sends on its own, and this sends nothing anywhere.
  */
 exportBtn.addEventListener("click", async () => {
@@ -330,7 +330,7 @@ exportBtn.addEventListener("click", async () => {
 });
 
 /**
- * Retention was a real setting — stored, validated, and applied by the worker's prune — with no
+ * Retention was a real setting, stored, validated, and applied by the worker's prune, with no
  * control anywhere to change it, while PRIVACY.md said it was adjustable in Settings. Now it is.
  * Pruning runs on the housekeeping alarm, so a shorter window takes effect within hours.
  */

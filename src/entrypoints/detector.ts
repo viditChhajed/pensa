@@ -1,8 +1,8 @@
 /**
  * The detector content script.
  *
- * Still built via `defineUnlistedScript` — WXT compiles it to `detector.js` and writes
- * nothing into the manifest — but the manifest entry that injects it is now written by
+ * Still built via `defineUnlistedScript`, WXT compiles it to `detector.js` and writes
+ * nothing into the manifest, but the manifest entry that injects it is now written by
  * hand in `wxt.config.ts`, matching the required `https://` host permission and carrying
  * the denylist-derived `exclude_matches`. Keeping the entry in the config is what lets one
  * function both generate those exclusions and refuse to build without them.
@@ -69,7 +69,7 @@ export default defineUnlistedScript(() => {
    * The denylist, enforced in the only place that can enforce all of it.
    *
    * `exclude_matches` in the manifest stops Chrome injecting on the part of the denylist a
-   * match pattern can express — whole hosts and their subdomains. It cannot express the
+   * match pattern can express, whole hosts and their subdomains. It cannot express the
    * rest, and the rest is most of it: "any label containing `bank`", "`mychart.` under any
    * TLD", "`secure.` in front of a bank name". Those hosts DO get this script injected, and
    * this is the line that stops it doing anything on them.
@@ -110,7 +110,7 @@ export default defineUnlistedScript(() => {
    * memoised across passes and dropped only for the subtrees the observer saw change, so a
    * busy SPA no longer re-resolves style for thousands of unchanged elements every pass.
    * (Measured on target.com before any of this: passes of 1839ms.) Boxes are still re-read
-   * every pass and always will be — they are viewport-relative, so a scroll invalidates them
+   * every pass and always will be, they are viewport-relative, so a scroll invalidates them
    * with no mutation to notice.
    *
    * This backoff stays regardless, because the cache helps a page that settles and does
@@ -141,7 +141,7 @@ export default defineUnlistedScript(() => {
 
     // Plan §18C, the affordable half. Computed style is memoised across passes and dropped
     // only for the subtrees the MutationObserver actually saw change, so an unchanged page
-    // is not re-resolved from scratch every pass — which is both the cost and the reason
+    // is not re-resolved from scratch every pass, which is both the cost and the reason
     // the time budget kept truncating dense pages at the same node, pass after pass.
     invalidateStyles(observer.takeDirtyRoots());
 
@@ -178,7 +178,7 @@ export default defineUnlistedScript(() => {
    * Has this page ever looked like a shop? Latched, not re-decided every pass.
    *
    * Single-page storefronts build the cart after the first paint, so a page that is not a
-   * shop at pass 1 can be one at pass 3 — the check has to be able to turn Pensa ON later.
+   * shop at pass 1 can be one at pass 3, the check has to be able to turn Pensa ON later.
    * It must not be able to turn it OFF again: a cart that empties is still a shop, and
    * flapping would mean a detection recorded on one pass and silently dropped on the next.
    */
@@ -191,7 +191,7 @@ export default defineUnlistedScript(() => {
   /**
    * The current page view, for the add-to-cart outcome measure (src/background/outcomes.ts).
    *
-   * `exposed` holds only techniques that cleared the salience gate — were on screen for real —
+   * `exposed` holds only techniques that cleared the salience gate, were on screen for real,
    * and it is frozen at the add-to-cart click, because the view ends there. Something that
    * appears in the drawer the click opened was not seen before the decision and is not
    * credited with it. Regenerated on navigation; the id never leaves the device.
@@ -218,7 +218,7 @@ export default defineUnlistedScript(() => {
    *
    * Geometric backoff from the first pass was wrong, and the cost was measured: on booking.com
    * and kayak.com the verdict was taken ~300ms after document_idle, when the page had rendered
-   * ZERO prices — "prices 0, atc 0, booking 0, cartRows 0" — and the next looks came at 0.9s,
+   * ZERO prices, "prices 0, atc 0, booking 0, cartRows 0", and the next looks came at 0.9s,
    * 2.1s, 4.5s, 9.3s. A travel search that paints its results at three seconds was judged on an
    * empty skeleton and, with nothing else to trigger a re-read, stayed judged. Pensa went silent
    * on every travel and ticketing site in the audit.
@@ -238,7 +238,7 @@ export default defineUnlistedScript(() => {
      * nothing.
      *
      * Deliberately BEFORE `buildContext`, so a page that is not a shop never pays for the
-     * harvest — which is the expensive half and which, now that Pensa runs on every https
+     * harvest, which is the expensive half and which, now that Pensa runs on every https
      * page, would otherwise be paid on every page of the web. The cost of putting it here
      * is that `readDocumentMeta` runs twice on the one pass that first confirms a shop.
      * That is one extra structural read, once per page, against not walking the DOM at all
@@ -246,7 +246,7 @@ export default defineUnlistedScript(() => {
      *
      * Nothing downstream has run at this point: no detector, no salience observation, no
      * message to the worker, and therefore no row in the event log. A page that is not a
-     * shop leaves no trace that Pensa was ever there — which, given the permission it now
+     * shop leaves no trace that Pensa was ever there, which, given the permission it now
      * holds, is the difference between a shopping tool and something that watches you
      * browse.
      */
@@ -254,7 +254,7 @@ export default defineUnlistedScript(() => {
       const verdict = classifyCommerce(readDocumentMeta(document, location.href));
       if (!verdict.isCommerce) {
         // Geometric, to a ceiling. A single-page storefront can build its cart after the
-        // first paint, so this has to stay willing to look again — but a blog must not cost
+        // first paint, so this has to stay willing to look again, but a blog must not cost
         // a DOM read every second forever, and mutation-driven passes come through the same
         // debounce, so raising it here quiets both.
         // Mutations still mark subtrees dirty so a late-rendering storefront gets looked at
@@ -262,7 +262,7 @@ export default defineUnlistedScript(() => {
         // a chat or feed that never becomes a shop accumulates element references for hours.
         observer.takeDirtyRoots();
         // Said once, at default log level. "Pensa did nothing here" has two very different
-        // causes — the page is not a shop, or the page is a shop the classifier cannot see —
+        // causes, the page is not a shop, or the page is a shop the classifier cannot see,
         // and without the score and the signals there is no way to tell them apart. That
         // distinction is exactly what a silent travel or ticketing site turns on.
         // A page that renders late may also stop mutating before it is judged, and the pass
@@ -273,7 +273,7 @@ export default defineUnlistedScript(() => {
           console.info(
             `[pensa] not a shop (score ${verdict.score}) :: ` +
               (verdict.reasons.length > 0 ? verdict.reasons.join(" | ") : "no commerce signals") +
-              ` — prices ${m.pricedTextCount}, atc ${m.addToCartCtaCount}, checkout ` +
+              `. prices ${m.pricedTextCount}, atc ${m.addToCartCtaCount}, checkout ` +
               `${m.checkoutCtaCount}, booking ${m.bookingCtaCount}, perUnit ${m.perUnitPriceRows}, ` +
               `cartRows ${m.cartLineItems}, moneyRows ${m.moneySummaryRows}, jsonLd ${m.jsonLd.length}`,
           );
@@ -301,7 +301,7 @@ export default defineUnlistedScript(() => {
     //
     // Shein renders "Almost Sold Out" on nine cards and Glossier repeats a price row
     // thirteen times, so a single piece of copy produced nine or thirteen identical events.
-    // The digest dedupes by family so only one would ever be SHOWN — but the event log is
+    // The digest dedupes by family so only one would ever be SHOWN, but the event log is
     // the prevalence substrate, and counting one badge nine times would put a 9x multiplier
     // on whichever retailers happen to repeat their markup most. That is a measurement
     // error, not a display one, and it survives into every statistic built on the log.
@@ -324,7 +324,7 @@ export default defineUnlistedScript(() => {
         seenText.add(key);
         collected.push({ candidate: c, salienceKey: c.nodeRef });
         // Start dwell accounting for anything that might later be surfaced. Re-finding by
-        // selector is best-effort by design — a miss costs a candidate, never a crash.
+        // selector is best-effort by design, a miss costs a candidate, never a crash.
         const el = safeQuery(c.nodeRef);
         if (el) salience.observe(el, c.nodeRef, isEphemeral(ctx, c.nodeRef));
       }
@@ -336,7 +336,7 @@ export default defineUnlistedScript(() => {
     if (collected.length > 0) {
       // Log the MATCHED TEXT, not just the pattern id.
       //
-      // A line reading "9 detections — anchoring.reference_price x9" is undiagnosable: it
+      // A line reading "9 detections, anchoring.reference_price x9" is undiagnosable: it
       // cannot distinguish nine genuine was/now price pairs from one runaway selector, and
       // it gives no way to tell why scarcity.stock stayed silent on a page covered in
       // "only 3 left at this price". The evidence already carries a text sample; showing it
@@ -370,7 +370,7 @@ export default defineUnlistedScript(() => {
       console.info(
         `[pensa] ${stage}: ${collected.length} detection(s)` +
           (duplicates > 0 ? ` (+${duplicates} repeat(s) of the same copy)` : "") +
-          ` — ${summary}`,
+          `. ${summary}`,
       );
     }
 
@@ -378,7 +378,7 @@ export default defineUnlistedScript(() => {
      * Record what this page is showing, as it is browsed.
      *
      * Detections used to reach the worker only when add-to-cart or checkout was clicked, so
-     * everything a shop displayed to someone who looked and left was never written down — the
+     * everything a shop displayed to someone who looked and left was never written down, the
      * local summary and the prevalence dataset both described the moment of adding to cart and
      * nothing else.
      *
@@ -388,7 +388,7 @@ export default defineUnlistedScript(() => {
      * different scarcity claims still count twice.
      *
      * Salience is sent as measured. A badge that was never on screen long enough is still worth
-     * recording — it is what the page showed — and the row says so rather than pretending it
+     * recording, it is what the page showed, and the row says so rather than pretending it
      * was seen.
      */
     const unreported = collected.filter(
@@ -451,8 +451,8 @@ export default defineUnlistedScript(() => {
       const snap = extractPriceSnapshot(ctx);
       // The ONLY observable evidence that the cross-stage pipeline has anything to work
       // with. `pricing.drip` compares fees between the earliest and latest stage snapshot,
-      // so when it stays quiet there are two very different explanations — the site did not
-      // drip, or the snapshots were empty — and nothing in the log distinguished them.
+      // so when it stays quiet there are two very different explanations, the site did not
+      // drip, or the snapshots were empty, and nothing in the log distinguished them.
       // A full Glossier journey ended with no drip finding and no way to say which it was.
       const money = (m?: { amount: bigint; currency: string }): string =>
         m ? `${m.currency} ${(Number(m.amount) / 100).toFixed(2)}` : "-";
@@ -461,7 +461,7 @@ export default defineUnlistedScript(() => {
           `subtotal ${money(snap.subtotal)}, total ${money(snap.total)}, ` +
           `shipping ${money(snap.shipping)}, ${snap.fees.length} fee(s)` +
           (snap.fees.length > 0
-            ? ` — ${snap.fees.map((f) => `${f.labelSample ?? "?"} ${money(f.amount)}`).join("; ")}`
+            ? `. ${snap.fees.map((f) => `${f.labelSample ?? "?"} ${money(f.amount)}`).join("; ")}`
             : ""),
       );
       await send({
@@ -485,9 +485,9 @@ export default defineUnlistedScript(() => {
       // different fixes, and the previous message did not distinguish them.
       console.warn(
         `[pensa] pass used ${elapsed.toFixed(0)}ms CPU of ${wallMs.toFixed(0)}ms wall ` +
-          `(budget ${PERF_BUDGET_MS}ms) — ` +
+          `(budget ${PERF_BUDGET_MS}ms): ` +
           `meta ${phase.meta.toFixed(0)}ms, harvest ${phase.harvest.toFixed(0)}ms, ` +
-          `detectors ${phase.detectors.toFixed(0)}ms, ${ctx.candidates.length} candidates — ` +
+          `detectors ${phase.detectors.toFixed(0)}ms, ${ctx.candidates.length} candidates. ` +
           `backing off to ${debounceMs}ms between passes`,
       );
     }
@@ -534,7 +534,7 @@ export default defineUnlistedScript(() => {
    * digest was built from two off-screen carousel prices with 0ms dwell. Retailers differ by
    * an order of magnitude in how fast that drawer appears, so the wait polls instead of
    * guessing: re-harvest, let salience accrue, and stop as soon as something has genuinely
-   * been on screen long enough — or give up at the deadline and report what there is.
+   * been on screen long enough, or give up at the deadline and report what there is.
    */
   const TRIGGER_WINDOW_MS = 5000;
 
@@ -567,7 +567,7 @@ export default defineUnlistedScript(() => {
    * Everything that should only happen on a page Pensa has decided is a shop.
    *
    * The add-to-cart listener used to be attached at boot, on every non-denied https page, and
-   * `onTrigger` never checked the verdict — so a "Book now" or "Proceed to…" button on a page
+   * `onTrigger` never checked the verdict, so a "Book now" or "Proceed to…" button on a page
    * that sells nothing still messaged the worker, wrote a session ledger holding the button's
    * label, and made the popup claim the page was being checked. Now the listener does not
    * exist until the page is confirmed, and text recording starts at the same moment.
@@ -629,7 +629,7 @@ export default defineUnlistedScript(() => {
    * Show a card the worker decided on, and tell it once the card has actually stayed up.
    *
    * The confirmation is what makes a card survive navigation. On a site whose Add to Cart
-   * loads a cart page, this page is torn down within moments of the click — the card rendered
+   * loads a cart page, this page is torn down within moments of the click, the card rendered
    * here for a few milliseconds and was never seen, and nothing noticed. The worker now holds
    * every card until this confirmation arrives; a page that dies first never sends it, and the
    * next page on the shop collects the card instead (`collectPendingCard`).
@@ -713,7 +713,7 @@ export default defineUnlistedScript(() => {
     // On a cart page the interesting content has usually been on screen for seconds before
     // the click, so it has earned its dwell and the card can appear at once. The previous
     // version waited out a settle delay and a poll step unconditionally, which cost several
-    // seconds on exactly the pages where nothing needed waiting for — long enough that a
+    // seconds on exactly the pages where nothing needed waiting for, long enough that a
     // shopper clicked Checkout and navigated away before the card arrived.
     //
     // The polling below is still there for the other case: a drawer that has not rendered
@@ -728,9 +728,9 @@ export default defineUnlistedScript(() => {
 
     // Why a digest did or did not appear, in one line. Without this the only observable
     // symptom is "nothing happened", which is indistinguishable from every other failure in
-    // the chain — and that cost a full manual test round.
+    // the chain, and that cost a full manual test round.
     console.info(
-      `[pensa] trigger ${kind} @${stage}: ${items.length} candidate(s) — ` +
+      `[pensa] trigger ${kind} @${stage}: ${items.length} candidate(s). ` +
         items
           .map(
             (i) =>
@@ -789,14 +789,14 @@ export default defineUnlistedScript(() => {
 
   // --- boot ---
   // Visible at default log level, deliberately. Injection was previously only observable by
-  // inferring it from chrome.storage.session, which is cleared on every extension reload —
+  // inferring it from chrome.storage.session, which is cleared on every extension reload,
   // so "no ledger key" was ambiguous between "not injected" and "you reloaded the extension
   // and have not revisited the page yet". One line removes the ambiguity.
-  console.info(`[pensa] active on ${pageOrigin} — build ${BUILD_STAMP}`);
+  console.info(`[pensa] active on ${pageOrigin}, build ${BUILD_STAMP}`);
 
   observer.start();
   // Attached at boot so a toggle made in the first moments is not missed, but choices are only
-  // REPORTED from a confirmed shop — until then they wait here, as family keys and booleans.
+  // REPORTED from a confirmed shop, until then they wait here, as family keys and booleans.
   watchInteractions((choices) => {
     if (commerceConfirmed) {
       void send({ type: "choice", origin: pageOrigin, choices: choices.slice(0, 16) });
@@ -808,7 +808,7 @@ export default defineUnlistedScript(() => {
 
   /**
    * A resize re-evaluates every media query and every relative unit on the page, and no
-   * element reports it — there is no mutation record to invalidate against, so the style
+   * element reports it, there is no mutation record to invalidate against, so the style
    * cache would keep serving pre-resize values indefinitely. Dropped wholesale rather than
    * selectively, because after a resize there is no "unchanged" subtree to preserve.
    *
@@ -821,7 +821,7 @@ export default defineUnlistedScript(() => {
   void pass();
 
   // SPA routing: the `navigation` API where available, a light URL poll otherwise. Never
-  // `history.pushState` patching — it breaks host pages and reads as hostile (plan §14.6).
+  // `history.pushState` patching, it breaks host pages and reads as hostile (plan §14.6).
   const nav = (globalThis as { navigation?: EventTarget }).navigation;
   if (nav) {
     nav.addEventListener("navigate", () => {

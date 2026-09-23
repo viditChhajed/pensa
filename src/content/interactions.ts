@@ -4,14 +4,14 @@
  * Two detections were making claims about choices without ever observing one:
  *
  *   `defaults.preselected` read a checkbox's live `checked` state, so a box the shopper ticked
- *   themselves was indistinguishable from one the page ticked for them — and the card would
+ *   themselves was indistinguishable from one the page ticked for them, and the card would
  *   tell them a choice had been made on their behalf when they had just made it.
  *
  *   `basket.sneak` and `pricing.drip` were meant to ignore add-ons the shopper chose, and had
  *   no record of any choice at all.
  *
  * This module is that record. It listens for real `change` and `click` events, which only a
- * user (or assistive technology acting for one) produces — a page setting `checked` in script
+ * user (or assistive technology acting for one) produces, a page setting `checked` in script
  * fires no `change` event. It remembers which inputs were touched, in memory, and reports
  * add-on choices upward so the worker can attribute cart lines across page loads.
  *

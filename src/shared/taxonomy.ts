@@ -4,7 +4,7 @@
  *
  * Deliberately absent: gambler's fallacy, hot-hand, and the sequential-judgment family.
  * They leave no DOM artifact, so a detector for them fires at ~0%. Also absent:
- * attribute framing (the "80% lean" family) — a real effect, but it lives on CPG packaging
+ * attribute framing (the "80% lean" family), a real effect, but it lives on CPG packaging
  * and nutrition panels rather than in checkout flows.
  */
 
@@ -34,13 +34,13 @@ export type PatternFamily =
 export interface TaxonomyEntry {
   readonly id: string;
   readonly family: PatternFamily;
-  /** Shown in the UI. Neutral noun phrase — names the artifact, not an intent. */
+  /** Shown in the UI. Neutral noun phrase, names the artifact, not an intent. */
   readonly label: string;
   /** One line, grade-8 reading level, describes the mechanism without accusing anyone. */
   readonly mechanism: string;
   /** Primary literature or regulatory source, rendered verbatim in "learn more". */
   readonly citation: string;
-  /** 0..1. Editorial weighting for digest ranking only — not an empirical quantity. */
+  /** 0..1. Editorial weighting for digest ranking only, not an empirical quantity. */
   readonly severityWeight: number;
   readonly tier: Tier;
   /** Needs the session ledger (cross-funnel-stage state). */
@@ -301,7 +301,7 @@ export const TAXONOMY = {
 
   /**
    * Found in the field during the manual spot-check, on Frontier's fare-upsell modal.
-   * Not in the original taxonomy — the plan's list came from the literature, and this is a
+   * Not in the original taxonomy, the plan's list came from the literature, and this is a
    * shape the literature does not name cleanly.
    *
    * The upgrade path is one click. The decline path requires ticking "I understand
@@ -312,7 +312,7 @@ export const TAXONOMY = {
    * the default effect (which is about what is pre-selected). The mechanism here is
    * asymmetric friction plus forced attestation.
    *
-   * NOTE FOR WHOEVER BUILDS THIS: the strong signal is STRUCTURAL, not lexical — a gate on
+   * NOTE FOR WHOEVER BUILDS THIS: the strong signal is STRUCTURAL, not lexical, a gate on
    * the decline control that the accept control does not have. Lead with that. Two of the
    * three misses in the spot-check came from lexicons written against imagined copy.
    *
@@ -327,7 +327,7 @@ export const TAXONOMY = {
     mechanism:
       "Choosing the cheaper option takes an extra step, and requires agreeing that it may cost you more.",
     citation:
-      "Gray, C. M., Kou, Y., Battles, B., Hoggatt, J. & Toombs, A. L. (2018). The Dark (Patterns) Side of UX Design. Proc. CHI 2018, Paper 534 — obstruction and interface-interference categories. See also FTC Negative Option Rule, 16 C.F.R. Part 425, on asymmetry between opting in and opting out.",
+      "Gray, C. M., Kou, Y., Battles, B., Hoggatt, J. & Toombs, A. L. (2018). The Dark (Patterns) Side of UX Design. Proc. CHI 2018, Paper 534; the obstruction and interface-interference categories. See also FTC Negative Option Rule, 16 C.F.R. Part 425, on asymmetry between opting in and opting out.",
     severityWeight: 0.7,
     tier: 3,
     crossStage: false,

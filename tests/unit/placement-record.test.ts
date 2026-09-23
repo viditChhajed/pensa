@@ -6,7 +6,7 @@ import { SuppressionReason } from "@/shared/schema";
  * The record must distinguish "did not fire" from "fired but there was nowhere to put it".
  *
  * Without that split, a spot-check log cannot tell a THRESHOLD problem from a PLACEMENT
- * problem — both look like a detector that did nothing. Worse, the worker used to write
+ * problem, both look like a detector that did nothing. Worse, the worker used to write
  * `surfaced: true` before the card attempted placement, so a suppressed digest was recorded
  * as shown and the popup's Noticed/Shown split was actively wrong.
  */
@@ -48,7 +48,7 @@ describe("choosePlacement degradation", () => {
   });
 
   it("suppresses rather than covering a control", () => {
-    // The whole viewport is interactive — the real situation on a dense storefront.
+    // The whole viewport is interactive, the real situation on a dense storefront.
     const controls: Control[] = [{ left: 0, top: 0, right: 1280, bottom: 800 }];
     expect(choosePlacement(controls, VIEWPORT, 4).mode).toBe("suppressed");
   });

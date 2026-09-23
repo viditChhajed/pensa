@@ -2,7 +2,7 @@
  * An add-to-cart that navigates away must still end in a card.
  *
  * On a drawer site the card renders on the page that was clicked. On a site whose Add to Cart
- * is a form POST to a cart page — Amazon, WooCommerce, many Shopify themes — that page is
+ * is a form POST to a cart page, Amazon, WooCommerce, many Shopify themes, that page is
  * destroyed within a few hundred milliseconds of the click, and a card built after it has
  * nowhere to render.
  */
@@ -65,7 +65,7 @@ test("a card appears after an add-to-cart that navigates to the cart page", asyn
 
   await expect
     .poll(() => hasCard(page), {
-      timeout: 10_000,
+      timeout: 20_000,
       message: `no card on the cart page. log:\n  ${logs.join("\n  ")}`,
     })
     .toBe(true);

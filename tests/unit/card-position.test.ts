@@ -7,7 +7,7 @@ import { type Control, cardSize, choosePlacement, positionOf, type Rect } from "
  *
  * This was found in a real browser, not in theory. With the card fixed at bottom-right and
  * `pointer-events: none` on the host, `document.elementFromPoint` at a bottom-right checkout
- * button's centre returned the overlay — because the card inside re-enables pointer events,
+ * button's centre returned the overlay, because the card inside re-enables pointer events,
  * so wherever the card actually paints, it wins the hit test.
  *
  * The first fix (a 4x4 sample grid) ALSO failed, and worse, failed silently: 74px vertical

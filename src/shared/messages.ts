@@ -1,5 +1,5 @@
 /**
- * The content script <-> service worker protocol — TYPES ONLY, plus `send()`.
+ * The content script <-> service worker protocol, TYPES ONLY, plus `send()`.
  *
  * The Zod schemas that validate these live in `messages.schema.ts` and are imported by the
  * service worker alone. That split is deliberate: validation belongs at the receiving end of
@@ -62,7 +62,7 @@ export interface TriggerPayload {
 /**
  * An add-on the shopper opted into or out of, with their own click or toggle.
  *
- * Carries a family key and a boolean — never the label text. See src/content/interactions.ts.
+ * Carries a family key and a boolean, never the label text. See src/content/interactions.ts.
  */
 export interface ChoicePayload {
   type: "choice";
@@ -76,7 +76,7 @@ export interface ChoicePayload {
  * Sent when the view starts, again whenever another technique clears the salience gate, and
  * once more with `addedToCart: true` at the click. The worker ends the view there, or after it
  * goes idle. Carries technique ids and a boolean; never text, never the path. Dropped by the
- * worker unless sharing is on — see src/background/outcomes.ts.
+ * worker unless sharing is on, see src/background/outcomes.ts.
  */
 export interface PageViewPayload {
   type: "pageview";
@@ -113,7 +113,7 @@ export interface GetSummary {
  *
  * "Watching example.com" in the popup only means the permission was granted. Registration is
  * a separate step that can fail on its own, and when it does the failure is logged to the
- * service worker console — which is not reachable from the page console where a tester is
+ * service worker console, which is not reachable from the page console where a tester is
  * looking. The symptom is a popup claiming to watch a site while nothing whatsoever runs on
  * it, with no way to tell the difference from "the detectors found nothing".
  */

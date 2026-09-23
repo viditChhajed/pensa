@@ -14,7 +14,7 @@ import { candidate, matchLexemes, visibleCandidates } from "./util";
 /**
  * Inventory nouns that may sit between the count and "left".
  *
- * Booking.com says "Only 3 rooms left at this price", not "Only 3 left" — measured, and it
+ * Booking.com says "Only 3 rooms left at this price", not "Only 3 left", measured, and it
  * scored zero. Enumerated rather than accepting any word, because `\w+` here would swallow
  * "only 3 sizes left", which is a catalogue fact rather than manufactured urgency and is the
  * exact false positive the plan warns causes uninstalls. Variant nouns stay excluded below.
@@ -25,15 +25,15 @@ const UNIT_NOUN =
 const STOCK_PATTERNS: readonly RegExp[] = [
   /**
    * Added from the labelled corpus. Each is real copy that scored zero: "While supplies
-   * last" — the commonest scarcity phrase in the whole set, and it was being reported as
-   * URGENCY — plus "Back in stock soon", "Hurry! Before these items sold out!", and
+   * last", the commonest scarcity phrase in the whole set, and it was being reported as
+   * URGENCY, plus "Back in stock soon", "Hurry! Before these items sold out!", and
    * "A limited number of passes will be sold at special introductory pricing".
    */
   /\bwhile (?:stocks?|supplies) last\b/,
   /\bwhile they last\b/,
-  /** "will fill up fast", "selling out fast" — supply pressure with no stock vocabulary. */
+  /** "will fill up fast", "selling out fast", supply pressure with no stock vocabulary. */
   /\b(?:fill(?:s|ing)? up|selling out|going) fast\b/,
-  /** "Space Limited" on an event registration — capacity framed as short supply. */
+  /** "Space Limited" on an event registration, capacity framed as short supply. */
   /\bspaces?\s+(?:is |are )?limited\b|\blimited\s+spaces?\b/,
   /\bback in stock soon\b/,
   /\bbefore (?:these |they |it )?(?:items? )?(?:are |is )?(?:sold ?out|gone)\b/,
@@ -71,7 +71,7 @@ const VARIANT_EXCLUSIONS: readonly RegExp[] = [
  *     "*Exclusions/terms apply. • While supplies last"
  *     "a Exclusions/terms apply. While supplies last. † Terms apply."
  *
- * The call, and the argument for it. "While supplies last" IS scarcity language — it is a
+ * The call, and the argument for it. "While supplies last" IS scarcity language, it is a
  * claim that stock is finite, it is the commonest such phrase in the labelled corpus, and all
  * three of these are labelled positive there. So it is not a false positive and this does not
  * silence it. What is wrong is SURFACING it. The pattern is about a claim placed to pressure a
@@ -79,10 +79,10 @@ const VARIANT_EXCLUSIONS: readonly RegExp[] = [
  * behind a dagger, is a lawyer limiting an offer, and it is the same sentence whether the
  * shopper is hurrying or not. Interrupting someone to ask "what would you do if this weren't
  * limited?" about a disclaimer spends the one interruption we get on the least persuasive
- * text on the page — three times over, for what a shopper sees as one footnote.
+ * text on the page, three times over, for what a shopper sees as one footnote.
  *
  * So: it counts, it never interrupts. The arithmetic is chosen against the thresholds, not by
- * feel — boilerplate costs 0.2 and forfeits the `shortText` badge bonus, which puts a
+ * feel, boilerplate costs 0.2 and forfeits the `shortText` badge bonus, which puts a
  * qualitative claim at 0.45 and a numeric one at 0.55, both over the 0.35 log threshold and
  * under the 0.75 surface threshold even with a progress bar beside them (0.70).
  *
@@ -91,7 +91,7 @@ const VARIANT_EXCLUSIONS: readonly RegExp[] = [
  * real badge. Reading font size and viewport position would settle it properly; that is a
  * salience change and belongs with the salience gate, not in a lexicon.
  *
- * Deliberately NOT here: "while supplies last" on its own, and "see details" — a bare "see
+ * Deliberately NOT here: "while supplies last" on its own, and "see details", a bare "see
  * details" link sits under plenty of genuine badges.
  */
 const DISCLAIMER_CONTEXT =
@@ -108,7 +108,7 @@ const DISCLAIMER_CONTEXT =
  *       <img …><div class="text">Low stock items alerts</div></div>
  *
  * Nothing on that page is running out. The words "low stock" are the SUBJECT of a
- * notification feature — the thing they will email you about — not an assertion about any
+ * notification feature, the thing they will email you about, not an assertion about any
  * item's inventory, and it scored 0.75, exactly the surface threshold, so it showed a card.
  *
  * The rule is about the construction, not the string, because a blocklist that only knew
@@ -117,11 +117,11 @@ const DISCLAIMER_CONTEXT =
  * scarcity rows, 31 negatives contain this vocabulary and ZERO of the 24 positives do.
  *
  * The seam, stated rather than hidden: "alerts" plural names a feature you subscribe to;
- * bare singular "alert" is left alone because "Low stock alert!" is badge English — an
+ * bare singular "alert" is left alone because "Low stock alert!" is badge English, an
  * interjection announcing the fact, not an offer to send you mail about it. Nothing in the
  * corpus exercises that case either way, so it is a judgement, not a measurement. Also
  * deliberately absent: "sign up" and "subscribe", which are far too common in genuine promo
- * copy ("Sign up and save 20% — while supplies last") to be read as a notification offer.
+ * copy ("Sign up and save 20%, while supplies last") to be read as a notification offer.
  */
 const NOTIFICATION_OFFER =
   /\balerts\b|\bnotifications?\b|\breminders?\b|\bget notified\b|\b(?:notify|remind|email|text) (?:me|you)\b/;
@@ -142,7 +142,7 @@ const LEXEMES = [
  *
  * The old weights put a plain numeric claim at 0.60 and a qualitative one at 0.40, against a
  * 0.75 surface threshold. So scarcity.stock could only ever show a card when a progress bar
- * happened to sit beside the copy — and across five sites it fired correctly every single
+ * happened to sit beside the copy, and across five sites it fired correctly every single
  * time and surfaced not once. A detector that is always right and never speaks is not
  * cautious, it is broken, and it was silently costing the product its second-highest
  * severity pattern.
@@ -152,8 +152,8 @@ const LEXEMES = [
  *
  *   - A numeric claim ("only 3 rooms left") is self-evidently scarcity and now clears the
  *     threshold on its own.
- *   - A qualitative one ("almost sold out") does not. It needs to be terse — badge-shaped
- *     rather than buried in a paragraph — because that is what distinguishes a scarcity
+ *   - A qualitative one ("almost sold out") does not. It needs to be terse, badge-shaped
+ *     rather than buried in a paragraph, because that is what distinguishes a scarcity
  *     badge from prose that happens to contain the words.
  *
  * Reversible: drop numericStock back to 0.5 and this returns to log-only.
@@ -196,7 +196,7 @@ interface StockMatch {
  *
  * The general rule, which is the real answer to the Zappos duplicate: a claim may not be
  * evidenced by text that does not itself contain the matched phrase. The container pass
- * exists so that `Only <span>3</span> left` can be read as one sentence — the span "3" is a
+ * exists so that `Only <span>3</span> left` can be read as one sentence, the span "3" is a
  * FRAGMENT OF the sentence. A sibling that merely shares a parent with the sentence is not,
  * and attaching the claim to it is how the detector came to quote a catalogue dump.
  *
@@ -248,7 +248,7 @@ export const scarcityDetector: Detector = {
      * three spans for animation. Split that way, no node carries both the number and the
      * words: "3" has no words, "left at this price" has no number, and this detector
      * returned NOTHING at all on copy it scores 0.85 on when flat. That is not a lexicon
-     * gap — the lexicon is right — it is reading at the wrong granularity, which EVAL run 1
+     * gap, the lexicon is right, it is reading at the wrong granularity, which EVAL run 1
      * named as the second most expensive defect in the product.
      *
      * Pass 1 matches each node's own text, which is the precise reading and stays first.
@@ -278,12 +278,12 @@ export const scarcityDetector: Detector = {
      *
      * `isWithin(badge, dl)` is false. Every claim of ancestry this function makes on a real
      * product grid is false, and the fixture that said otherwise was shallow enough that no
-     * path was truncated — the fix was tested on the one DOM shape where the bug cannot occur.
+     * path was truncated, the fix was tested on the one DOM shape where the bug cannot occur.
      *
      * Ancestry is therefore kept only as a cheap first cut. What actually stops the duplicate
      * is `carriedBy` in the container pass: the a11y `<dt>` whose parent is the `<dl>` does not
      * contain "low stock" in its own text, so it cannot carry the claim, whatever the paths
-     * say. That the audit row had no lexeme tag was the tell all along — the lexemes were read
+     * say. That the audit row had no lexeme tag was the tell all along, the lexemes were read
      * off the node and the pattern off its parent, and nobody asked whether they agreed.
      */
     const alreadyClaimed = (path: string): boolean => {
@@ -319,7 +319,7 @@ export const scarcityDetector: Detector = {
       seen.add(n.selectorPath);
       // Claim THIS node's path, not its parent's. A child's `containerPath` is its parent's
       // `selectorPath`, so this is what stops pass 2 re-reporting the same sentence from
-      // inside it — `Only <b>3</b> left` matched on the div and then again on the bold.
+      // inside it, `Only <b>3</b> left` matched on the div and then again on the bold.
       claimedContainers.add(n.selectorPath);
       const { numeric, qualitative } = tally(hit);
 

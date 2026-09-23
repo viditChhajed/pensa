@@ -3,7 +3,7 @@
  *
  * The product claim is "here are the patterns YOU faced." That claim is false for anything
  * that rendered below the fold and was never looked at. Time is accumulated only while the
- * tab is actually visible — a background tab left open for an hour must not manufacture
+ * tab is actually visible, a background tab left open for an hour must not manufacture
  * an hour of dwell.
  *
  * Candidates that fail the gate are still recorded, flagged `surfaced: false`. The gap

@@ -4,7 +4,7 @@
  * Why this exists: every recall miss recorded in EVAL run 1 was a phrasing I invented that
  * no real site uses. The lexicons and the fixtures came out of the same imagination, so the
  * unit tests agreed with themselves and the field did not. A classifier cannot fix that with
- * better guessing either — it needs real sentences, which means a crawl.
+ * better guessing either, it needs real sentences, which means a crawl.
  *
  *   npm run corpus:collect              # the default site set
  *   npm run corpus:collect -- --sites glossier.com,rei.com --pages 6
@@ -65,8 +65,8 @@ const args = parseArgs(process.argv.slice(2));
 
 /**
  * Spread across categories rather than picking the biggest retailers. Persuasion copy is
- * category-shaped — travel drips fees, fast fashion runs scarcity, electronics runs
- * reference prices — so a corpus of six marketplaces would teach the model one dialect.
+ * category-shaped, travel drips fees, fast fashion runs scarcity, electronics runs
+ * reference prices, so a corpus of six marketplaces would teach the model one dialect.
  */
 const DEFAULT_SITES = [
   // Travel and ticketing: the densest source of urgency, scarcity and drip copy anywhere.
@@ -113,7 +113,7 @@ const DEFAULT_SITES = [
   "hsn.com",
   "target.com",
   "kohls.com",
-  // DTC and beauty: thresholds, preselected add-ons, softer copy — the negatives matter too.
+  // DTC and beauty: thresholds, preselected add-ons, softer copy, the negatives matter too.
   "glossier.com",
   "sephora.com",
   "ulta.com",
@@ -128,7 +128,7 @@ const DEFAULT_SITES = [
 
 /**
  * The first collection ran twenty tame retailers and produced SIX snippets matching any
- * scarcity vocabulary out of 1093. That is not a crawler bug — REI does not run countdown
+ * scarcity vocabulary out of 1093. That is not a crawler bug, REI does not run countdown
  * timers, and a corpus drawn from shops that do not use a technique cannot teach a model to
  * recognise it. The list above is deliberately weighted toward travel, ticketing and fast
  * fashion, which is where the literature says this copy concentrates and where the spot
@@ -144,7 +144,7 @@ const OUT_DIR = resolve("corpus");
  * `--out` lets several crawlers run at once, each owning its own file.
  *
  * Sharding is by SITE, so no individual shop sees more traffic than a single-process run
- * gave it — the parallelism is across shops, never within one. Separate files because the
+ * gave it, the parallelism is across shops, never within one. Separate files because the
  * dedup set lives in memory per process: two processes appending to one file would each
  * think they had seen only their own lines. `corpus:merge` folds them together and dedupes
  * properly afterwards.
@@ -213,8 +213,8 @@ function buildHarvestBundle() {
    * Attach to the real global explicitly, and not by asking esbuild to.
    *
    * Playwright wraps an init script in a FUNCTION scope, so esbuild's `var __ppHarvest = …`
-   * stays local to that wrapper and the page never sees it. The obvious fix —
-   * `--global-name=globalThis.__ppHarvest` — is worse: esbuild emits a literal
+   * stays local to that wrapper and the page never sees it. The obvious fix,
+   * `--global-name=globalThis.__ppHarvest`, is worse: esbuild emits a literal
    * `var globalThis;` first, which SHADOWS the real one, so the assignment lands on a fresh
    * local object and silently reaches nothing.
    *
@@ -232,7 +232,7 @@ let written = 0;
  * Product pages first, category pages only as a route to them.
  *
  * The first run treated the two as equally interesting and came back with 1093 snippets, of
- * which SIX matched any scarcity vocabulary — because "Camp Chairs" and "All Tops" are what
+ * which SIX matched any scarcity vocabulary, because "Camp Chairs" and "All Tops" are what
  * category pages are made of. Scarcity badges, instalment offers and countdowns live on the
  * product page and in the cart. Crawling two levels to reach one is worth it; harvesting a
  * hundred category listings is not.
@@ -240,14 +240,14 @@ let written = 0;
 /**
  * A "product" page, including the shapes travel and ticketing use.
  *
- * Booking, Agoda and Expedia have no /products/ anywhere — their detail pages are /hotel/,
- * /rooms/, /flights/ — so the crawl skipped every one of them and reported "no product link
+ * Booking, Agoda and Expedia have no /products/ anywhere, their detail pages are /hotel/,
+ * /rooms/, /flights/, so the crawl skipped every one of them and reported "no product link
  * from the homepage". That is precisely backwards: travel is where drip pricing lives, and
  * `pricing.drip` is the highest-severity detector in the taxonomy.
  *
  * Widening this does NOT widen what the crawl clicks. `addToCart` looks for an add-to-cart
  * control by name and finds none on a hotel page, so these get harvested and nothing is
- * added — which is the correct boundary anyway: "Reserve" on a travel site leads straight
+ * added, which is the correct boundary anyway: "Reserve" on a travel site leads straight
  * into a form asking for a guest's name, and this crawl stops well before that.
  */
 const PRODUCT_LINK =
@@ -261,7 +261,7 @@ async function linksFrom(page, origin) {
      * Cap AFTER filtering, not before.
      *
      * `.slice(0, 200)` used to run on the raw href list, so a site whose product links sit
-     * past the first 200 anchors lost all of them — zappos has 33 product links among 328
+     * past the first 200 anchors lost all of them, zappos has 33 product links among 328
      * anchors and the crawl reported "no product link from the homepage" for it. Nav,
      * footer and account links come first on almost every retail homepage, which is exactly
      * the wrong 200 to keep.
@@ -280,7 +280,7 @@ async function linksFrom(page, origin) {
 }
 
 /**
- * Scroll before harvesting. Lazy-loaded badges — "Only 3 left", "23 viewing" — are commonly
+ * Scroll before harvesting. Lazy-loaded badges, "Only 3 left", "23 viewing", are commonly
  * rendered on intersection, so a page read at scroll position zero is missing exactly the
  * copy this corpus exists to capture.
  */
@@ -363,7 +363,7 @@ async function addToCart(page) {
   /**
    * Located by ROLE and accessible name, not by scanning elements for text.
    *
-   * The hand-rolled scan found nothing on target, kohls or chewy — all three real product
+   * The hand-rolled scan found nothing on target, kohls or chewy, all three real product
    * pages with a real button. Playwright's role locator resolves the accessible name the way
    * the browser computes it, which covers a button whose label lives in a nested span, an
    * aria-label, or a sibling. It also auto-waits and auto-scrolls, and "not found" on those
@@ -417,12 +417,12 @@ async function addToCart(page) {
  * Driving add-to-cart across arbitrary retailers turned out to be a tar pit: fifty sites
  * produced ONE cart. Target's product page has no add-to-cart control at all until a
  * fulfillment option is chosen, Chewy's first product link was a gift card, and every site
- * that fails needs its own bespoke handling — brittle, and a steady march toward driving
+ * that fails needs its own bespoke handling, brittle, and a steady march toward driving
  * someone's checkout, which this crawl should not be doing.
  *
  * Shopify publishes a clean alternative: `/products.json` lists variants and `/cart/<id>:1`
  * creates a cart from one. Both are documented, public, unauthenticated endpoints. It covers
- * a smaller slice than it sounds — 5 of 15 fashion and DTC sites tested — but it needs no
+ * a smaller slice than it sounds, 5 of 15 fashion and DTC sites tested, but it needs no
  * clicking, no variant guessing, and no interaction the site has not published an API for.
  */
 async function shopifyCart(page, origin) {
@@ -446,7 +446,7 @@ async function shopifyCart(page, origin) {
   }
 }
 
-/** The usual cart paths. Read only — the crawl stops here and never enters checkout. */
+/** The usual cart paths. Read only, the crawl stops here and never enters checkout. */
 const CART_PATHS = ["/cart", "/bag", "/basket", "/shopping-cart", "/shoppingcart"];
 
 async function collectFrom(page, _url, site) {
@@ -464,7 +464,7 @@ async function collectFrom(page, _url, site) {
            * The element's own tag, from the DOM.
            *
            * This used to be `selectorPath.split(" > ").pop()`, and `selectorPath` joins with
-           * ">" and no spaces — so the split never fired and the field held a path fragment
+           * ">" and no spaces, so the split never fired and the field held a path fragment
            * like "html>body>div", or nothing at all, for 80% of rows. Nobody noticed until a
            * detector that needs to know whether a node is a BUTTON could not be evaluated.
            */
@@ -486,8 +486,8 @@ async function collectFrom(page, _url, site) {
   for (const n of nodes) {
     const text = scrub(n.text);
     // Deduped on normalised text across the WHOLE corpus, not per page. Retail markup
-    // repeats one string dozens of times — glossier renders the same price row thirteen
-    // times — and labelling the same sentence thirteen times is thirteen times the work for
+    // repeats one string dozens of times, glossier renders the same price row thirteen
+    // times, and labelling the same sentence thirteen times is thirteen times the work for
     // one example's worth of signal.
     const key = text.toLowerCase().replace(/\d+/g, "#").replace(/\s+/g, " ").trim();
     if (seenText.has(key)) continue;
@@ -508,7 +508,7 @@ mkdirSync(OUT_DIR, { recursive: true });
  * Cumulative by default; --fresh to start over.
  *
  * Truncating on every run means one crash twenty-one sites in throws away everything
- * collected so far — which is exactly what happened, and it happened on a run that had
+ * collected so far, which is exactly what happened, and it happened on a run that had
  * already spent forty minutes. The dedupe key makes merging free, so there is no reason to
  * ever discard a crawl that cost real time and real requests to other people's servers.
  */
@@ -535,7 +535,7 @@ const harvestCode = buildHarvestBundle();
  * The browser is recreatable, because it dies.
  *
  * The first full run collected from twenty-one sites and then reported "unreachable" for the
- * remaining twenty-nine — including rei.com and glossier.com, which had been crawled
+ * remaining twenty-nine, including rei.com and glossier.com, which had been crawled
  * successfully minutes earlier in the same session. Twenty-nine sites do not independently
  * start blocking you in the same second. The browser had died on a heavy page (boohoo, 848
  * snippets) and every later goto threw into the same catch, which printed a message about
@@ -558,7 +558,7 @@ async function freshContext() {
 
 async function ensureBrowser() {
   if (browser.isConnected()) return;
-  console.log("  (browser died — restarting)");
+  console.log("  (browser died, restarting)");
   browser = await chromium.launch({ channel: "chromium" });
 }
 
@@ -568,7 +568,7 @@ let context = await freshContext();
  * Prove the bundle actually runs before crawling twenty sites with it.
  *
  * The first version reported "0 new snippets" for every site and exited 0, which is
- * indistinguishable from every site blocking the crawler — the cause was an unresolved
+ * indistinguishable from every site blocking the crawler, the cause was an unresolved
  * import alias. A collector that cannot collect must say so on the first page, not after
  * twenty, and this project has now been bitten by that same silent green four times.
  */
@@ -587,7 +587,7 @@ let context = await freshContext();
     await browser.close();
     throw new Error(
       found === -1
-        ? "the harvest bundle did not define __ppHarvest — the esbuild step produced something unusable"
+        ? "the harvest bundle did not define __ppHarvest, the esbuild step produced something unusable"
         : "the harvest bundle loaded but found nothing on a page that plainly has candidates",
     );
   }
@@ -662,14 +662,14 @@ for (const site of sites) {
     }
 
     /**
-     * The cart pass. Add one item, then read the cart — and stop.
+     * The cart pass. Add one item, then read the cart, and stop.
      *
      * Only ONE item and only one product page attempted per site: enough to give a cart a
      * subtotal, a line item and whatever the site chooses to put beside them, without
      * hammering anyone's basket service for a corpus.
      */
     if (CART_MODE && queue.length === 0) {
-      console.log(`    ${site}: no product link from the homepage — cart pass skipped`);
+      console.log(`    ${site}: no product link from the homepage, cart pass skipped`);
     }
     if (CART_MODE && queue.length > 0) {
       // Narrated, because every silent failure in this crawler has cost a whole run. "0 cart
@@ -743,7 +743,7 @@ for (const site of sites) {
         }
       } catch (err) {
         console.log(
-          `    ${site}: cart pass failed — ${String(err?.message ?? err)
+          `    ${site}: cart pass failed, ${String(err?.message ?? err)
             .split("\n")[0]
             .slice(0, 70)}`,
         );
@@ -757,12 +757,12 @@ for (const site of sites) {
     const why = String(err?.message ?? err)
       .split("\n")[0]
       .slice(0, 90);
-    console.log(`  ${site.padEnd(22)} failed — ${why}`);
+    console.log(`  ${site.padEnd(22)} failed, ${why}`);
     consecutiveFailures++;
     if (consecutiveFailures >= 3) {
       // Three in a row is not three unlucky sites. Force a clean browser before blaming the
       // fourth one.
-      console.log("  (three failures in a row — recycling the browser)");
+      console.log("  (three failures in a row, recycling the browser)");
       try {
         await browser.close();
       } catch {
@@ -783,7 +783,7 @@ for (const site of sites) {
 await browser.close();
 if (written === 0) {
   console.error(
-    "\nEvery site returned nothing, and the bundle probe passed — so this is the network or " +
+    "\nEvery site returned nothing, and the bundle probe passed, so this is the network or " +
       "bot-blocking, not the collector. Retry with --sites naming fewer, smaller sites.",
   );
   process.exit(1);

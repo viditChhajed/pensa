@@ -8,8 +8,8 @@ import { decodePriceSnapshot, encodePriceSnapshot, findUnserializable } from "@/
  * The `stage` message carried a PriceSnapshot containing BigInt money.
  * `chrome.runtime.sendMessage` serialises as JSON, JSON.stringify throws on BigInt, and
  * `send()` caught the throw and returned null. The message therefore never arrived, the
- * ledger never received a price snapshot, and `pricing.drip` — the highest-value detector in
- * the product — could never fire. All 200 unit tests passed throughout, because not one of
+ * ledger never received a price snapshot, and `pricing.drip`, the highest-value detector in
+ * the product, could never fire. All 200 unit tests passed throughout, because not one of
  * them crossed the messaging boundary.
  */
 const money = (minor: bigint) => ({ amount: minor, currency: "USD", confidence: 0.9 });
@@ -56,7 +56,7 @@ describe("findUnserializable", () => {
 });
 
 describe("PriceSnapshot wire encoding", () => {
-  it("a RAW snapshot is NOT sendable — this is the bug that shipped", () => {
+  it("a RAW snapshot is NOT sendable, this is the bug that shipped", () => {
     expect(findUnserializable(SNAPSHOT)).toContain("BigInt");
     expect(() => JSON.stringify(SNAPSHOT)).toThrow();
   });

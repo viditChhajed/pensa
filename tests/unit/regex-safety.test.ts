@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
  * Guard against stateful-global-regex bugs across the whole codebase.
  *
  * A regex with the `g` (or `y`) flag carries a mutable `lastIndex`. Reusing one across calls
- * with `.test()` or `.exec()` makes it return alternating results for identical input — it
+ * with `.test()` or `.exec()` makes it return alternating results for identical input, it
  * matches, then fails, then matches. That is silent, non-deterministic, and it already cost
  * us once: the PII scrubber re-entered its own global pattern inside a replace callback, so
  * card numbers were REPORTED as redacted while staying in the file.
@@ -68,7 +68,7 @@ describe("no stateful global regex is reused with .test() or .exec()", () => {
         const match = unsafe.exec(source);
         expect(
           match,
-          `${file}: "${name}" is a global regex reused with .${match?.[1]}() — lastIndex ` +
+          `${file}: "${name}" is a global regex reused with .${match?.[1]}(), lastIndex ` +
             "persists between calls, so identical input alternates between matching and not. " +
             "Use a non-global regex, or String.matchAll.",
         ).toBeNull();

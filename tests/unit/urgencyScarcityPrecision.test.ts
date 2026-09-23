@@ -7,7 +7,7 @@ import { contextFrom } from "./helpers";
  *
  * `npm run spot:check` drove the extension over 22 real retailers and recorded every claim it
  * made. `corpus/adjudication.md` is that list, read one claim at a time. These are the ones
- * that were wrong — the strings, verbatim — and the ones that were right and must survive the
+ * that were wrong, the strings, verbatim, and the ones that were right and must survive the
  * fix, because a precision fix that quietly costs recall is not a fix, it is a trade nobody
  * agreed to.
  *
@@ -32,7 +32,7 @@ describe("urgency.countdown does not read a product title as a deadline", () => 
    * reporting script, which is how they appear in `corpus/adjudication.md`.
    *
    * The Eventbrite pair is the diagnosis worth keeping: they are the accessible names of the
-   * Save and Share buttons on an event card, and they matched `event: nyc grocery run` —
+   * Save and Share buttons on an event card, and they matched `event: nyc grocery run`,
    * "event" plus the optional-plural `runs?` picking up a NOUN fourteen characters later.
    * Nothing about a deadline appears in either string.
    *
@@ -100,8 +100,8 @@ describe("urgency.countdown does not read a product title as a deadline", () => 
    * The three REI firings, adjudicated as CORRECT and left alone.
    *
    * They looked like a membership pitch with no deadline in them, and the 60-character
-   * truncation is why. The corpus holds the same banner in full — `corpus/labels.jsonl`, where
-   * it is labelled a positive — and it ends "…when you spend $50+, thru 11/12. Terms apply."
+   * truncation is why. The corpus holds the same banner in full, `corpus/labels.jsonl`, where
+   * it is labelled a positive, and it ends "…when you spend $50+, thru 11/12. Terms apply."
    * That is a dated deadline on a membership offer, matched by the `thru <date>` rule, and it
    * is exactly what this detector is for. No change was made for these.
    */
@@ -179,7 +179,7 @@ describe("scarcity.stock does not read a catalogue dump as a stock claim", () =>
   it("claims a Zappos tile's Low Stock badge once, and quotes the badge", () => {
     /**
      * The audit's only scarcity false positive, reconstructed. Note it is also the only
-     * scarcity firing with NO lexeme tag — the tell that it came from the container pass,
+     * scarcity firing with NO lexeme tag, the tell that it came from the container pass,
      * which matches the parent's joined text but tags lexemes from the node's own.
      */
     const hits = claimsOn(
@@ -212,8 +212,8 @@ describe("scarcity.stock does not read a catalogue dump as a stock claim", () =>
 /**
  * Audit run 2. The same Zappos row, sent back a second time.
  *
- * The first fix for this (412f888) was verified against a three-level fixture — the one above
- * — and reported as "fires before, silent after". It never stopped firing in the field: run 2
+ * The first fix for this (412f888) was verified against a three-level fixture, the one above
+ *, and reported as "fires before, silent after". It never stopped firing in the field: run 2
  * has it again, 16 times, byte for byte. The reason is that the fixture was shallow.
  * `selectorPath` keeps only the deepest 12 levels, so on a real grid tile the badge's path and
  * its grandparent's path start at DIFFERENT ancestors and share no prefix, and the ancestry
@@ -222,8 +222,8 @@ describe("scarcity.stock does not read a catalogue dump as a stock claim", () =>
  *
  * So this reconstruction is taken from `__scarcity-probe.mjs` against the live page, tags and
  * depth included: the badge sat at depth 20 inside `<dl aria-hidden>` as `dd:nth-of-type(4)`,
- * with the product's attribute list — the `<dt>`/`<dd>` pairs that join into "brand name
- * birkenstock product name birki flow eva clog…" — as its siblings.
+ * with the product's attribute list, the `<dt>`/`<dd>` pairs that join into "brand name
+ * birkenstock product name birki flow eva clog…", as its siblings.
  */
 describe("scarcity.stock survives a real grid tile, where selector paths are truncated", () => {
   /** Nest deep enough that selectorPath's 12-level cap actually bites, as zappos.com does. */
@@ -275,7 +275,7 @@ describe("scarcity.stock survives a real grid tile, where selector paths are tru
 /**
  * Audit run 2, temu.com/login.html: "Low stock items alerts", four times, and it SURFACED.
  *
- * The probe shows what it is — a benefit blurb in the sign-in page footer, next to "Faster &
+ * The probe shows what it is, a benefit blurb in the sign-in page footer, next to "Faster &
  * more secure checkout", under `data-tooltip="FooterBenefitItem_lowstock"`. It is an offer to
  * tell you about low stock later. Nothing on the page is running out.
  */
@@ -307,7 +307,7 @@ describe("scarcity.stock does not read an offer of stock alerts as a stock claim
 
   /**
    * The seam, asserted so the trade is visible. A notification feature is named in the plural
-   * — it is a class of mail you can receive — whereas "alert" in the singular is badge
+   *, it is a class of mail you can receive, whereas "alert" in the singular is badge
    * English, an interjection announcing the fact. That distinction is a judgement: nothing in
    * the labelled corpus exercises either phrasing. If it turns out to be wrong, this is the
    * test to argue with.
@@ -324,7 +324,7 @@ describe("scarcity in a terms footnote is counted, never surfaced", () => {
    * "While supplies last" is scarcity language wherever it appears, and all three of these are
    * labelled positive in the corpus, so silencing them would be both a recall loss and a
    * disagreement with the labels. But a sentence wedged between "Exclusions apply" and "Terms
-   * apply" is a lawyer bounding an offer, not a badge bounding a decision — and the audit
+   * apply" is a lawyer bounding an offer, not a badge bounding a decision, and the audit
    * recorded three cards for what a shopper sees as one footnote.
    *
    * So the claim is kept and the interruption is not: above the log threshold, below the

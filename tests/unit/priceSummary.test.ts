@@ -6,12 +6,12 @@ import { contextFrom } from "./helpers";
  * Why pricing.drip never fired on any site, in one sentence: a summary row is two sibling
  * elements, and nothing could read them together.
  *
- * `harvest` accepts an element only if it has DIRECT text, so `<div class="row">` — whose
- * text lives entirely in its children — is never a candidate. `<span>Subtotal</span>` has no
+ * `harvest` accepts an element only if it has DIRECT text, so `<div class="row">`, whose
+ * text lives entirely in its children, is never a candidate. `<span>Subtotal</span>` has no
  * digit or currency glyph and fails the character-class prefilter. Only the bare
  * `<span>$40.00</span>` survives, and `extractPriceSnapshot` reads a single candidate's text,
  * so the label in its sibling was unreachable. Subtotal, total and every fee came back empty
- * on pages that plainly displayed all of them — which silently disabled both cross-stage
+ * on pages that plainly displayed all of them, which silently disabled both cross-stage
  * detectors, the highest-severity patterns in the taxonomy.
  *
  * The fix reads `containerText` (the parent's joined text) when a candidate is a bare price.
@@ -79,8 +79,8 @@ describe("summary rows split across sibling elements", () => {
 /**
  * Lodging fee labels, added before spot-checking a hotel booking.
  *
- * These are the best-known drip charges in the industry — the destination fee is the one
- * the FTC and several state attorneys general have actually litigated over — and every one
+ * These are the best-known drip charges in the industry, the destination fee is the one
+ * the FTC and several state attorneys general have actually litigated over, and every one
  * of them classified as `unknown`, reaching fees[] only through the summary-row fallback
  * rather than being recognised. pricing.drip compares fees across stages, so a hotel is the
  * most likely place for it to fire and the labels have to land.
@@ -104,7 +104,7 @@ describe("lodging fees", () => {
     });
   }
 
-  // A blended "taxes and fees" line is a fee line — the fees hide inside it. A bare tax is
+  // A blended "taxes and fees" line is a fee line, the fees hide inside it. A bare tax is
   // not: it is universal and legally set, and calling it drip would be wrong.
   for (const label of ["Sales tax", "VAT", "Occupancy tax", "GST"]) {
     it(`still classifies "${label}" as tax, not a fee`, () => {

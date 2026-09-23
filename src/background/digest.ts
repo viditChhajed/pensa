@@ -50,7 +50,7 @@ export interface DigestResult {
    * Exactly one decision per input, carrying that input's index.
    *
    * The index is the point. Decisions used to carry only a patternId, and the caller matched
-   * them back to candidates with `find(patternId)` — so when a page had three different
+   * them back to candidates with `find(patternId)`, so when a page had three different
    * scarcity messages, all three recorded events carried the FIRST message's text and
    * confidence. The counts were right and every row after the first described the wrong thing.
    */
@@ -173,7 +173,7 @@ export function buildDigest(inputs: RankInput[], opts: DigestOptions): DigestRes
  * not deferred.
  */
 export interface FrequencyState {
-  /** `frequencyKey()` keys — origin, stage and page — already digested this session. */
+  /** `frequencyKey()` keys, origin, stage and page, already digested this session. */
   shownThisSession: ReadonlySet<string>;
   /** Origins that have shown a digest at all this session. */
   originsShown: ReadonlySet<string>;
@@ -184,7 +184,7 @@ export interface FrequencyState {
  *
  * It was origin + stage, so on the default "Every time I reach checkout" setting the first
  * card on a shop's product page silenced every later add-to-cart on that shop for the rest of
- * the day — a second product, a third, all quiet, which is not what "every time" says. The
+ * the day, a second product, a third, all quiet, which is not what "every time" says. The
  * page part is the product's resolved identity where one exists, else the path template; a
  * second click on the SAME page still shows nothing. "Once per site" is the setting for
  * anyone who wants the quieter behaviour.

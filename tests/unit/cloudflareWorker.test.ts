@@ -6,7 +6,7 @@ import worker, { type Env } from "../../server/cloudflare/worker";
  *
  * Bind order is the reason this file exists. `statement.bind(a, b, c, …)` is positional, so
  * swapping two arguments writes a pattern id into the detector column and nothing anywhere
- * fails — the insert succeeds, the aggregate is silently wrong, and it stays wrong for as
+ * fails, the insert succeeds, the aggregate is silently wrong, and it stays wrong for as
  * long as the table lives. It is exactly the class of bug that is invisible until someone
  * reads the data months later and cannot explain it.
  */
@@ -161,7 +161,7 @@ describe("cloudflare worker", () => {
   });
 });
 
-describe("cloudflare worker — outcomes", () => {
+describe("cloudflare worker, outcomes", () => {
   it("binds outcome columns in the order the SQL declares, collapsed per cohort", async () => {
     const { bound, env } = fakeD1();
     const o = {

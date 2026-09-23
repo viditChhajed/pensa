@@ -27,7 +27,7 @@ export default defineConfig({
    * A stamp so a loaded extension can say which build it is.
    *
    * `wxt build` recreates .output from scratch, which can leave Chrome's unpacked load
-   * pointing at a directory that no longer exists — the reload button then quietly does
+   * pointing at a directory that no longer exists, the reload button then quietly does
    * nothing and the browser keeps running an old snapshot. That cost a full manual test
    * cycle: the fix was already built and on disk while the browser ran code from before it.
    * There is no way to tell by looking, so the build now says so out loud.
@@ -39,7 +39,7 @@ export default defineConfig({
       /**
        * Where anonymous counts are POSTed. Empty unless the build says otherwise.
        *
-       * Build-time rather than hardcoded, because there is more than one legitimate value —
+       * Build-time rather than hardcoded, because there is more than one legitimate value,
        * nothing for a normal build, a local server for the round-trip e2e, a staging host,
        * and eventually production. A constant in the source would mean the send path could
        * only ever be tested by editing the source, which is the same as not testing it.
@@ -75,7 +75,7 @@ export default defineConfig({
     // `declarativeContent` is GONE. It existed to light the toolbar icon on plausible
     // shopping URLs without reading pages, back when lighting the icon meant "you can turn
     // Pensa on here". Pensa is now on everywhere it is allowed to be, the action is enabled
-    // by default, and the popup opens on every page and says which state applies — so the
+    // by default, and the popup opens on every page and says which state applies, so the
     // page rules decided nothing and the permission bought nothing.
     permissions: ["storage", "activeTab", "alarms"],
 
@@ -88,7 +88,7 @@ export default defineConfig({
      * cannot decide site by site, and the install prompt is the scariest one Chrome shows.
      * What is bought: the detector actually runs. Under the old model nothing happened
      * until someone found the popup, understood a permission prompt, and accepted it per
-     * site — and cross-stage detection needs the whole funnel, which repeatedly meant a
+     * site, and cross-stage detection needs the whole funnel, which repeatedly meant a
      * second grant mid-checkout on a different subdomain.
      *
      * `https://` only, and that is load-bearing. `<all_urls>` and the any-scheme wildcard
@@ -164,7 +164,7 @@ export default defineConfig({
        *
        * It used to throw if `host_permissions` was non-empty, because the whole design was
        * that the extension held nothing at install. That is no longer the design, so the
-       * old rule would now fail every build — but the reasoning behind it was never "no
+       * old rule would now fail every build, but the reasoning behind it was never "no
        * host permissions", it was "never ship a broader reach than the one that was argued
        * for". That is what is asserted now.
        *
@@ -207,14 +207,14 @@ export default defineConfig({
        * quietly: the extension would hold the broad pattern and exclude nothing, so Chrome would
        * inject on banks, patient portals and webmail, and the only thing standing between
        * that and the user would be a runtime check in a file nobody re-reads. Losing the
-       * rulepack — a bad merge, a renamed file, a JSON typo caught as an empty array — has
+       * rulepack, a bad merge, a renamed file, a JSON typo caught as an empty array, has
        * to stop the build rather than change the product.
        */
       const scripts = m.content_scripts as { exclude_matches?: string[] }[];
       const excludes = scripts[0]?.exclude_matches ?? [];
       if (excludes.length === 0) {
         throw new Error(
-          "The content script ships NO exclude_matches. host_permissions is https://*/* — " +
+          "The content script ships NO exclude_matches. host_permissions is https://*/*, " +
             "without the denylist-derived exclusions Chrome would inject on banking, " +
             "health, government and webmail hosts. Check rulepacks/denylist.v1.json.",
         );
@@ -233,7 +233,7 @@ export default defineConfig({
      * Keep `dist/` current on EVERY build.
      *
      * `dist` exists because `.output` is deleted and recreated by each build, which can
-     * leave Chrome's unpacked load pointing at a directory that no longer exists — the
+     * leave Chrome's unpacked load pointing at a directory that no longer exists, the
      * reload button then quietly does nothing and the browser keeps running old code. A
      * stable path avoids that.
      *

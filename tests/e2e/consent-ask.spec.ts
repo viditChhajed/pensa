@@ -2,7 +2,7 @@
  * The one-time sharing question and the add-to-cart outcome, in the real built extension.
  *
  * The card lives in a CLOSED shadow root, so neither page script nor Playwright locators can
- * see inside it — deliberately. The accessibility tree can, because that is what a screen
+ * see inside it, deliberately. The accessibility tree can, because that is what a screen
  * reader reads, so the buttons are found and pressed the way assistive technology would find
  * them: by role and name through CDP.
  *

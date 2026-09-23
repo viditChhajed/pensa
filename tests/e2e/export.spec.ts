@@ -99,7 +99,7 @@ async function seed(page: Page, n: number): Promise<void> {
   }, n);
 }
 
-test("Export my data — CLICKED FROM THE OPTIONS UI — downloads parseable JSONL", async () => {
+test("Export my data, CLICKED FROM THE OPTIONS UI, downloads parseable JSONL", async () => {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/options.html`);
   await ensureSchema(page);
@@ -119,7 +119,7 @@ test("Export my data — CLICKED FROM THE OPTIONS UI — downloads parseable JSO
   const lines = text.trim().split("\n");
   expect(lines).toHaveLength(6);
 
-  // One JSON object per line is the whole point of the format — assert it parses line by
+  // One JSON object per line is the whole point of the format, assert it parses line by
   // line, not as a blob, because that is how jq and pandas will read it.
   const rows = lines.map((l) => JSON.parse(l) as Record<string, unknown>);
   for (const r of rows) {

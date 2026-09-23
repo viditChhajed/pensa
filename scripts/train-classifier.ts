@@ -10,7 +10,7 @@
  * data it never saw. Everything else is reported and dropped.
  *
  * The held-out split is by SITE, not by row. Splitting rows at random lets the same sentence
- * — retail markup repeats one string across a page — land on both sides, and the model then
+ *, retail markup repeats one string across a page, land on both sides, and the model then
  * scores beautifully on text it has effectively memorised. A site-wise split asks the only
  * question that matters: does this work on a shop it has never seen?
  */
@@ -32,7 +32,7 @@ const MIN_RECALL = 0.5;
  * Negatives per positive.
  *
  * Labelling every snippet against every pattern produces roughly 400 negatives for each
- * positive, and a logistic regression trained on that learns one rule — say no — which
+ * positive, and a logistic regression trained on that learns one rule, say no, which
  * scores 99.7% accuracy and is useless. Capped rather than balanced 1:1 because negatives
  * are genuinely the common case and the model should know that.
  */
@@ -48,7 +48,7 @@ interface LabelRow {
   undo?: boolean;
   /** "no to the one I was asked, but it IS this one". See the labeller's D key. */
   alsoPattern?: string;
-  /** Free text, when `alsoPattern` is "other" — a technique the taxonomy does not have. */
+  /** Free text, when `alsoPattern` is "other", a technique the taxonomy does not have. */
   alsoText?: string;
 }
 
@@ -86,7 +86,7 @@ for (const r of byKey.values()) {
    *
    * This is where most of the yield comes from. Someone labelling scarcity notices a
    * countdown in passing; without somewhere to put that, they answer "no" and the
-   * observation — a free positive for another pattern, spotted by a human — is thrown away.
+   * observation, a free positive for another pattern, spotted by a human, is thrown away.
    */
   if (!r.alsoPattern) continue;
 
@@ -182,7 +182,7 @@ for (const [patternId, rows] of [...byPattern.entries()].sort()) {
    * 0.5 is the right default for balanced data and the wrong one here: with negatives
    * outnumbering positives four to one, a well-calibrated model puts most true positives
    * below 0.5 and the first run reported recall of 0.11, 0.22 and 0.00 while precision was
-   * 0.80 to 1.00. That is not a model that cannot tell them apart — it is a model being read
+   * 0.80 to 1.00. That is not a model that cannot tell them apart, it is a model being read
    * at the wrong operating point.
    *
    * Tuned on training data specifically, never on the holdout. Sweeping thresholds against
@@ -210,7 +210,7 @@ for (const [patternId, rows] of [...byPattern.entries()].sort()) {
    *
    * The first run that produced a model reported held-out precision and recall of 1.00 for
    * social_proof, which is the sort of number that should provoke suspicion rather than
-   * satisfaction — with few enough held-out positives, a model that memorised one string
+   * satisfaction, with few enough held-out positives, a model that memorised one string
    * template scores perfectly and has learned nothing. Refusing here is cheaper than
    * discovering it after shipping.
    */
@@ -218,7 +218,7 @@ for (const [patternId, rows] of [...byPattern.entries()].sort()) {
   if (heldOutPositives < MIN_HELDOUT_POSITIVES) {
     line(
       "SKIPPED",
-      `only ${heldOutPositives} held-out positive(s) — any precision figure over that many ` +
+      `only ${heldOutPositives} held-out positive(s), any precision figure over that many ` +
         "is noise, whatever it says",
     );
     continue;
@@ -260,7 +260,7 @@ if (unnamed.size > 0) {
     for (const e of examples) console.log(`          ${JSON.stringify(e)}`);
   }
   console.log(
-    `\n  These are not trained — there is no detector to train. They are the argument for\n` +
+    `\n  These are not trained, there is no detector to train. They are the argument for\n` +
       `  adding one, which is a deliberate decision rather than something this script makes.`,
   );
 }
@@ -276,7 +276,7 @@ if (novelty.length > 0) {
 
 const kept = Object.keys(models).length;
 if (kept === 0) {
-  console.log(`\n  Nothing qualified. No weights written — a partially trained model scoring`);
+  console.log(`\n  Nothing qualified. No weights written, a partially trained model scoring`);
   console.log(`  real pages would be worse than the lexicons it replaces.\n`);
   process.exit(0);
 }

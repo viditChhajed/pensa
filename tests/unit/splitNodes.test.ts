@@ -5,15 +5,15 @@ import { contextFrom } from "./helpers";
 /**
  * Detectors must read a SENTENCE, and sites do not keep sentences in one element.
  *
- * EVAL run 1 ranked this the second most expensive defect in the product — "detectors reason
- * at the wrong node granularity" — and it was still live. Measured before the fix:
+ * EVAL run 1 ranked this the second most expensive defect in the product, "detectors reason
+ * at the wrong node granularity", and it was still live. Measured before the fix:
  *
  *   "Only 3 left at this price"          flat 0.85   split across spans: NO DETECTION AT ALL
  *   "or 4 interest-free payments of $X"  flat 0.85   amount in a sibling span: 0.70, under
  *                                                    the 0.75 threshold, twice in the field
  *
  * Neither is a lexicon gap. The lexicons match the copy exactly. The detector simply never
- * saw the whole sentence, because a number was bolded or animated in its own element — which
+ * saw the whole sentence, because a number was bolded or animated in its own element, which
  * is how retailers render precisely the numbers these detectors care about.
  *
  * The fallback is deliberately shallow: the IMMEDIATE parent's joined text, one claim per

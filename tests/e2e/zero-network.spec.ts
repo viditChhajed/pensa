@@ -7,13 +7,13 @@
  *
  * That claim narrowed when telemetry was built, and these tests narrowed with it rather than
  * being quietly left to pass for the wrong reason. Two separate things are now asserted:
- * with consent OFF — the shipped default — egress is still exactly zero; and with consent ON
+ * with consent OFF, the shipped default, egress is still exactly zero; and with consent ON
  * the only address the extension can contact is the one declared in TELEMETRY_ENDPOINT.
  * A test called "has no transmit path" would now be a test whose name is false.
  *
  * Method: every fixture page's own requests are stubbed by a catch-all route, so the page
- * itself can generate no traffic. Anything Playwright then reports at the context level —
- * including requests made by the service worker — can only have come from the extension.
+ * itself can generate no traffic. Anything Playwright then reports at the context level,
+ * including requests made by the service worker, can only have come from the extension.
  */
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -162,13 +162,13 @@ test("the built bundles contain no network-calling code at all", async () => {
    * allowlist origins, Zod's json-schema ids, and the tinyurl/bit.ly links Dexie puts in its
    * error messages. A regex cannot tell a string constant from a request target.
    *
-   * The previous version had the opposite flaw — it asserted no `fetch("https://…")` literal
+   * The previous version had the opposite flaw, it asserted no `fetch("https://…")` literal
    * appears, which stopped meaning anything the moment the sender became
    * `fetch(TELEMETRY_ENDPOINT, …)`. A variable is invisible to it.
    *
    * So this asserts the two things that survive minification and mean what they say: no URL
    * is fetched as a literal, and there is at most one fetch call site in the whole build.
-   * ONE call site is what makes the runtime test below decisive — that test observes every
+   * ONE call site is what makes the runtime test below decisive, that test observes every
    * address actually contacted, which is the real guarantee, and a single sender is what
    * stops a second, untested path existing beside it.
    */
@@ -200,7 +200,7 @@ test("with consent ON, the only address that can be contacted is the declared en
   );
 
   // Two different correct outcomes, and the test says which one it is rather than passing
-  // silently on either. With no endpoint deployed the answer is still zero — but zero
+  // silently on either. With no endpoint deployed the answer is still zero, but zero
   // BECAUSE nothing is configured, not because no code path exists.
   const offEndpoint = egress.filter((r) => !r.url.startsWith(TELEMETRY_ENDPOINT || "\u0000"));
   expect(

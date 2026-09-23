@@ -5,7 +5,7 @@ import { applyStrike, contextFrom } from "./helpers";
 /**
  * Everything framing.savings_ratio claimed in the live precision audit of 22 retailers.
  *
- * Nineteen firings. Every one of them wrong — which is four more than the adjudication
+ * Nineteen firings. Every one of them wrong, which is four more than the adjudication
  * counted, because three of the four it passed were wrong for reasons the quoted text does
  * not show. They are in here as negatives with the arithmetic written out, so nobody has to
  * re-derive it to know why they are not positives.
@@ -15,7 +15,7 @@ import { applyStrike, contextFrom } from "./helpers";
  *   The quotes in `corpus/adjudication.md` are 60-character truncations of a console line,
  *   so the container that actually scored is not recoverable. Each case below therefore
  *   appears twice: verbatim as quoted, and inside a RECONSTRUCTED container built to the
- *   shape the audit describes — a grid row holding two products. Every reconstruction was
+ *   shape the audit describes, a grid row holding two products. Every reconstruction was
  *   checked to fire on the pre-fix detector before it was written down; a fixture that does
  *   not fire on the old code proves nothing about the new code.
  *
@@ -50,7 +50,7 @@ type Case = [string, string, "pdp" | "browse" | "cart"];
  *
  * All eight are the same bug: `ABSOLUTE_CLAIM` was `/\b(?:save|you save|off)\b/`, and the
  * colourway "Off White" satisfies `\boff\b`. The detector then took the max and the min
- * price in the container — two different shoes — and reported the difference as a discount.
+ * price in the container, two different shoes, and reported the difference as a discount.
  */
 const ZAPPOS: Case[] = [
   [
@@ -98,7 +98,7 @@ const ZAPPOS: Case[] = [
 /**
  * The seven Newegg firings.
  *
- * Here the stray claim word is real — a neighbouring tile genuinely says "Save $20" — which
+ * Here the stray claim word is real, a neighbouring tile genuinely says "Save $20", which
  * is the harder version of the same mistake. A claim belongs to ONE product; sharing a grid
  * row with it is not evidence that it describes yours.
  */
@@ -144,7 +144,7 @@ const NEWEGG: Case[] = [
  * The Ulta firing, which the adjudication flagged for a second look and was right to.
  *
  * It is tagged [percent-framing] rather than [absolute-framing], so it is not the `\boff\b`
- * bug — but it is the same pairing error wearing a percent badge: a recommendations carousel
+ * bug, but it is the same pairing error wearing a percent badge: a recommendations carousel
  * under the PDP, one tile's price against another tile's, with a third tile's "% off".
  */
 const ULTA: Case[] = [
@@ -171,7 +171,7 @@ describe("the three firings the audit passed were not correct either", () => {
    * Shown as "Save 27%". As an amount the same discount is $1,350.00.
    *
    * The Rule of 100 says the flattering framing on a $4,999 item is the dollar amount, and
-   * this page chose the percentage — the SMALLER-looking number. By the detector's own
+   * this page chose the percentage, the SMALLER-looking number. By the detector's own
    * premise there is nothing here to flag.
    *
    * It fired anyway because `PERCENT_CLAIM` required a word after the "%" ("27% off"), so
@@ -184,7 +184,7 @@ describe("the three firings the audit passed were not correct either", () => {
   });
 
   /**
-   * Both SHEIN firings WERE arithmetic on numbers that did not exist — and one of them is
+   * Both SHEIN firings WERE arithmetic on numbers that did not exist, and one of them is
    * now arithmetic on numbers that do.
    *
    * SHEIN glues price and badge into one text node. `parsePrices` used to read the run
@@ -194,7 +194,7 @@ describe("the three firings the audit passed were not correct either", () => {
    *
    * That was a money.ts bug, not a framing one, and fixing it changed the facts here rather
    * than confirming them. With the parser reading $12.99 and $3.60 correctly, the first
-   * string is a real was/now pair on a sub-$100 item presented as a percentage — which is
+   * string is a real was/now pair on a sub-$100 item presented as a percentage, which is
    * the Rule of 100 working exactly as this detector describes it, so it fires, and should.
    *
    * The second string still does not fire, and that is the important one: it is TWO
@@ -224,8 +224,8 @@ describe("the three firings the audit passed were not correct either", () => {
 describe("framing still fires when a discount is actually claimed", () => {
   /**
    * The detector is worth keeping only if it still sees the thing it is for. These are the
-   * two textbook shapes — a cheap item framed as a percentage, an expensive one framed as an
-   * amount — written the way a retailer writes them: the reference price first, the live
+   * two textbook shapes, a cheap item framed as a percentage, an expensive one framed as an
+   * amount, written the way a retailer writes them: the reference price first, the live
    * price next to it, and the claim naming its own number.
    */
   it("fires on a percentage that flatters a small saving", () => {

@@ -6,7 +6,7 @@
  * Everything here exists to make one hour of a person's attention produce as many usable
  * examples as possible, because a labelling job that is not finished trains nothing:
  *
- *   One keystroke per item, and the item advances itself. F is yes, J is no — opposite
+ *   One keystroke per item, and the item advances itself. F is yes, J is no, opposite
  *   hands, home row, no reaching and no mouse. A three-click UI at 2000 items is an
  *   afternoon; this is about forty minutes.
  *
@@ -21,7 +21,7 @@
  *   half a second later and cannot correct without stopping.
  *
  *   A fourth answer: "no to THIS, but it is something". Asking only yes/no throws away the
- *   most informative thing a person notices — that a snippet is a countdown while they were
+ *   most informative thing a person notices, that a snippet is a countdown while they were
  *   being asked about stock. That is a positive example for another pattern, seen for free,
  *   and without somewhere to put it the labeller answers "no" and the observation is lost.
  *   It also doubles as a way to name a technique the taxonomy does not have yet: the free
@@ -83,7 +83,7 @@ function loadLabels() {
 }
 
 const page = /* html */ `
-<!doctype html><meta charset="utf-8"><title>Label — Pensa</title>
+<!doctype html><meta charset="utf-8"><title>Label, Pensa</title>
 <style>
   :root { color-scheme: light dark; --fg:#111; --muted:#6b7280; --bg:#fff; --line:#e5e7eb;
           --yes:#047857; --no:#b91c1c; --accent:#2563eb; }
@@ -165,7 +165,7 @@ function render() {
   const it = current();
   if (!it) {
     el("main").innerHTML =
-      '<div class="done"><h2>Done — every item labelled.</h2>' +
+      '<div class="done"><h2>Done, every item labelled.</h2>' +
       '<p>Run <code>npm run corpus:train</code> next.</p></div>';
     el("pat").textContent = "Finished";
     el("prog").textContent = state.total + " items";
@@ -197,7 +197,7 @@ function render() {
 
   if (picking) {
     // Focused, so naming something just works without a click. The digit keys are taken
-    // back from it in the handler WHILE IT IS EMPTY — the first attempt left it unfocused to
+    // back from it in the handler WHILE IT IS EMPTY, the first attempt left it unfocused to
     // protect the digits, and then typing did nothing at all, which is worse.
     document.getElementById("otherText")?.focus();
   }
@@ -213,12 +213,12 @@ function render() {
  * "No to the one I asked about, but it IS something."
  *
  * Numbered so the whole answer is two keystrokes: D, then a digit. The pattern currently
- * being asked about is listed but dimmed and unselectable — choosing it would mean "no, but
+ * being asked about is listed but dimmed and unselectable, choosing it would mean "no, but
  * yes", and offering a contradiction as a button invites a misclick rather than preventing
  * one.
  *
  * The free text box is the important half. It is how a technique the taxonomy does not have
- * — a checkout donation prompt, a decoy tier, anything nobody anticipated — gets RECORDED
+ *, a checkout donation prompt, a decoy tier, anything nobody anticipated, gets RECORDED
  * rather than discarded as a "no". Every recall failure this project has had came from a
  * list written in advance; this is the one place a person can write outside it.
  */
@@ -238,11 +238,11 @@ function pickerHtml(it) {
   return (
     '<div class="picker">' +
     "<h4>Which one is it?</h4>" +
-    '<p class="hint">Press a number. Or type a name for something not on the list — ' +
+    '<p class="hint">Press a number. Or type a name for something not on the list, ' +
     "that is how a technique nobody has written down yet gets recorded. " +
     "<kbd>Esc</kbd> to go back.</p>" +
     "<ol>" + rows + "</ol>" +
-    '<input id="otherText" placeholder="something else — name it, then Enter" ' +
+    '<input id="otherText" placeholder="something else, name it, then Enter" ' +
     'autocomplete="off" spellcheck="false" />' +
     "</div>"
   );
@@ -260,7 +260,7 @@ async function answer(label, also) {
   done++;
   render();
   // Fire and forget, but ordered: the server appends, so a slow request cannot reorder or
-  // lose an answer. The UI never waits on the network — that wait is the whole cost at
+  // lose an answer. The UI never waits on the network, that wait is the whole cost at
   // 2000 items.
   fetch("/api/label", {
     method: "POST",
@@ -309,7 +309,7 @@ addEventListener("keydown", (e) => {
     }
 
     /**
-     * A digit picks — but only while nothing has been typed.
+     * A digit picks, but only while nothing has been typed.
      *
      * Once someone is part way through naming something, a digit belongs to what they are
      * writing: "buy 2 get 1 free" is a perfectly good name for a technique, and swallowing
@@ -405,6 +405,6 @@ server.listen(PORT, () => {
   const opener =
     process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
   execFile(opener, [`http://localhost:${PORT}`], () => {
-    /* no browser, no problem — the URL is printed above */
+    /* no browser, no problem, the URL is printed above */
   });
 });

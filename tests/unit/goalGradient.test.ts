@@ -12,7 +12,7 @@ import { contextFrom } from "./helpers";
  * That is EVAL run 1's top finding repeating itself: the lexicon was written against copy I
  * imagined, the fixtures came out of the same imagination, and the tests therefore agreed
  * with themselves. The cases below came from somebody recalling what shops actually say,
- * which is the only reliable source for this — and the reason `npm run label` exists.
+ * which is the only reliable source for this, and the reason `npm run label` exists.
  *
  * The negatives are the load-bearing half. A THRESHOLD POLICY is not a goal gradient: "free
  * shipping on orders over $50" states a rule, names no remainder, and addresses nobody. If

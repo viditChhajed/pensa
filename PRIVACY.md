@@ -1,6 +1,6 @@
-# Privacy Policy — Pensa
+# Pensa Privacy Policy
 
-**Last updated: 2026-09-18**
+**Last updated: 2026-09-23**
 
 ## The short version
 
@@ -10,10 +10,10 @@ page is processed on your device and stays on your device.
 
 The one exception is a setting you have to switch on yourself: sharing which shops use which
 techniques, and whether you added the item to your cart after seeing them, described in full
-below. It is off unless you turn it on. Pensa asks you about it once, on the first card it shows
-you; closing that card without answering counts as no.
+below. It is off unless you turn it on. Pensa asks you about it once, on the card that opens when you
+install it, and again on your first in-page card only if you never answered there.
 
-With sharing off, nothing reaches any server — that is what the "zero outbound requests" test
+With sharing off, nothing reaches any server. That is what the "zero outbound requests" test
 asserts against the compiled extension. With sharing on, reports go to exactly one address, a
 counting service run by this project whose source is in the public repository's `server/`
 directory, so what it accepts and stores can be read rather than trusted.
@@ -23,7 +23,7 @@ and browse with the extension enabled and sharing off. There will be no requests
 
 ## What the extension does
 
-On the https sites where it runs, it reads the page to notice persuasion techniques —
+On the https sites where it runs, it reads the page to notice persuasion techniques:
 countdown timers, limited-stock messages, crossed-out reference prices, preselected
 checkboxes, and similar. When you add something to a cart or begin checkout, it may show a
 small card with a question about what it noticed.
@@ -36,7 +36,7 @@ not a list it holds; they are simply the pages where these techniques appear.
 Everything below is stored only on your device, in your browser's extension storage, and only
 for pages Pensa has decided are shops. A page that is not a shop is never recorded.
 
-**Detections** — kept 30 days by default (adjustable in Settings):
+**Detections** (kept 30 days by default, adjustable in Settings):
 
 - The pattern type, a confidence number, how long the element was on screen and how much of the
   screen it filled, and the stage of checkout you were at.
@@ -46,12 +46,12 @@ for pages Pensa has decided are shops. A page that is not a shop is never record
   you can see what was matched. On a checkout page, text near a matched element can include
   whatever that page displays, so an excerpt could in principle contain details shown there.
 
-These are recorded as you browse shops — when Pensa notices something, it writes down what the
-page displayed — and again when you add something to your cart or head to checkout, which is
-when it may also show you a card. Each distinct piece of copy is recorded once per page, not
+These are recorded as you browse shops. When Pensa notices something it writes down what the
+page displayed, and it does so again when you add something to your cart or head to checkout,
+which is when it may also show you a card. Each distinct piece of copy is recorded once per page, not
 once per second, and a page it finds nothing on produces nothing.
 
-**Product history** — kept up to 90 days, at most 5,000 products:
+**Product history** (kept up to 90 days, at most 5,000 products):
 
 - For products you view on shops: an identifier for the product (its SKU or barcode where the
   page provides one, otherwise a one-way hash of its address and title), the prices and "was"
@@ -60,15 +60,15 @@ once per second, and a page it finds nothing on produces nothing.
   "was" price that is never actually charged. It is a record of which products you looked at on
   which shops, and it never leaves your device.
 
-**This browsing session** — cleared when you close the browser:
+**This browsing session** (cleared when you close the browser):
 
-- For each shop: which checkout stages you reached, and the prices on each — item price,
-  subtotal, shipping, tax, total, and fee or add-on lines with their labels.
+- For each shop: which checkout stages you reached, and the prices on each (item price,
+  subtotal, shipping, tax, total, and fee or add-on lines with their labels).
 - The label of any add-to-cart button you clicked, and which kinds of add-on you chose or
   declined yourself (for example "gift wrap: chosen"). This is what stops Pensa reporting an
   add-on you picked as one you did not.
 
-**Open page views, only while sharing is on** — at most 30 minutes each:
+**Open page views** (only while sharing is on, at most 30 minutes each):
 
 - For a product or listing page you are looking at: the shop, whether it is a product or
   listing page, and which techniques have been on screen so far. This is how Pensa knows, when
@@ -84,12 +84,12 @@ data").
 ## What it never stores or transmits
 
 - Full URLs or query strings.
-- Anything you type into a page — searches, addresses, messages, payment details.
+- Anything you type into a page: searches, addresses, messages, payment details.
 - Your name, email, phone number, or any account identifier, other than where one appears in
   on-page text near a matched element, as described above.
 - Anything at all about pages that are not shops.
-- Any of the above, off your device, unless you switch on sharing — and even then only the
-  fields listed in that section.
+- Any of the above leaving your device, unless you switch on sharing, and even then only
+  the fields listed in that section.
 
 ## Site permissions
 
@@ -99,7 +99,7 @@ granted the moment you install rather than site by site.
 
 This is a deliberate change from how Pensa previously worked, and it is worth being plain
 about the trade. The earlier design asked for one site at a time, which made the permission
-narrow and the tool nearly useless — a shopper had to already suspect a page before they
+narrow and the tool nearly useless: a shopper had to already suspect a page before they
 could ask Pensa to look at it, which is precisely backwards for a tool whose whole purpose is
 to notice what you did not. Persuasion techniques are not confined to a list of large
 retailers; they turn up on small independent shops, regional sites, and storefronts that did
@@ -124,7 +124,7 @@ does with it, and that is public and testable:
 Pensa itself has no per-site off switch. You can turn detection off entirely, or switch off any
 individual technique, from its Settings page. To keep Pensa off particular sites, use Chrome's
 own control: open `chrome://extensions`, choose Pensa's Details, and set Site access to "On
-specific sites" — Chrome then enforces that regardless of anything Pensa does. Uninstalling
+specific sites". Chrome then enforces that regardless of anything Pensa does. Uninstalling
 removes the permission entirely.
 
 ## Optional: helping measure these techniques
@@ -132,14 +132,17 @@ removes the permission entirely.
 There is a setting to share which shops use which techniques. **It is off by default and there
 is no pre-checked box.**
 
-**How you are asked.** Once, at the bottom of the first card Pensa shows you, after you have
-seen what it does. The question says who builds Pensa, what the data is for, and what is shared,
-in the question itself rather than behind a link. The two answers — "Yes, share" and "No
-thanks" — are the same size and style, neither is selected for you, and closing the card
-without answering is recorded as no. You are not asked again. You can change your answer at
-any time in Settings. While it is off, nothing is transmitted and nothing is even recorded
-for transmission — the queue is not filled and then withheld, because a queue that accumulates
-while you have said no is one that would empty the moment you said yes.
+**How you are asked.** On the card that opens when you install Pensa, and, if you never
+answered there, once more at the bottom of the first in-page card it shows you. Either way the
+question says who builds Pensa, what the data is for, what is shared and what is never shared,
+in the question itself, or one click away under "More details", rather than behind a link to
+somewhere else. The two answers are the same size and style, and neither is selected for you.
+Closing the install card answers nothing; closing the card without answering is recorded as no. Once answered, you
+are not asked again, and you can change your answer at any time in Settings.
+
+While it is off, nothing is transmitted and nothing is even recorded for transmission. The
+queue is not filled and then withheld, because a queue that accumulates while you have said no
+is one that would empty the moment you said yes.
 
 **If you switch it on, it names the shop.** That is its purpose: to build a picture, shop by
 shop, of how often these techniques are used. A report says *"someone saw a countdown on
@@ -155,7 +158,7 @@ There are two kinds of report.
 | detector id | which rule matched |
 | confidence quartile | 1–4, never the score |
 | funnel stage | browse / product / cart / checkout / payment |
-| **shop** | the main domain only, e.g. `shein.com` — never `us.shein.com/products/123` |
+| **shop** | the main domain only, e.g. `shein.com`, never `us.shein.com/products/123` |
 | shop category | e.g. `fast_fashion`, or `other` |
 | rule pack version | |
 | **day** | the date, never a time |
@@ -175,7 +178,7 @@ exactly seven fields and no others:
 | **day** | the date, never a time |
 | **added to cart** | yes or no |
 
-"Added to cart" means you clicked an Add to Cart button, not that the item was actually added —
+"Added to cart" means you clicked an Add to Cart button, not that the item was actually added.
 Pensa does not check. A page's reports are sent as separate counts, never as a list of what one
 page showed together, because that combination could identify the page. Nothing about the item
 is included: not its name, price, or address.
@@ -185,8 +188,8 @@ given shop were followed by an add some share of the time, compared with that sh
 overall. It cannot say the countdown caused the difference, and nothing published from it will
 claim that.
 
-Never included in either kind: the page, the product, the search, the path or the full web address; any page
-text or prices; your account, name, email, or any identifier for you or your browser; and any
+Never included in either kind: the page, the product, the search, the path or the full web
+address; any page text or prices; your account, name, email, or any identifier for you or your browser; and any
 time more precise than the day. The record type is declared `.strict()` in the extension and
 the server independently rejects any report with a field outside that list, so an accidentally
 added field is refused at both ends rather than stored.
@@ -194,8 +197,8 @@ added field is refused at both ends rather than stored.
 The limits, each enforced in code rather than promised here:
 
 - **Only shops can be reported.** Pensa reads each page and decides whether it is selling
-  something before it does anything else. A detection — and therefore a report — can only
-  exist on a page that passed that check. A site you visit that is not a shop is never
+  something before it does anything else. A detection, and therefore a report, can only exist
+  on a page that passed that check. A site you visit that is not a shop is never
   reported, whatever it is.
 - **The day, not the time.** A shop plus an exact time is far easier to tie to one person's
   browsing than a shop plus a date, and measuring how common a technique is needs no more
@@ -215,7 +218,7 @@ The limits, each enforced in code rather than promised here:
   in its deployed configuration. Like any website, the request still passes through the
   hosting provider's network on its way in; nothing about you is kept once the report has
   been counted.
-- **Switching the setting off deletes the queue immediately.** Not at the next send — data
+- **Switching the setting off deletes the queue immediately.** Not at the next send: data
   gathered under a permission you have withdrawn is not held pending a change of mind.
 
 You can see the exact reports that would be sent, verbatim, in **Settings → Help measure these
@@ -224,8 +227,8 @@ your data is not the same as showing you the data.
 
 **What the collected data is used for.** Research into persuasion techniques in online shopping:
 how common they are, which shops use them, where in the checkout they appear, how often page
-views that show each one are followed by an add to cart, and how all of that changes over time. Findings
-may be published. Anything published is aggregated so that no single browsing session can be
+views that show each one are followed by an add to cart, and how all of that changes over
+time. Findings may be published. Anything published is aggregated so that no single browsing session can be
 picked out: a shop and technique are only included once enough independent batches have
 reported them. The data is not sold, licensed, or used for advertising.
 

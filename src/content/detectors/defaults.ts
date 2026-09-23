@@ -1,7 +1,7 @@
 /**
  * defaults.preselected
  *
- * A checked checkbox is only interesting if what it opts you INTO costs something —
+ * A checked checkbox is only interesting if what it opts you INTO costs something,
  * money, data, or mail. A preselected "remember me" or "I am over 18" is not the default
  * effect this taxonomy entry describes, and firing on those would be noise.
  *
@@ -92,7 +92,7 @@ function optionPrice(n: CandidateNode): bigint | null {
  * Is this checked radio dearer than the cheapest option in its own group?
  *
  * The signal was called `nonCheapestRadio` and scored every checked radio near a cost word,
- * without looking at a single price — so a default "Standard shipping" radio whose container
+ * without looking at a single price, so a default "Standard shipping" radio whose container
  * also mentioned "Express shipping" was reported as a costly preselection. This compares the
  * group's prices and returns false whenever they cannot be read unambiguously, because
  * "we could not tell" must not become "it was the expensive one".
@@ -132,7 +132,7 @@ export const defaultsDetector: Detector = {
       if (n.attrs.userTouched === "true") continue;
       if (isRadio && !isNonCheapestInGroup(n, ctx)) continue;
 
-      // The control itself almost never holds its own label — a <label> wrapper carries no
+      // The control itself almost never holds its own label, a <label> wrapper carries no
       // qualifying text so it is not a candidate, which is what `containerText` is for.
       const context =
         `${n.accessibleName} ${n.attrs["aria-label"] ?? ""} ${n.attrs.name ?? ""} ${n.containerText}`

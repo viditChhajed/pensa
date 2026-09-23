@@ -1,4 +1,4 @@
-# Spot-check guide — the two things only you can do
+# Spot-check guide, the two things only you can do
 
 Both need a human at a real Chrome window. Neither can be automated: one raises a native OS
 dialog, the other is a judgement call about whether a detection was correct.
@@ -29,8 +29,8 @@ grant chain that has never been verified.
 3. Click the icon. The popup opens and should say *"www.etsy.com looks like a shopping site."*
 4. Click **Enable on this site**.
 
-   ### ✅ PASS — Chrome's permission prompt appears immediately
-   ### ❌ FAIL — no prompt appears
+   ### ✅ PASS, Chrome's permission prompt appears immediately
+   ### ❌ FAIL, no prompt appears
 
    A failure here means an `await` crept in ahead of `permissions.request()` and consumed the
    user gesture. The popup resolves the origin when it *opens*, precisely so the click
@@ -40,13 +40,13 @@ grant chain that has never been verified.
 5. Click **Allow**, then reload the Etsy page.
 6. Open `chrome://extensions` → **Inspect views: service worker**.
 
-   ### ✅ PASS — no `[pensa] content script registration failed`
-   ### ❌ FAIL — that error appears
+   ### ✅ PASS, no `[pensa] content script registration failed`
+   ### ❌ FAIL, that error appears
 
 7. In that same inspector: **Application → Storage → Extension storage → Session**.
 
-   ### ✅ PASS — a key like `ledger:https://www.etsy.com` exists
-   ### ❌ FAIL — no such key
+   ### ✅ PASS, a key like `ledger:https://www.etsy.com` exists
+   ### ❌ FAIL, no such key
 
    This is the silent failure the plan warns about (§1.3): registration succeeding is **not**
    injection. A registered script stays inert without permission, and the no-op looks exactly
@@ -73,7 +73,7 @@ overridden by one.
 This is plan §10, and it is the gate that unblocks everything else. Thresholds and
 default-enable/disable decisions are waiting on these numbers.
 
-Record every firing in [EVAL.md](EVAL.md) — the table is already laid out with the exact
+Record every firing in [EVAL.md](EVAL.md), the table is already laid out with the exact
 columns.
 
 ### Target coverage
@@ -87,18 +87,18 @@ the allowlist so enablement is one click:
 | Category | Suggested | Why it earns a slot |
 |---|---|---|
 | **ota_travel** | booking.com, expedia.com | Highest known pattern density. Scarcity, urgency, live activity, drip fees, all at once. **Do not skip.** |
-| **ticketing** | ticketmaster.com, stubhub.com | The reference case for fees first disclosed at payment — the single strongest finding the tool can produce. |
+| **ticketing** | ticketmaster.com, stubhub.com | The reference case for fees first disclosed at payment, the single strongest finding the tool can produce. |
 | **airline** | spirit.com, frontier.com | Drip pricing and preselected add-ons, by design. |
 | **fast_fashion** | shein.com, asos.com | Countdown timers, stock counters, live-activity toasts. |
 | **food_delivery** | doordash.com, ubereats.com | Fee stacking disclosed late. |
-| **marketplace** | amazon.com, etsy.com | Baseline. Dense pages — a good stress test for false positives. |
+| **marketplace** | amazon.com, etsy.com | Baseline. Dense pages, a good stress test for false positives. |
 | **big_box** | target.com, bestbuy.com | Preselected protection plans at checkout. |
 | **electronics** | newegg.com, bestbuy.com | Warranty add-ons, decoy bundles. |
-| **dtc** | glossier.com, allbirds.com | Cleaner design — useful *negative* control. If detectors fire here, suspect noise. |
+| **dtc** | glossier.com, allbirds.com | Cleaner design, useful *negative* control. If detectors fire here, suspect noise. |
 | **subscription_box** | hellofresh.com, chewy.com | Goal-gradient thresholds, auto-renew defaults. |
 
 Six is the minimum. If you only have time for six, take: **ota_travel, ticketing, airline,
-fast_fashion, marketplace, dtc** — the first four for density, marketplace for stress,
+fast_fashion, marketplace, dtc**, the first four for density, marketplace for stress,
 and dtc as the negative control.
 
 ### What to do on each retailer
@@ -119,7 +119,7 @@ The single call that matters most, and the easiest to get wrong:
 > **The tool reports what a page displayed. It never claims the message was untrue.**
 
 So "Only 2 left" on a page that genuinely had 2 left is **correct**, not a false positive.
-A false positive is when the page did not display that pattern at all — e.g.
+A false positive is when the page did not display that pattern at all, e.g.
 `scarcity.stock` firing on "2 sizes left" (genuine variant availability), or
 `urgency.countdown` firing on store opening hours.
 

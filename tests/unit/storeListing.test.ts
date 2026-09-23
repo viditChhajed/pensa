@@ -13,10 +13,10 @@ import { TAXONOMY } from "@/shared/taxonomy";
  * and it is the document least likely to be re-read after the code changes under it.
  *
  * All three of these were live at once when this test was written:
- *   - "disappears by itself after 20 seconds" — the card's timer had been removed, because
+ *   - "disappears by itself after 20 seconds", the card's timer had been removed, because
  *     it vanished mid-sentence while people were reading it.
  *   - "will not show at all if there is nowhere it can sit without covering something you
- *     might want to click" — the placement rule had been changed to tier controls, so it
+ *     might want to click", the placement rule had been changed to tier controls, so it
  *     does cover ordinary links, deliberately.
  *   - The permission justification described ~150 named origins while the manifest also
  *     declared the broad all-sites pattern, which is precisely the field a reviewer checks against the
@@ -57,7 +57,7 @@ describe("store listing describes what ships", () => {
   });
 
   it("makes no claim that the card never covers anything clickable", () => {
-    // It covers ordinary controls on purpose — refusing to render otherwise suppressed 60%
+    // It covers ordinary controls on purpose, refusing to render otherwise suppressed 60%
     // of samples across six live retailers and the tester never saw a card at all.
     expect(
       /covering something you might\s+want to click/i.test(listing),
@@ -72,7 +72,7 @@ describe("store listing describes what ships", () => {
      * It is required now, so the same check has more teeth, not less: this is the field a
      * reviewer opens the manifest to compare against, and a listing describing a curated
      * list of retailers beside a manifest asking for every https site is the single fastest
-     * way to get an extension rejected — and it would deserve it.
+     * way to get an extension rejected, and it would deserve it.
      */
     const manifest = JSON.parse(readFileSync(MANIFEST, "utf8")) as {
       host_permissions?: string[];
@@ -82,7 +82,7 @@ describe("store listing describes what ships", () => {
     for (const pattern of manifest.host_permissions ?? []) {
       expect(
         listing.includes(pattern),
-        `the manifest REQUIRES ${pattern} at install and the listing never mentions it — ` +
+        `the manifest REQUIRES ${pattern} at install and the listing never mentions it, ` +
           "the permission justification would not match what the reviewer is reading",
       ).toBe(true);
     }
@@ -105,7 +105,7 @@ describe("store listing describes what ships", () => {
     const hit = promises.exec(listing);
     expect(
       hit?.[0],
-      `the listing still promises per-site enablement ("${hit?.[0]}") — Pensa now holds ` +
+      `the listing still promises per-site enablement ("${hit?.[0]}"), Pensa now holds ` +
         "https://*/* at install",
     ).toBeUndefined();
   });
@@ -118,7 +118,7 @@ describe("store listing describes what ships", () => {
  * on dense pages (12/12 samples now place a card), and that the extension had no icons.
  *
  * Counts go stale by the hour and are not worth a test. The SET of what ships does not, and
- * a README naming a detector that is not in the build — or omitting one that is — is the
+ * a README naming a detector that is not in the build, or omitting one that is, is the
  * failure that matters.
  */
 describe("README describes what ships", () => {

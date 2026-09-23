@@ -5,7 +5,7 @@ import { AllowlistFile, DenylistFile } from "@/shared/schema";
 /**
  * The rulepacks are validated HERE rather than at runtime.
  *
- * They are build artifacts we author and the bundler inlines — fixed at compile time, so
+ * They are build artifacts we author and the bundler inlines, fixed at compile time, so
  * there is no runtime trust boundary to defend. Parsing them in `urlScore.ts` dragged Zod
  * into the content script and the popup for no benefit. A build-time fact belongs in a
  * build-time check.
@@ -85,8 +85,8 @@ describe("no allowlist origin is also denied", () => {
 describe("denylist label anchoring", () => {
   /**
    * Regression net for a real bug. The social-platform pattern lists `x` (for x.com) inside
-   * an alternation. Without a label boundary it matched ANY host ending in "x.com" —
-   * stitchfix.com, tjx.com, stockx.com — permanently blocking three shopping sites from ever
+   * an alternation. Without a label boundary it matched ANY host ending in "x.com",
+   * stitchfix.com, tjx.com, stockx.com, permanently blocking three shopping sites from ever
    * being enabled, with no way for a user to discover why. A denylist hit is unconditional
    * and silent, so an over-broad pattern here is the most expensive kind of mistake.
    */

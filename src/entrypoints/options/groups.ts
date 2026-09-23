@@ -8,7 +8,7 @@
  *
  * Grouped by WHAT EACH ONE NEEDS in order to say anything, not by the taxonomy's tiers.
  * Tier is an internal confidence ranking and means nothing to the person reading this page.
- * What they will notice is that two of these groups stay quiet for a while — the cross-stage
+ * What they will notice is that two of these groups stay quiet for a while, the cross-stage
  * pair needs you to move from a product to a cart before it has two prices to compare, and
  * the history group needs a second visit to the same item. Grouping them this way makes
  * "why has this never fired?" answerable from the page itself.

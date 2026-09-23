@@ -1,10 +1,10 @@
 {
   "version": "1.0.1",
   "_frame": {
-    "purpose": "Origins offered for contextual enablement (Tier A, plan §14.2). Declared in optional_host_permissions ONLY — never host_permissions. Presence here grants nothing; it makes the toolbar action light up and lets the popup offer a one-click grant.",
-    "samplingFrame": "Top US e-commerce by traffic, deliberately over-weighted toward the categories with the highest known persuasion-pattern density: OTA/travel, budget airlines, event ticketing, fast fashion, subscription boxes, food delivery. This over-weighting is intentional and must be disclosed in any prevalence claim — the list is NOT a random sample of US retail, and a frequency computed over it is a frequency over this frame, not over the web.",
+    "purpose": "Origins offered for contextual enablement (Tier A, plan §14.2). Declared in optional_host_permissions ONLY, never host_permissions. Presence here grants nothing; it makes the toolbar action light up and lets the popup offer a one-click grant.",
+    "samplingFrame": "Top US e-commerce by traffic, deliberately over-weighted toward the categories with the highest known persuasion-pattern density: OTA/travel, budget airlines, event ticketing, fast fashion, subscription boxes, food delivery. This over-weighting is intentional and must be disclosed in any prevalence claim, the list is NOT a random sample of US retail, and a frequency computed over it is a frequency over this frame, not over the web.",
     "categoryBias": "ota_travel, airline, ticketing, fast_fashion and food_delivery are over-represented relative to their share of US e-commerce revenue. big_box and marketplace are under-represented relative to their traffic share.",
-    "exclusions": "No pharmacy, banking, medical, government, or adult origins, regardless of whether they sell things. See denylist.v1.json — that file governs and is evaluated first.",
+    "exclusions": "No pharmacy, banking, medical, government, or adult origins, regardless of whether they sell things. See denylist.v1.json, that file governs and is evaluated first.",
     "lastReviewed": "2026-09-06"
   },
   "entries": [
@@ -105,7 +105,7 @@
     {
       "origin": "https://www.flyfrontier.com",
       "category": "airline",
-      "note": "Frontier Airlines. frontier.com is Frontier Communications, an ISP — wrong site."
+      "note": "Frontier Airlines. frontier.com is Frontier Communications, an ISP, wrong site."
     },
     {
       "origin": "https://www.united.com",

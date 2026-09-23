@@ -2,8 +2,8 @@
  * Types for `label-queue.mjs`.
  *
  * The module is plain JavaScript because it is loaded by the labelling server at runtime with
- * no build step. Two TypeScript files read it — the trainer, for the lexicons, and the
- * prefilter test, for the canonical example copy — and both need it to be more than `any`,
+ * no build step. Two TypeScript files read it, the trainer, for the lexicons, and the
+ * prefilter test, for the canonical example copy, and both need it to be more than `any`,
  * since the whole point of the prefilter test is that those examples are exactly right.
  */
 export interface TrainablePattern {

@@ -3,10 +3,10 @@
  *
  * Uses a test-only copy of the build narrowed to the local fixture origins, because the
  * fixture server speaks plain http and the shipped manifest asks for https. See
- * `stageLocalBuild` — it widens the declared content script's `matches` as well as the
+ * `stageLocalBuild`, it widens the declared content script's `matches` as well as the
  * permission, and deliberately leaves `exclude_matches` untouched.
  *
- * Everything downstream of that — the actual injection, the overlay, the layout cost — is
+ * Everything downstream of that, the actual injection, the overlay, the layout cost, is
  * the real production path. The shipped permission set is asserted separately in
  * extension.spec.ts, so this fixture cannot mask a regression there.
  */
@@ -69,7 +69,7 @@ test("the manifest declares the script AND it actually injects", async () => {
    * now declared in the manifest, so that registry is legitimately empty and the old
    * assertion failed while nothing was wrong.
    *
-   * Declaration is still not injection (plan §1.3), so both halves are still checked —
+   * Declaration is still not injection (plan §1.3), so both halves are still checked,
    * only the first half moved.
    */
   const [sw] = context.serviceWorkers();
@@ -80,7 +80,7 @@ test("the manifest declares the script AND it actually injects", async () => {
   await page.waitForTimeout(2500);
 
   // NOTE: injection CANNOT be checked from page.evaluate. Content scripts run in an
-  // isolated world, so `__pensaDetectorInjected__` is invisible to the main world —
+  // isolated world, so `__pensaDetectorInjected__` is invisible to the main world,
   // which is the point of setting it there. An earlier version of this test asserted
   // against the main world and reported a false failure.
   //
@@ -92,7 +92,7 @@ test("the manifest declares the script AND it actually injects", async () => {
   });
 
   // Registration succeeding is NOT injection (plan §1.3). Both are asserted separately.
-  expect(sawOrigin, "declared but never injected — the §1.3 silent failure").toBe(true);
+  expect(sawOrigin, "declared but never injected, the §1.3 silent failure").toBe(true);
   await page.close();
 });
 

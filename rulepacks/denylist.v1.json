@@ -1,12 +1,12 @@
 {
   "version": "1.0.2",
   "_frame": {
-    "purpose": "Suppression list for the Stage-1 URL-only commerce classifier (plan §14.3). A match here suppresses the enablement affordance UNCONDITIONALLY — it is evaluated BEFORE the commerce score, and no score can override it.",
+    "purpose": "Suppression list for the Stage-1 URL-only commerce classifier (plan §14.3). A match here suppresses the enablement affordance UNCONDITIONALLY, it is evaluated BEFORE the commerce score, and no score can override it.",
     "why": "A false positive here means inviting someone to grant page access on their bank, their doctor's portal, or their email. That is the worst outcome available to this product, and it is worse than every false negative combined. When in doubt, add the pattern.",
     "note": "These patterns are matched against hostname only, never against path or query. Some of these hosts do sell things; that is not a reason to remove them.",
     "lastReviewed": "2026-09-06",
     "labelAnchoring": "Every host-label alternation is prefixed with (^|\\.) so it matches a whole DNS label and not the tail of a longer one. Without it, the social-platform rule containing 'x' (for x.com) matched stitchfix.com, tjx.com and stockx.com, and 'chase' matched purchase.com. A denylist hit is unconditional and unexplainable to the user, so an over-broad pattern silently makes legitimate sites permanently un-enableable.",
-    "genericRules": "Named institutions do not scale. The list was US-centric and hdfcbank.com was offered enablement during manual testing, which is the worst outcome this product can produce. There are now GENERIC label rules — any host label containing bank / creditunion / insurance / hospital / clinic / pharmacy / medical is denied regardless of country or brand. Over-denial is the correct bias: refusing to run on a food bank costs nothing, offering page access on a real one costs everything."
+    "genericRules": "Named institutions do not scale. The list was US-centric and hdfcbank.com was offered enablement during manual testing, which is the worst outcome this product can produce. There are now GENERIC label rules, any host label containing bank / creditunion / insurance / hospital / clinic / pharmacy / medical is denied regardless of country or brand. Over-denial is the correct bias: refusing to run on a food bank costs nothing, offering page access on a real one costs everything."
   },
   "hostSuffixes": [
     ".gov",

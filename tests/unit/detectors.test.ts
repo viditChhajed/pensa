@@ -61,7 +61,7 @@ describe("scarcity.stock", () => {
     expect(scarcityDetector.run(ctx)).toHaveLength(1);
   });
 
-  it('does NOT fire on genuine variant availability — "2 sizes left"', () => {
+  it('does NOT fire on genuine variant availability, "2 sizes left"', () => {
     // The exact false positive that makes someone uninstall (plan §8).
     const ctx = contextFrom(`<p>2 sizes left</p>`);
     expect(scarcityDetector.run(ctx)).toHaveLength(0);
@@ -291,7 +291,7 @@ describe("funnel classifier", () => {
  * its own div inside the row, so "skip anything containing a priced descendant" threw away
  * the row that held the controls and kept a leaf that held only a price.
  */
-describe("cart line items — nested price markup", () => {
+describe("cart line items, nested price markup", () => {
   it("counts a row whose price sits in a nested element", () => {
     document.body.innerHTML = `
       <div class="row">
@@ -330,7 +330,7 @@ describe("cart line items — nested price markup", () => {
  * hides it until opened; its rows were counted anyway, so a product page opened with items
  * already in the cart read as a cart page before the shopper did anything.
  */
-describe("cart line items — hidden drawers", () => {
+describe("cart line items, hidden drawers", () => {
   const drawerRows = `
     <div class="row"><div><span>$45.00</span></div><input type="number" value="1" aria-label="Quantity"><button>Remove</button></div>
     <div class="row"><div><span>$12.00</span></div><input type="number" value="1" aria-label="Quantity"><button>Remove</button></div>
@@ -371,7 +371,7 @@ describe("cart line items — hidden drawers", () => {
 });
 
 /**
- * Bombas prices a pack as `$55  <s>$60</s>  8% Pack Savings` — live price FIRST, and a
+ * Bombas prices a pack as `$55  <s>$60</s>  8% Pack Savings`, live price FIRST, and a
  * savings badge whose wording matches neither the reference-price lexemes nor the
  * `% off` badge pattern. Reported from the field as a miss, so pinning it: the struck
  * price, the pair, and the struck-is-higher signal are enough on their own.
@@ -408,7 +408,7 @@ describe("anchoring on a savings-badge layout", () => {
 
 /**
  * charm used to rank priced nodes by rendered area, which on a grid page selects the largest
- * BOX — a container whose text is every child run together. Logged on shein as
+ * BOX, a container whose text is every child run together. Logged on shein as
  * "Customers Also Viewed 10 #KnitEssentials -15% SHEIN PETITE Balle": a blob whose visible
  * sample contained no price at all, because the charm price sat further along in text the
  * log truncated. A shopper shown that would not know what was being pointed at.
@@ -441,7 +441,7 @@ describe("charm picks the price node, not the box around it", () => {
         Members save more. <span class="price">$24.99</span></div>`,
     );
     const found = charmDetector.run(ctx);
-    // Either it reports the span, or nothing — never the sentence-long wrapper.
+    // Either it reports the span, or nothing, never the sentence-long wrapper.
     for (const c of found) {
       expect((c.evidence.textSample ?? "").length).toBeLessThanOrEqual(60);
     }
@@ -457,7 +457,7 @@ describe("charm picks the price node, not the box around it", () => {
  *
  * Both were real, but one was recorded with the wrong cause: "only 3 left at this price"
  * matches the existing pattern and scores 0.60. Booking's actual copy puts a noun in the
- * middle — "Only 3 rooms left at this price" — and that scored zero.
+ * middle, "Only 3 rooms left at this price", and that scored zero.
  */
 describe("field lexicon gaps", () => {
   it("scarcity: counts an inventory noun between the number and 'left'", () => {
@@ -490,7 +490,7 @@ describe("field lexicon gaps", () => {
     expect(found[0]?.rawScore ?? 0).toBeGreaterThanOrEqual(0.75);
   });
 
-  it("goal_gradient: 'more' is load-bearing — plain add-to-cart must not fire", () => {
+  it("goal_gradient: 'more' is load-bearing, plain add-to-cart must not fire", () => {
     for (const copy of ["Add to cart", "Add to bag $45", "Add to basket"]) {
       expect(goalGradientDetector.run(contextFrom(`<div>${copy}</div>`)), copy).toHaveLength(0);
     }
@@ -499,7 +499,7 @@ describe("field lexicon gaps", () => {
   it("surfaces a numeric scarcity claim on its own", () => {
     // Recalibrated after spot-check run 2. This previously scored 0.60 against a 0.75
     // threshold, so scarcity.stock could only ever show a card when a progress bar happened
-    // to sit beside the copy — it fired correctly on five sites and surfaced on none.
+    // to sit beside the copy, it fired correctly on five sites and surfaced on none.
     // Zero false positives across those five was the evidence for moving it.
     const found = scarcityDetector.run(contextFrom(`<div>Only 3 rooms left at this rate</div>`));
     expect(found[0]?.rawScore ?? 0).toBeGreaterThanOrEqual(0.75);
@@ -521,7 +521,7 @@ describe("field lexicon gaps", () => {
  *
  * Checkout detection required autocomplete="address-line1" and friends, which assumes a
  * shipping checkout. booking.com's "Enter your details" is first name / last name / email /
- * country — a hotel booking has no street address — so its checkout page classified as
+ * country, a hotel booking has no street address, so its checkout page classified as
  * `browse`, the stage never changed, the checkout-intent trigger never fired, and no card
  * ever appeared. Travel, ticketing and digital goods all check out this way.
  */
@@ -581,7 +581,7 @@ describe("identity-based checkouts", () => {
  * Every shipped scarcity pattern must survive the harvest prefilter.
  *
  * `classifyText` rejects any node with no digit, no currency glyph and no trigger word, so a
- * detector pattern whose copy contains none of those can never fire — the detector never
+ * detector pattern whose copy contains none of those can never fire, the detector never
  * sees the node. `/\bgoing fast\b/` was in STOCK_PATTERNS and unreachable: "Premium seats,
  * going fast" scored nothing. Same shape of dead code that hid pricing.drip, one stage
  * earlier in the pipeline.

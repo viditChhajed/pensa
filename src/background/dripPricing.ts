@@ -1,10 +1,10 @@
 /**
- * pricing.drip and basket.sneak — the two cross-stage detectors (plan T25).
+ * pricing.drip and basket.sneak, the two cross-stage detectors (plan T25).
  *
  * These do not live in `content/detectors/` because they are not page detectors. They take a
  * SessionLedger rather than a PageContext: the finding is a relationship between stages, and
  * no single page contains it. They remain pure functions for the same reason everything else
- * is — so they can be replayed over a recorded ledger without a browser.
+ * is, so they can be replayed over a recorded ledger without a browser.
  *
  * The strongest single finding this tool can produce is a mandatory fee first disclosed at
  * `payment` with a drip ratio above 0.15. That is the number worth reporting.
@@ -26,7 +26,7 @@ import { firstDisclosureStage, orderedStages, userChoseAddon } from "./sessionLe
 export const DRIP_DETECTOR_ID = "pricing.drip@1";
 export const SNEAK_DETECTOR_ID = "basket.sneak@1";
 
-/** A fee disclosed at or after this stage is "late" — the shopper has already committed. */
+/** A fee disclosed at or after this stage is "late", the shopper has already committed. */
 const LATE_STAGE_MIN = FUNNEL_ORDER.cart;
 
 export interface DripFinding {
@@ -65,7 +65,7 @@ export function detectDrip(ledger: SessionLedger): DripFinding | null {
     // A charge the shopper explicitly opted into is not drip pricing.
     // Add-ons are basket.sneak's question, not drip's. Drip is mandatory charges disclosed
     // late (taxonomy: "Mandatory charges disclosed after the first price"). This used to skip
-    // only add-ons flagged `userAttributed` — a flag that was always false — so every add-on,
+    // only add-ons flagged `userAttributed`, a flag that was always false, so every add-on,
     // including ones the shopper picked, was counted as a drip fee AND as a sneaked item.
     if (fee.kind === "optional_addon") continue;
     if (known.has(fee.labelHash)) continue;
@@ -141,7 +141,7 @@ export function dripCandidate(
 }
 
 /**
- * basket.sneak — a cart line item with no matching add-to-cart from the shopper.
+ * basket.sneak, a cart line item with no matching add-to-cart from the shopper.
  *
  * Deliberately conservative. A shopper can add an item in a previous session, or on another
  * device, and the ledger would not know: so this only fires when the session recorded at
@@ -166,7 +166,7 @@ export function detectSneak(ledger: SessionLedger): DetectionCandidate | null {
    * The previous check compared hashes of ADD-TO-CART BUTTON labels ("add to bag") with hashes
    * of CART LINE labels ("accident protection plan"). Those can never be equal, and the other
    * half of the test was a flag hardcoded false, so every add-on in every cart was reported as
-   * unrequested — including a gift wrap the shopper had just chosen.
+   * unrequested, including a gift wrap the shopper had just chosen.
    */
   const unattributed: LineItem[] = snapshot.fees.filter(
     (f) => f.kind === "optional_addon" && !userChoseAddon(ledger, addonKeysOf(f.labelSample ?? "")),

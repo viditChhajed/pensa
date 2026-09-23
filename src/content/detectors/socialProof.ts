@@ -2,8 +2,8 @@
  * social_proof.live_activity
  *
  * Two distinct shapes, scored separately:
- *   1. Counter copy — "47 people are viewing this", "12 sold in the last 24 hours".
- *   2. Ephemeral toasts — a node injected and removed again within 15s, containing a place
+ *   1. Counter copy, "47 people are viewing this", "12 sold in the last 24 hours".
+ *   2. Ephemeral toasts, a node injected and removed again within 15s, containing a place
  *      name plus a purchase verb ("Sarah in Denver just bought this").
  *
  * The toast case is why `CandidateNode.ephemeral` exists. A single frozen DOM snapshot
@@ -11,7 +11,7 @@
  *
  * Precision risk: genuine review counts ("1,203 reviews") and genuine stock-sold figures on
  * marketplaces. Requiring a present-tense activity verb or an explicit recency window keeps
- * those out — "1,203 reviews" has neither.
+ * those out, "1,203 reviews" has neither.
  */
 import type { DetectionCandidate } from "@/shared/schema";
 import type { CandidateNode, Detector, PageContext } from "../types";
@@ -31,15 +31,15 @@ const COUNTER_PATTERNS: readonly RegExp[] = [
    */
   /\b(\d{1,4})\s+(?:people|shoppers|customers|others)\s+(?:have\s+)?(?:bought|purchased|ordered|grabbed|claimed)\b/,
   /**
-   * "LIVE • 279" — a bare viewer count on a live-shopping card, with no verb and no noun.
+   * "LIVE • 279", a bare viewer count on a live-shopping card, with no verb and no noun.
    *
    * Written for that one observed string, and the live audit caught it over-firing within
    * the day: `\blive\b[^a-z0-9]{0,4}(\d{2,6})\b` also matched "From Day One - Los Angeles
    * Live 2026" and "Pace Live 768 followers" on Eventbrite. A year is not a viewer count and
    * neither is a follower total.
    *
-   * So the separator has to be the bullet or pipe a live-shopping widget actually uses — a
-   * space is what prose uses — years are excluded outright, and a following "followers" or
+   * So the separator has to be the bullet or pipe a live-shopping widget actually uses, a
+   * space is what prose uses, years are excluded outright, and a following "followers" or
    * "subscribers" disqualifies it. A rule generalised from a single example deserves the
    * narrowest form that still covers the example.
    */
@@ -49,16 +49,16 @@ const COUNTER_PATTERNS: readonly RegExp[] = [
   /**
    * Past tense, and a recency window without the definite article. All three scored zero:
    *
-   *   "181 people have viewed this in the last 3 hours"  — the rule wanted "are viewing"
-   *   "Booked 22 times in last 24 hr"                    — the rule wanted "in THE last"
-   *   "31 sold today"                                    — no rule covered a bare day window
+   *   "181 people have viewed this in the last 3 hours", the rule wanted "are viewing"
+   *   "Booked 22 times in last 24 hr", the rule wanted "in THE last"
+   *   "31 sold today", no rule covered a bare day window
    *
    * A definite article is not a mechanism, and neither is a tense.
    */
   /\b(\d{1,5})\s+(?:other\s+)?(?:people|shoppers|customers|users|others)\s+(?:have\s+)?(?:viewed|looked at|watched|browsed)\b/,
   /\b(\d{1,5})\s+(?:sold|bought|purchased|booked|ordered)\s+(?:today|this (?:hour|week)|in the past)\b/,
   /**
-   * "People want this." — eBay's badge, with no number at all.
+   * "People want this.", eBay's badge, with no number at all.
    *
    * Kept narrow deliberately: this exact claim about other shoppers' desire, not a general
    * rule about the word "people", which appears in half the copy on the web.
@@ -68,7 +68,7 @@ const COUNTER_PATTERNS: readonly RegExp[] = [
   /\b(\d{1,4})\s+others? (?:are )?(?:looking|interested)\b/,
 ];
 
-/** "Sarah in Denver just bought this" — the classic injected toast. */
+/** "Sarah in Denver just bought this", the classic injected toast. */
 const TOAST_PATTERN =
   /\b(?:just|recently)\s+(?:bought|purchased|ordered|booked|signed up|joined|claimed)\b|\bsomeone (?:in|from)\s+[a-z]/;
 

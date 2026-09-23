@@ -131,7 +131,7 @@ describe("detectDrip", () => {
     expect(detectDrip(ledger)).toBeNull();
   });
 
-  it("never counts an add-on as a drip fee — chosen or not", () => {
+  it("never counts an add-on as a drip fee, chosen or not", () => {
     // Drip is MANDATORY charges disclosed late. Add-ons are basket.sneak's question. This
     // used to skip only add-ons flagged `userAttributed`, a flag that was always false, so a
     // gift wrap the shopper picked was reported as a fee added behind their back.

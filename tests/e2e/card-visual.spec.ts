@@ -2,16 +2,16 @@
  * What the card actually looks like, produced by the real pipeline.
  *
  * The last round of field testing produced one piece of feedback: "card showed up. make it
- * obvious tho. WHAT was preselected? all cards should show the evidence." The fix — an
+ * obvious tho. WHAT was preselected? all cards should show the evidence." The fix, an
  * evidence quote per item, plus an expandable "why this works" carrying the mechanism and
- * its citation — was verified by reading the code, which is not the same as looking at it.
+ * its citation, was verified by reading the code, which is not the same as looking at it.
  *
  * So this drives the shipped extension against a fixture, screenshots the result, and
  * asserts on the card's RENDERED TEXT rather than on pixels. A screenshot diff would fail
  * every time the prompt pools rotate, which trains people to ignore it; the image is an
  * artifact for a human to look at, and the text assertions are what fail the build.
  *
- * Reading the text requires getting inside a closed shadow root, which no script can do —
+ * Reading the text requires getting inside a closed shadow root, which no script can do,
  * that is the whole point of a closed root, and the first attempt at this test failed
  * because of it: patching `attachShadow` from an init script does nothing, since the content
  * script runs in an isolated world with its own prototypes. It is read here over CDP
@@ -95,7 +95,7 @@ async function cardText(page: Page): Promise<string> {
   let insideCard = false;
 
   const walk = (node: CdpNode, within: boolean): void => {
-    // Card hosts carry a random id, so the prefix is the handle — the same one the other
+    // Card hosts carry a random id, so the prefix is the handle, the same one the other
     // e2e tests use.
     const isHost = !!(node.nodeName === "DIV" && (attr(node, "id") ?? "").startsWith("pp-"));
     // The card's own stylesheet is a text node too, and so is the UA sheet the browser
@@ -151,13 +151,13 @@ test("the rendered card carries the evidence, the mechanism and a citation", asy
 
   // The feedback in full: a card that names a pattern without quoting what triggered it is
   // asking the reader to take its word for it. Evidence renders as a curly-quoted excerpt of
-  // the page's own words, so the assertion is that a non-trivial quote is present — not that
+  // the page's own words, so the assertion is that a non-trivial quote is present, not that
   // it says any particular thing, which would pin the test to one fixture's copy.
   const quoted = /\u201C([^\u201D]{4,})\u201D/.exec(text);
   expect(quoted?.[1], `no evidence quote in the card:\n${text}`).toBeTruthy();
 
   // The grounding. "Why this works" is a disclosure, so its contents are in the DOM whether
-  // or not it is open — which is the right trade: available, not shouted.
+  // or not it is open, which is the right trade: available, not shouted.
   expect(text.toLowerCase(), `no mechanism/citation in the card:\n${text}`).toContain(
     "why this works",
   );

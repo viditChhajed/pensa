@@ -6,7 +6,7 @@
  *
  * `host_permissions` is the obvious one: the production manifest asks for the broad https pattern, and
  * the fixture server speaks plain http. But the detector is now injected by a content script
- * DECLARED IN THE MANIFEST, whose `matches` are https-only too — so patching the permission
+ * DECLARED IN THE MANIFEST, whose `matches` are https-only too, so patching the permission
  * alone buys the right to read a page that nothing is ever injected into. The symptom is a
  * test that loads a fixture, waits, and finds no card, which reads exactly like a detector
  * regression and is not one.
@@ -24,13 +24,13 @@ import { join, resolve } from "node:path";
  * The fixture origin, and why it is not localhost.
  *
  * It WAS localhost, and that quietly stopped working the moment the detector grew a runtime
- * denylist check at the top of its body. `isDenied()` refuses localhost and 127.0.0.1 — which
+ * denylist check at the top of its body. `isDenied()` refuses localhost and 127.0.0.1, which
  * is correct and deliberate for the product: a router admin page or a local dev service is
  * exactly the kind of thing Pensa must never read. The fixtures were being served from a host
  * the extension is designed to refuse, so every fixture-backed spec failed with an empty
  * extension log and no other clue.
  *
- * Every fixture request is fulfilled by `page.route`, so the hostname is arbitrary — nothing
+ * Every fixture request is fulfilled by `page.route`, so the hostname is arbitrary, nothing
  * is resolved and nothing leaves the machine. Moving the fixtures is therefore free, and it
  * is the honest fix: weakening the denylist to make tests pass would have removed the check
  * from the one place that covers the rules `exclude_matches` cannot express.
@@ -46,7 +46,7 @@ export function stageLocalBuild(
   prefix: string,
   origins: string[] = LOCAL_ORIGINS,
   /**
-   * Origins the WORKER must be able to reach, but where no content script should run — the
+   * Origins the WORKER must be able to reach, but where no content script should run, the
    * telemetry sink being the only current case. Kept separate because conflating "where Pensa
    * reads pages" with "what Pensa may contact" is exactly the distinction the zero-egress
    * tests exist to police.

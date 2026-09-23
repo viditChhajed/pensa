@@ -1,5 +1,5 @@
 /**
- * Regression tests for the defects found in the code audit — one describe per defect, each
+ * Regression tests for the defects found in the code audit, one describe per defect, each
  * written to fail against the code as it was.
  */
 import { afterEach, describe, expect, it } from "vitest";

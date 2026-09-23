@@ -9,7 +9,7 @@ import { contextFrom } from "./helpers";
  *
  * `npm run spot:check` loads the extension into Chromium and records every claim it makes on
  * real pages. Every case here came out of a run of it, which is the only instrument in the
- * project that covers the STRUCTURAL detectors — the labelled corpus is text, and says
+ * project that covers the STRUCTURAL detectors, the labelled corpus is text, and says
  * nothing about anchoring, framing, nagging, interference or decoy, which are half the
  * shipped set.
  *
@@ -64,7 +64,7 @@ describe("framing quotes the prices it scored, not a sibling", () => {
   it("claims a product tile once, and evidences it with the prices", () => {
     /**
      * A Zappos grid tile produced FIVE firings from one was/now price pair, evidenced as
-     * "370", "237v1", "WL574V2", "603" and "V5 Runner" — New Balance model numbers, which is
+     * "370", "237v1", "WL574V2", "603" and "V5 Runner", New Balance model numbers, which is
      * what the sibling spans inside the tile contain. The detector scores `containerText`
      * and was attributing to the node it happened to attach to.
      *
@@ -145,7 +145,7 @@ describe("nagging counts interruptions, not the elements one is built from", () 
   it("reads a cookie banner and its scrim as ONE interruption", async () => {
     /**
      * boohoo.com and prettylittlething.us, re-probed live. CookieYes inserts `div.cky-overlay`
-     * — a dim, empty, full-viewport scrim — as a SIBLING of the banner, and the overlay branch
+     *, a dim, empty, full-viewport scrim, as a SIBLING of the banner, and the overlay branch
      * of `looksModal` called it a modal. One consent notice, "2 interstitials", and FLAG_AT is
      * 2, so the card fired. Nearly every consent vendor ships a scrim.
      *
@@ -207,7 +207,7 @@ describe("nagging counts interruptions, not the elements one is built from", () 
 
   it("DOES count a modal that was mounted hidden and revealed later", async () => {
     // The other half of moving off insertions: a popup pre-mounted hidden and shown ten
-    // seconds in is an interruption the shopper had, and the old code could never see it —
+    // seconds in is an interruption the shopper had, and the old code could never see it,
     // its only insertion happened while it was invisible. A fix that only ever subtracts
     // would have made this detector quieter, not more truthful.
     const o = watching();
@@ -228,7 +228,7 @@ describe("nagging counts interruptions, not the elements one is built from", () 
 
   it("reads a banner and the role=dialog INSIDE it as ONE interruption", async () => {
     /**
-     * glossier.com, live-probed after the scrim fix landed — and a regression that fix
+     * glossier.com, live-probed after the scrim fix landed, and a regression that fix
      * introduced, caught before it shipped.
      *
      * OneTrust renders `div#onetrust-banner-sdk` (458x147) wrapping `div.ot-sdk-container`
@@ -236,7 +236,7 @@ describe("nagging counts interruptions, not the elements one is built from", () 
      * the contains-a-showing-dialog branch and the child qualifies through its own role:
      * two elements, 2px apart, one cookie banner, "2 interstitials".
      *
-     * `partOfShownModal` already suppresses a parent/child pair — but only when one of them
+     * `partOfShownModal` already suppresses a parent/child pair, but only when one of them
      * is on the watch list by the time the other is judged. OneTrust reveals the pair by
      * toggling the wrapper, so both can be judged from the same sweep with neither yet
      * recorded. Containment is checked against everything modal-shaped on the page now, not

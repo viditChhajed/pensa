@@ -55,7 +55,7 @@ footer {
   border-top: 1px solid var(--border);
 }
 /*
- * Settings is a BUTTON, not a link — it triggers an action rather than navigating, and
+ * Settings is a BUTTON, not a link, it triggers an action rather than navigating, and
  * chrome.runtime.openOptionsPage() has no href to give an anchor. But only `footer a` was
  * ever styled, so the markup's `class="linklike"` matched no rule and the control rendered
  * as a default grey chrome button in the footer of an otherwise finished popup. Caught in a

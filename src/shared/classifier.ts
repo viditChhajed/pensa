@@ -8,7 +8,7 @@
  *   - A regex lexicon misses paraphrase. "No thanks, I hate saving money" is caught;
  *     "I'm good, my wallet enjoys the exercise" is not, and there is no finite list that
  *     would catch it.
- *   - An LLM costs latency, money, and the privacy story — the whole product rests on zero
+ *   - An LLM costs latency, money, and the privacy story, the whole product rests on zero
  *     network egress, and a per-page API call would end that.
  *
  * Character n-grams rather than word tokens because they survive the things retailer copy
@@ -94,7 +94,7 @@ export interface ClassifierModel {
   /** FEATURE_DIM weights. */
   weights: readonly number[];
   bias: number;
-  /** Provenance. `hand_set` means these were written by hand, not fitted — see §10. */
+  /** Provenance. `hand_set` means these were written by hand, not fitted, see §10. */
   basis: "trained" | "hand_set";
   /** Training-set size when trained; 0 when hand-set. */
   trainedOn: number;
@@ -138,7 +138,7 @@ export interface TrainOptions {
 
 /**
  * Logistic regression by SGD. Lives here rather than in `research/` so the exact featuriser
- * used at inference is the one used in training — a mismatch between the two is the classic
+ * used at inference is the one used in training, a mismatch between the two is the classic
  * way a model that scores well offline behaves randomly in production.
  *
  * Deterministic given a seed, so a retrain produces byte-identical weights and a diff of the

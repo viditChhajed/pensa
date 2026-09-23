@@ -1,5 +1,5 @@
 /**
- * Temporal verification engine (plan §18A) — the highest-value module.
+ * Temporal verification engine (plan §18A), the highest-value module.
  *
  * Every other tool in this space judges a page in isolation. This one remembers. Claims that
  * no single-page analysis can make:
@@ -12,7 +12,7 @@
  *     generated numbers rather than measurements.
  *
  * Two properties make this worth the complexity: it needs no server and no consent beyond
- * install, and it gets stronger the longer someone uses the extension — which is also a
+ * install, and it gets stronger the longer someone uses the extension, which is also a
  * retention mechanism, since the tool is more useful in month two than on day one.
  *
  * Everything here is a pure function over an OfferObservation so it can be replayed against
@@ -70,7 +70,7 @@ export function detectEvergreenCountdown(obs: OfferObservation): DetectionCandid
       const dObserved = cur.ts - prev.ts;
       if (dObserved < 60_000) continue; // same page view; nothing to learn
       /**
-       * A genuine recurring cutoff — "order within 3h for same-day shipping" — moves its end
+       * A genuine recurring cutoff, "order within 3h for same-day shipping", moves its end
        * forward by exactly one day each day. Visited at the same time on consecutive days, it
        * advances by the elapsed time and is indistinguishable from a timer that resets. So a
        * gap within 90 minutes of a whole number of days proves nothing and is skipped. A timer
@@ -109,7 +109,7 @@ export function detectEvergreenCountdown(obs: OfferObservation): DetectionCandid
  * Stock monotonicity.
  *
  * Absent a restock, "only N left" should be non-increasing. An increase is not proof of
- * anything on its own — restocks happen — so the signal is repetition: multiple increases,
+ * anything on its own, restocks happen, so the signal is repetition: multiple increases,
  * or a value that has been identically the same for many days while being presented as
  * scarce.
  */
@@ -158,12 +158,12 @@ export function detectStockAnomaly(obs: OfferObservation): DetectionCandidate | 
  *
  * WHAT THIS USED TO CHECK, and why it could not be right: "over 7+ days the sale price never
  * changed and never equalled the struck price". Every genuine sale that lasts a week satisfies
- * that — the struck price is by definition not the sale price — so the highest-severity
+ * that, the struck price is by definition not the sale price, so the highest-severity
  * temporal claim fired on honest markdowns.
  *
  * What it checks now is what can actually be observed:
  *   - at least MIN_REFERENCE_VISITS separate visits, spanning at least MIN_REFERENCE_SPAN_DAYS;
- *   - on EVERY visit where a price was read, a "was" price was shown beside it — a single
+ *   - on EVERY visit where a price was read, a "was" price was shown beside it, a single
  *     visit showing the item without a reference means it was seen at its ordinary price,
  *     and the claim is withdrawn;
  *   - the live price never reached the reference on any visit.

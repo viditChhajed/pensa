@@ -9,8 +9,8 @@ playwright-report/
 stats.html
 test-results/
 
-# The scraped corpus never goes into git. It holds real text from real retailer pages —
-# scrubbed, but not audited line by line — and roughly 30 MB of third-party marketing copy
+# The scraped corpus never goes into git. It holds real text from real retailer pages, 
+# scrubbed, but not audited line by line, and roughly 30 MB of third-party marketing copy
 # is a volume problem even when it is a privacy-clean one. The leading slash matters: the
 # bare pattern also matched research/corpus/, which is hand-written and meant to be tracked.
 /corpus/
@@ -19,5 +19,5 @@ test-results/
 # publishing scraping one-offs under a project about retailer ethics is an own-goal.
 __*.mjs
 
-# Pulled from D1. Real shopping data from real people, however aggregated — never in git.
+# Pulled from D1. Real shopping data from real people, however aggregated, never in git.
 /dataset/

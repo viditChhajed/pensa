@@ -9,7 +9,7 @@ import { contextFrom } from "../unit/helpers";
  * What the shipped detectors actually do on real copy.
  *
  * Every precision and recall number this project has had until now came from fixtures I
- * wrote, against lexicons I wrote, from the same imagination — so they agreed with each
+ * wrote, against lexicons I wrote, from the same imagination, so they agreed with each
  * other and with nothing else. EVAL run 1 named that as its top finding and there was no
  * instrument capable of measuring it.
  *
@@ -58,7 +58,7 @@ const available = existsSync(LABELS);
 /**
  * A missing corpus must be LOUD, not silent.
  *
- * `corpus/` is gitignored on purpose — see CORPUS.md — so on a fresh clone this file is
+ * `corpus/` is gitignored on purpose, see CORPUS.md, so on a fresh clone this file is
  * absent and every case below used to skip. vitest then exited 0 having asserted nothing,
  * and the run read as green. That matters more once the repo is public than it did while it
  * was mine: the recall table in the README cites this command by name, so the one number a
@@ -67,7 +67,7 @@ const available = existsSync(LABELS);
  * So: one failing test that says what to run, instead of a suite that skips.
  */
 describe.skipIf(available)("detector recall corpus", () => {
-  it("is present — run `npm run corpus:collect` then `npm run label` to build it", () => {
+  it("is present, run `npm run corpus:collect` then `npm run label` to build it", () => {
     expect(
       available,
       `corpus/labels.jsonl is missing, so recall was not measured. The corpus is not ` +
@@ -92,7 +92,7 @@ describe.skipIf(!available)("detectors against real labelled copy", () => {
   /**
    * Score every distinct snippet ONCE against every detector, rather than once per label row.
    *
-   * The labels are one row per pattern per snippet — six rows for the same text — and running
+   * The labels are one row per pattern per snippet, six rows for the same text, and running
    * a jsdom harvest six times over each of 2,639 snippets is 16,000 harvests for no extra
    * information.
    */
@@ -104,11 +104,11 @@ describe.skipIf(!available)("detectors against real labelled copy", () => {
    *
    * Every snippet is rendered as a plain `<div>`, because the corpus stores TEXT and the
    * element it came from was not recorded usably. `confirmshaming.decline_copy` requires its
-   * node to be a decline CONTROL — a button or a link — and correctly declines to fire on a
+   * node to be a decline CONTROL, a button or a link, and correctly declines to fire on a
    * div, so it scores 0.00 here whatever it does in the browser.
    *
-   * Verified separately: all three of the corpus's confirmshaming instances — "I Will Pay
-   * Full Price!", "I don't want my mystery offer", "NO THANKS, I'LL RISK IT" — score 1.00
+   * Verified separately: all three of the corpus's confirmshaming instances, "I Will Pay
+   * Full Price!", "I don't want my mystery offer", "NO THANKS, I'LL RISK IT", score 1.00
    * when the same text is wrapped in a `<button>`.
    *
    * Reported as unmeasurable rather than as a zero, because a zero here reads as a broken
@@ -173,7 +173,7 @@ describe.skipIf(!available)("detectors against real labelled copy", () => {
       if (NEEDS_A_CONTROL.has(pattern.id)) {
         lines.push(
           `  ${pattern.id.padEnd(30)} ${String(s.positives).padStart(4)}   ` +
-            "     not measurable here — needs a decline control, see the note in this file",
+            "     not measurable here, needs a decline control, see the note in this file",
         );
         continue;
       }
@@ -271,7 +271,7 @@ describe.skipIf(!available)("detectors against real labelled copy", () => {
         .filter((r) => (byText.get(r.text)?.get(pattern.id) ?? 0) < LOG_THRESHOLD);
       if (missed.length === 0) continue;
       lines.push(
-        `\n  ${pattern.id} — ${missed.length} positive(s) scoring below the log threshold:`,
+        `\n  ${pattern.id}, ${missed.length} positive(s) scoring below the log threshold:`,
       );
       for (const r of missed.slice(0, 6))
         lines.push(`      ${JSON.stringify(r.text.slice(0, 76))}`);

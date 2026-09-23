@@ -10,7 +10,7 @@
  * modified extension, a curl command, or a bored person with the endpoint in their console.
  */
 
-/** Mirrors TelemetryRecord in src/shared/schema.ts. Kept literal — see the note below. */
+/** Mirrors TelemetryRecord in src/shared/schema.ts. Kept literal, see the note below. */
 const FUNNEL_STAGES = new Set(["browse", "pdp", "cart", "checkout", "payment"]);
 const CATEGORIES = new Set([
   "marketplace", "ota_travel", "airline", "ticketing", "fast_fashion", "subscription_box",
@@ -26,7 +26,7 @@ const CATEGORIES = new Set([
  * that must agree will diverge loudly; one shared list diverges silently.
  *
  * v2 added `site` and replaced `hourBucket` with `dayBucket`. The version is checked on the
- * body, so a v1 client — which sends hour resolution and no site — is refused outright
+ * body, so a v1 client, which sends hour resolution and no site, is refused outright
  * rather than half-accepted into a table whose columns now mean something else.
  */
 const ALLOWED_KEYS = [
@@ -43,7 +43,7 @@ const ALLOWED_KEYS = [
 /**
  * A bare registrable domain: labels of letters, digits and hyphens, at least one dot, no
  * scheme, no port, no path, no userinfo. Anything else is either a bug or an attempt to put
- * a URL — and whatever a URL carries — into a column meant to hold only a shop's name.
+ * a URL, and whatever a URL carries, into a column meant to hold only a shop's name.
  */
 const SITE = /^(?!-)[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+$/;
 
@@ -222,7 +222,7 @@ export async function handle(req: Request, store: Store): Promise<Response> {
   if (outcomeRows.length > 0) await store.incrementOutcomes(outcomeRows);
 
   // No body. Anything returned is a channel back to the client, and there is nothing the
-  // client needs to know — not even how many rows were accepted, which would let a caller
+  // client needs to know, not even how many rows were accepted, which would let a caller
   // probe the store one record at a time.
   return new Response(null, { status: 204 });
 }

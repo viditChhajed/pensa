@@ -1,6 +1,6 @@
 /**
  * The add-to-cart outcome measure: for each technique, how often a page view that showed it
- * ended in an add-to-cart click — against a baseline of every page view on the same site.
+ * ended in an add-to-cart click, against a baseline of every page view on the same site.
  *
  * The owner asked for a success rate per technique, and this is the part of that question
  * a browser extension can honestly answer. Read the limits before reading the numbers:
@@ -13,7 +13,7 @@
  *   chosen, out of stock); see src/content/triggers.ts.
  *
  *   Exposure is ordered before the decision. A technique counts only if it cleared the
- *   salience gate BEFORE the click, because the view ends at the click — so a drawer that
+ *   salience gate BEFORE the click, because the view ends at the click, so a drawer that
  *   opens afterwards with "only 2 left" cannot be credited with the add that opened it.
  *
  *   Pensa's own card cannot contaminate a view's outcome: the card is shown in RESPONSE to the
@@ -25,7 +25,7 @@
  * for the same reason `enqueue` does not queue-then-discard.
  *
  * Views are kept in chrome.storage.local rather than storage.session so that closing the
- * browser does not silently drop every view that had not ended yet — those are almost all
+ * browser does not silently drop every view that had not ended yet, those are almost all
  * non-adds, and losing them would inflate every rate.
  */
 import { enqueueOutcomes, siteOf } from "@/background/telemetry";
@@ -55,7 +55,7 @@ type Views = Record<string, OpenView>;
 /**
  * Every read-modify-write of the view store goes through this chain. Two tabs messaging at
  * once would otherwise both load the same object and the second save would erase the first
- * tab's view — silently, and always a view that had not ended, so always a non-add.
+ * tab's view, silently, and always a view that had not ended, so always a non-add.
  */
 let chain: Promise<unknown> = Promise.resolve();
 function serial<T>(fn: () => Promise<T>): Promise<T> {

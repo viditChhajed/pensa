@@ -40,7 +40,7 @@ let total = 0;
 for (const [patternId, claims] of [...byPattern.entries()].sort(
   (a, b) => b[1].length - a[1].length,
 )) {
-  out.push(`\n## ${patternId} — ${claims.length} claim(s)\n`);
+  out.push(`\n## ${patternId}, ${claims.length} claim(s)\n`);
   for (const c of claims.sort((a, b) => a.site.localeCompare(b.site))) {
     total++;
     out.push(

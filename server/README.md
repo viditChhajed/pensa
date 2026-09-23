@@ -7,7 +7,7 @@ A single HTTP handler that accepts per-site prevalence reports (record version 2
 ## What it must do, and why each rule is here rather than in the client
 
 The extension already enforces all of this before sending. The server enforces it again
-because **a server that trusts its client is not enforcing anything** — anyone can POST to a
+because **a server that trusts its client is not enforcing anything**, anyone can POST to a
 public URL, and the guarantees in PRIVACY.md have to survive that.
 
 | Rule | Why |
@@ -40,7 +40,7 @@ there is nothing the client needs to know.
 
 ## Storage
 
-One table of counters plus research views — see [cloudflare/schema.sql](cloudflare/schema.sql),
+One table of counters plus research views, see [cloudflare/schema.sql](cloudflare/schema.sql),
 which is the source of truth. The primary key is the cohort (technique, detector, stage, site,
 category, rulepack, day, quartile), so no row finer than that can exist. `reporters` counts
 accepted batches that touched a row, never people; there is no reporter id and no way to build
@@ -48,7 +48,7 @@ one.
 
 ## Deploying
 
-**Cloudflare Workers + D1** — step by step in [DEPLOY.md](DEPLOY.md), about ten minutes. The
+**Cloudflare Workers + D1**, step by step in [DEPLOY.md](DEPLOY.md), about ten minutes. The
 entry point is `cloudflare/worker.ts`, which is deliberately thin: every rule about what may
 be accepted lives in `handler.ts`, so the rules are unit-tested without a Worker runtime and
 moving host is a change to one file.

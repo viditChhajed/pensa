@@ -3,9 +3,9 @@ import { registrableDomain } from "@/shared/domain";
 
 /**
  * `domainMatchPattern` and its tests went with the per-site grant flow: nothing is requested
- * per domain any more. `registrableDomain` stays load-bearing in two places — the allowlist
+ * per domain any more. `registrableDomain` stays load-bearing in two places, the allowlist
  * category lookup (us.shein.com and www.shein.com are one retailer) and the name the popup
- * puts in front of a person — and the public-suffix case is the one that bites, because two
+ * puts in front of a person, and the public-suffix case is the one that bites, because two
  * labels of "marksandspencer.co.uk" is "co.uk", which is all of Britain.
  */
 describe("registrableDomain", () => {

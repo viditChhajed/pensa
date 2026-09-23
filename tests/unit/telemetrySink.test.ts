@@ -111,7 +111,7 @@ describe("telemetry sink", () => {
     expect(res.status).toBe(422);
   });
 
-  it("accepts only a bare domain in `site` — never a URL, a path or a port", async () => {
+  it("accepts only a bare domain in `site`, never a URL, a path or a port", async () => {
     // `site` is the one free-text-shaped column, so it is the one place a modified client
     // could try to smuggle a URL, a query string or an identifier into the dataset.
     const { rows, store } = fakeStore();
@@ -199,7 +199,7 @@ const outcome = () => ({
   addedToCart: true,
 });
 
-describe("telemetry sink — v3 page-view outcomes", () => {
+describe("telemetry sink, v3 page-view outcomes", () => {
   it("accepts counts and outcomes together, and stores each in its own place", async () => {
     const { rows, outcomes, store } = fakeStore();
     const res = await handle(
@@ -226,7 +226,7 @@ describe("telemetry sink — v3 page-view outcomes", () => {
     expect((await handle(post({ v: 3, records: [], outcomes: [] }), store)).status).toBe(400);
   });
 
-  it("REJECTS an outcome carrying an extra field — a product, a path, a price", async () => {
+  it("REJECTS an outcome carrying an extra field, a product, a path, a price", async () => {
     const { outcomes, store } = fakeStore();
     for (const extra of [
       { path: "/p/1" },

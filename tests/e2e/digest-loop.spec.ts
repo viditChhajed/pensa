@@ -7,7 +7,7 @@
  * the chain was broken in three places at once (stage misclassified, post-click wait too
  * short for an async drawer, and freshly-discovered nodes unable to satisfy a dwell gate).
  *
- * So this asserts the OUTCOME — a card host in the DOM — and not any intermediate step.
+ * So this asserts the OUTCOME, a card host in the DOM, and not any intermediate step.
  */
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -132,8 +132,8 @@ test("the card is anchored under the toolbar icon, top-right", async () => {
   // This replaces a test asserting the card never covers the checkout button. That
   // guarantee was deliberately traded away: a card that appeared in whichever corner
   // happened to be free read as a stray page element rather than as this extension
-  // speaking. It is now always top-right — directly below where Chrome puts extension
-  // actions — and may overlap page content, which is why the dismiss control below is no
+  // speaking. It is now always top-right, directly below where Chrome puts extension
+  // actions, and may overlap page content, which is why the dismiss control below is no
   // longer optional.
   const { page, logs } = await openFixture("cart-drawer.html");
   await page.waitForTimeout(2500);
@@ -152,7 +152,7 @@ test("the card is anchored under the toolbar icon, top-right", async () => {
 
 test("the card can always be dismissed, and does not vanish on its own", async () => {
   // With no auto-dismiss timer, the close control is the only way out. If it ever fails to
-  // render or fails to bind, the card is stuck on the page until navigation — which would
+  // render or fails to bind, the card is stuck on the page until navigation, which would
   // be far worse than the old behaviour it replaced.
   const { page, logs } = await openFixture("cart-drawer.html");
   await page.waitForTimeout(2500);
@@ -178,7 +178,7 @@ test("the card can always be dismissed, and does not vanish on its own", async (
 test("the card names what it saw, not just what it noticed", async () => {
   // "One choice was made for you in advance. Is it the one you want?" is unanswerable
   // without saying WHICH choice. Reported from the field on a Glossier checkout, where the
-  // detection was correct and the evidence sample was a single space — a pre-ticked
+  // detection was correct and the evidence sample was a single space, a pre-ticked
   // checkbox carries no text of its own.
   const { page, logs } = await openFixture("cart-drawer.html");
   await page.waitForTimeout(2500);
@@ -203,7 +203,7 @@ test("the card names what it saw, not just what it noticed", async () => {
 
 test("the card can show why the pattern works, and cites a source", async () => {
   // "Observe and question, never accuse" is the product's stated principle, and a question
-  // with nothing behind it is just an insinuation — the reader has no way to tell a real
+  // with nothing behind it is just an insinuation, the reader has no way to tell a real
   // effect from the tool editorialising. Every taxonomy entry carries a one-line mechanism
   // and a full citation; until now nothing surfaced them anywhere a reader could look.
   //

@@ -34,12 +34,12 @@ import { decodePriceSnapshot } from "@/shared/wire";
  *
  * What it does not do: register the content script, and so it needs no `scripting`
  * permission. An earlier draft kept that permission solely to unregister a script left over
- * from the per-site grant model — but that model never shipped, so no installed copy can
+ * from the per-site grant model, but that model never shipped, so no installed copy can
  * have one, and a permission requested for a user who cannot exist is a permission a store
  * reviewer is right to reject. The manifest declares it, matching
  * the required https host permission and excluding what the denylist can express, so there
  * is nothing to keep in sync at runtime and nothing that can silently fail to register. It
- * also no longer installs declarativeContent page rules — the action is enabled everywhere
+ * also no longer installs declarativeContent page rules, the action is enabled everywhere
  * and the popup opens on every page, so there was nothing for a page rule to decide.
  */
 export default defineBackground(() => {
@@ -48,18 +48,38 @@ export default defineBackground(() => {
     void housekeeping();
   });
 
+  /**
+   * Open the welcome page once, on a fresh install.
+   *
+   * It carries the sharing question. That setting lived only in Settings, which almost nobody
+   * opens, so the measurement this project exists for received nothing, the honest fix is to
+   * ask at the one moment the person is already paying attention to this extension, not to
+   * flip the default. `reason` is checked: an update or a browser upgrade must not reopen it,
+   * which is the usual way a welcome page turns into a nuisance.
+   *
+   * Nothing is recorded by opening it. The setting changes only if a button is clicked.
+   */
+  chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason !== "install") return;
+    chrome.tabs.create({ url: chrome.runtime.getURL("welcome.html") }).catch((err: unknown) => {
+      // A welcome tab that cannot open is not worth failing an install over; the same
+      // question still reaches the user on their first card.
+      console.warn("[pensa] welcome page did not open", err);
+    });
+  });
+
   // No `chrome.permissions.onAdded` / `onRemoved` listener any more, and that is not an
   // oversight. They existed to re-derive the runtime registration when an optional origin
   // was granted or revoked from the popup. There are no optional origins now, nothing in
   // this extension calls `permissions.request` or `permissions.remove`, and the content
-  // script is declared in the manifest — so a permission change has nothing to reconcile.
+  // script is declared in the manifest, so a permission change has nothing to reconcile.
   // If a user narrows site access from chrome://extensions, Chrome simply stops injecting;
   // that needs no cooperation from us, and the popup reports it (see diagnose-registration).
 
   chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
     // The .catch is load-bearing. Without it a throw anywhere inside handleMessage skips
     // sendResponse entirely, the message port closes with no reply, and the caller sees an
-    // ordinary empty answer — the same silent-failure shape as the BigInt bug and the quiet
+    // ordinary empty answer, the same silent-failure shape as the BigInt bug and the quiet
     // {ok:false}. A digest that could not be built must say so, not vanish.
     void handleMessage(raw)
       .then(sendResponse)
@@ -227,7 +247,7 @@ async function handleMessage(raw: unknown): Promise<unknown> {
 
       // `decideDigest` returns { items, mode }. This used to assign that whole object to the
       // reply's `items` field, so the content script read `reply.items.length` on an object
-      // (undefined) and `reply.mode` one level too high — and the card never rendered, on
+      // (undefined) and `reply.mode` one level too high, and the card never rendered, on
       // every site, for the entire build. Nothing caught it because handleMessage returns
       // `unknown`; `satisfies ShowDigest` below is what makes it a compile error now.
       //
@@ -349,14 +369,14 @@ async function handleMessage(raw: unknown): Promise<unknown> {
        * The prevalence substrate, handed over whole.
        *
        * `get-summary` answers "what did I see today" for a person. This answers "what has
-       * this browser actually observed" for research — one row per detection, with the
+       * this browser actually observed" for research, one row per detection, with the
        * fields that make a row analysable: which pattern, where in the funnel, how confident,
        * whether it was ever actually shown, and why it was suppressed if not.
        *
        * Deliberately NOT the same shape as the telemetry record. Telemetry is k-anonymised
        * and strips the origin by design, because it leaves the device. This does not leave
        * the device unless the person exporting it chooses to move it, so it keeps the origin
-       * — without which per-site prevalence cannot be computed at all, and per-site
+       *, without which per-site prevalence cannot be computed at all, and per-site
        * prevalence is most of the point.
        *
        * `textSample` is included: it is already stored, it is what makes a row auditable

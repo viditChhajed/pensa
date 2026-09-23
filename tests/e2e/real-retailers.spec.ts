@@ -9,7 +9,7 @@
  *   - These are real retailer STOREFRONT pages, not authenticated checkout. A checkout page
  *     needs a populated cart and usually an account, which is the same limit the plan's
  *     crawler ethics section accepts (§10). Deep product URLs were tried first and proved
- *     too unstable to pin in a test; storefronts are stable and carry the same hazards —
+ *     too unstable to pin in a test; storefronts are stable and carry the same hazards,
  *     sticky headers, chat widgets, cookie banners, floating carts.
  *   - The assertion is stronger than "the buy button is clickable": it hit-tests EVERY
  *     visible interactive control on the page and requires the overlay to cover none of
@@ -44,7 +44,7 @@ const MIN_SITES = 2;
 
 /**
  * Scroll depth is not a detail. The pre-fix baseline showed target suppressed at the top of
- * the page and fitting a full card at 70% scroll — the header and nav clusters that fill the
+ * the page and fitting a full card at 70% scroll, the header and nav clusters that fill the
  * corners are exactly what scrolls away. Measuring one position per site would have reported
  * a rate that no shopper experiences.
  */
@@ -54,7 +54,7 @@ let context: BrowserContext;
 /**
  * Run state, kept on disk rather than in module scope.
  *
- * Playwright restarts the worker after a failing test, which resets module-level state — so
+ * Playwright restarts the worker after a failing test, which resets module-level state, so
  * one flaky site (a slow load, a bot block) emptied `loaded` and made the "enough real sites"
  * guard report a SECOND, false failure that masked the real one. A guard that lies when
  * something else breaks is worse than no guard.
@@ -274,7 +274,7 @@ test("a card is placeable at every scroll depth on every real page", () => {
   // The measurement that matters for the product, not just for safety. Before controls were
   // tiered the answer was zero: 60% of samples suppressed and the tester never saw a card
   // across six live retailers. A safety rule that fires on every page is a broken product,
-  // so this asserts the rule is satisfiable — and asserts it per scroll depth, because the
+  // so this asserts the rule is satisfiable, and asserts it per scroll depth, because the
   // corners that fill a viewport are the ones that scroll away.
   const outcomes = readState().outcomes;
   if (outcomes.length === 0) test.skip(true, "no sites loaded");

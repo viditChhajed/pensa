@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pensa</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <!--
+      One question, on one card, at install.
+
+      Deliberately not a welcome tour. The sharing setting used to live only in Settings, which
+      almost nobody opens, so the research this project exists for received nothing. This asks
+      once, in one sentence, with the full disclosure one click away for anyone who wants it.
+
+      Its own rules, because a tool that points out persuasion cannot use any:
+        - Both answers are the same element with the same class: same size, weight and colour.
+          Pensa's own interference detector would flag anything else, and should.
+        - Neither is preselected and nothing is focused, which is what its defaults detector
+          looks for.
+        - No claim that sharing is risk free. The details say exactly what travels and what
+          never does, so the reader can judge it themselves.
+    -->
+    <main class="card" role="dialog" aria-labelledby="q">
+      <div class="mark">
+        <svg viewBox="0 0 128 128" width="32" height="32" aria-hidden="true">
+          <rect width="128" height="128" rx="28" fill="#2B5CFF" />
+          <rect x="40" y="30" width="17" height="68" rx="8.5" fill="#fff" />
+          <rect x="71" y="46" width="17" height="52" rx="8.5" fill="#fff" />
+        </svg>
+        <span>Pensa is installed</span>
+      </div>
+
+      <h1 id="q">
+        Do you opt in to sharing anonymous data to help a high schooler's research project?
+      </h1>
+
+      <div class="answers" id="answers">
+        <button type="button" class="answer" data-consent="true">
+          <span class="tick" aria-hidden="true">✓</span> Yes
+        </button>
+        <button type="button" class="answer" data-consent="false">
+          <span class="tick" aria-hidden="true">✕</span> No
+        </button>
+      </div>
+      <p class="muted small" id="result" role="status"></p>
+
+      <details>
+        <summary>More details</summary>
+        <div class="detail">
+          <p>
+            Pensa is a research project by a high schooler, measuring how common persuasion
+            techniques are across shops, and how often people add an item after seeing one.
+            That needs reports from real shopping.
+          </p>
+
+          <h2>What a report says</h2>
+          <ul>
+            <li>the shop's domain, for example <code>shein.com</code></li>
+            <li>which technique appeared</li>
+            <li>where in checkout it appeared</li>
+            <li>whether you clicked Add to Cart</li>
+            <li>the date, never a time</li>
+          </ul>
+
+          <h2>What it never says</h2>
+          <ul class="never">
+            <li>your name, email, or any ID for you or your browser</li>
+            <li>the page or the product, only the shop</li>
+            <li>anything you searched or typed</li>
+            <li>any price, total, or what you spent</li>
+            <li>anything at all from a page that is not a shop</li>
+          </ul>
+
+          <p class="muted small">
+            Reports are counted and stored as totals, never as a list of what one person did.
+            Nothing is sold, and no advertising or analytics company is involved. You can read
+            the exact reports waiting to be sent, and change your mind whenever you like.
+            Switching it off deletes anything not yet sent.
+          </p>
+          <p class="muted small">
+            <a
+              href="https://viditchhajed.github.io/pensa-docs/privacy.html"
+              target="_blank"
+              rel="noreferrer"
+              >Privacy policy</a
+            >
+            <button type="button" id="options" class="linklike">Settings</button>
+          </p>
+        </div>
+      </details>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

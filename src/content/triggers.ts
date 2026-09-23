@@ -2,14 +2,14 @@
  * Add-to-cart and checkout-intent triggers (plan §6, T16).
  *
  * A capture-phase click listener on `document`, and deliberately NO monkey-patching of
- * `fetch` — patching it breaks host pages and reads as hostile in store review.
+ * `fetch`, patching it breaks host pages and reads as hostile in store review.
  *
  * What this does NOT do, stated plainly because an earlier comment promised otherwise: it does
  * not confirm the add succeeded. A click on "Add to cart" that the page then rejects (no size
  * chosen, out of stock) still counts as a trigger. The "PerformanceObserver confirmation step"
  * that was meant to follow was never built.
  *
- * Debounce: at most one trigger per kind per funnel stage PER PAGE LOAD — the set below lives on
+ * Debounce: at most one trigger per kind per funnel stage PER PAGE LOAD, the set below lives on
  * this instance and a reload starts it empty. The once-per-session limit on actually SHOWING a
  * card is enforced separately in the worker (`shouldShowDigest`).
  *

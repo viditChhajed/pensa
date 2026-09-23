@@ -2,7 +2,7 @@
  * Browsing a shop is recorded, without a card and without clicking anything.
  *
  * Detections used to reach the event log ONLY when add-to-cart or checkout was clicked, so
- * everything a shop showed someone who looked and left was never written down — which made the
+ * everything a shop showed someone who looked and left was never written down, which made the
  * local summary, the export and the prevalence dataset all measures of the moment of adding to
  * cart rather than of what shops display.
  *

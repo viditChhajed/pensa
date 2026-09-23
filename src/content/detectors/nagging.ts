@@ -13,7 +13,7 @@
  * sensitivity control ships in v1 rather than v1.1. A tool that flags repeated interruption
  * while being one would deserve the criticism.
  *
- * One candidate per page maximum — nagging is a property of the page, not of a node.
+ * One candidate per page maximum, nagging is a property of the page, not of a node.
  */
 import type { DetectionCandidate } from "@/shared/schema";
 import type { Detector, PageContext } from "../types";
@@ -48,7 +48,7 @@ export const naggingDetector: Detector = {
     }
 
     // Page-level evidence. This finding is about the page, not about any node, and it must
-    // not depend on the harvester having produced a candidate — a page whose only content is
+    // not depend on the harvester having produced a candidate, a page whose only content is
     // prose yields none, and that page can still nag.
     const subSignals = {
       repeatCount: 1,

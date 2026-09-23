@@ -14,14 +14,14 @@ import { TRAINABLE } from "../../scripts/label-queue.mjs";
  * That has now happened three times, each found by someone probing a phrase by hand:
  *
  *   "I understand purchasing options separately may result in a higher overall price"
- *       — no digit, no currency glyph, no trigger word. confirmshaming never saw it.
+ *, no digit, no currency glyph, no trigger word. confirmshaming never saw it.
  *   "Premium seats, going fast"
- *       — same. A shipped scarcity pattern that could not fire.
+ *, same. A shipped scarcity pattern that could not fire.
  *   "Summer sale ending soon"
- *       — the list had "ends", and `includes("ends")` does not match "ending".
+ *, the list had "ends", and `includes("ends")` does not match "ending".
  *
  * So this test asserts the prefilter against the canonical positive copy each pattern claims
- * to catch, taken from the labelling tool's own examples — the ones shown to a human as
+ * to catch, taken from the labelling tool's own examples, the ones shown to a human as
  * "yes, like this". If the tool tells someone a phrase is a positive example, the extension
  * had better be able to see it.
  */
@@ -32,7 +32,7 @@ describe("the prefilter admits the copy the detectors are built for", () => {
       it(`${pattern.id}: ${JSON.stringify(example)}`, () => {
         expect(
           classifyText(example),
-          "rejected before any detector ran — no detector can fire on this",
+          "rejected before any detector ran, no detector can fire on this",
         ).not.toBe(CharClass.None);
       });
     }

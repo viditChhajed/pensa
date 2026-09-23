@@ -3,8 +3,8 @@
  *
  * Why not real SHA-256: WebCrypto's digest is async, and the detectors are synchronous pure
  * functions by contract (that is what lets them run in Node against a serialized DOM). The
- * hash is used for deduplication and for keeping raw text out of the persisted record — not
- * for any security property — so a fast non-cryptographic hash is the right tool. If this
+ * hash is used for deduplication and for keeping raw text out of the persisted record, not
+ * for any security property, so a fast non-cryptographic hash is the right tool. If this
  * ever needs to resist preimage attacks, it must move to WebCrypto and the detector
  * contract has to become async.
  */

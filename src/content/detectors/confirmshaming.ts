@@ -1,7 +1,7 @@
 /**
  * confirmshaming.decline_copy
  *
- * The signal is not "this text is negative" — it is "the control that declines is phrased in
+ * The signal is not "this text is negative", it is "the control that declines is phrased in
  * the first person, so clicking it means saying something unflattering about yourself."
  * "No thanks" is fine. "No thanks, I don't like saving money" is not.
  *
@@ -39,9 +39,9 @@ const SELF_DEPRECATION: readonly RegExp[] = [
    * Every rule above encodes one exact phrasing of the sentiment, and the corpus contained
    * three real instances, all scoring zero:
    *
-   *   "I Will Pay Full Price!"          — "rather pay full" and "prefer full price" are
+   *   "I Will Pay Full Price!", "rather pay full" and "prefer full price" are
    *   "I will pay full price"             here; the plain declaration is not
-   *   "I don't want my mystery offer"   — "don't want" was required to be followed
+   *   "I don't want my mystery offer", "don't want" was required to be followed
    *                                        immediately by the noun, so a possessive broke it
    *
    * Confirmshaming is the one Tier-1 detector that was still at 0.00 recall, which is what
@@ -51,11 +51,11 @@ const SELF_DEPRECATION: readonly RegExp[] = [
   /\bi\s*(?:will|'?ll|am going to)\s+pay\s+(?:the\s+)?(?:full|more|retail|extra)\b/,
   /\b(?:don'?t|do not)\s+(?:want|like|need)\s+(?:my|the|this|your|any)\s+\w+/,
   /\bi'?ll (?:risk it|take my chances|pass on)\b/,
-  // First-person only. A bare "miss out" matched ordinary calls to action — a "Don't miss
+  // First-person only. A bare "miss out" matched ordinary calls to action, a "Don't miss
   // out, shop now" button scored 0.8 and was shown as loaded decline wording, which it is not.
   /\b(?:i'?ll|i will|i'?d rather|i don'?t mind|i'?m (?:ok|okay|fine|happy)(?: with)?)\s+miss(?:ing)? out\b/,
   // A second shape of the same mechanism, found on flyfrontier: declining the upsell
-  // requires TICKING A BOX that asserts something costly about your own choice —
+  // requires TICKING A BOX that asserts something costly about your own choice,
   // "Basic Fare works for me. I understand purchasing options separately may result in a
   // higher overall price." Nothing here is rude, so none of the patterns above match, but
   // the decline is still written to be uncomfortable to agree with. Reported twice from the
@@ -64,12 +64,12 @@ const SELF_DEPRECATION: readonly RegExp[] = [
 
 /**
  * The second shape of the same mechanism, found on flyfrontier: declining the upsell
- * requires TICKING A BOX that asserts something costly about your own choice — "Basic Fare
+ * requires TICKING A BOX that asserts something costly about your own choice, "Basic Fare
  * works for me. I understand purchasing options separately may result in a higher overall
  * price."
  *
  * Nothing in that sentence is rude, so none of the patterns above match it, and the control
- * is a checkbox label rather than a button — so the decline-control gate rejected it too.
+ * is a checkbox label rather than a button, so the decline-control gate rejected it too.
  * But ticking the box IS the act of declining, and it is written to be uncomfortable to
  * agree with. Reported from the field twice before it was handled.
  *
@@ -146,7 +146,7 @@ export const confirmshamingDetector: Detector = {
       const control = isControl(n);
       const firstPerson = FIRST_PERSON.test(raw);
 
-      // Copy alone is not enough — it has to be the thing you click to say no. A costly
+      // Copy alone is not enough, it has to be the thing you click to say no. A costly
       // acknowledgement counts as that thing in its own right: the box IS the decline, and
       // it is a label rather than a button, so neither isControl nor DECLINE_HINT sees it.
       if (!control && ackHits.length === 0 && !DECLINE_HINT.test(raw)) continue;

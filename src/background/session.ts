@@ -2,7 +2,7 @@
  * Session identity and the digest decision path (plan T26/T32 support).
  *
  * The session id rotates daily and never leaves the device. It exists so a day's browsing
- * can be grouped in the popup summary, not so anyone can be recognised — which is why it is
+ * can be grouped in the popup summary, not so anyone can be recognised, which is why it is
  * derived from the date rather than persisted forever, and why it is excluded from the
  * telemetry record shape entirely.
  */
@@ -72,7 +72,7 @@ export interface DigestItem {
    *
    * "One choice was made for you in advance. Is it the one you want?" is unanswerable
    * without saying WHICH choice. A prompt the reader cannot connect to anything on the page
-   * is not a Socratic question, it is a riddle — and the whole design principle here is
+   * is not a Socratic question, it is a riddle, and the whole design principle here is
    * observe and question, which requires naming the observation.
    *
    * Local only. It came from the page the reader is looking at, and it is stripped from
@@ -83,7 +83,7 @@ export interface DigestItem {
    * Why the pattern works, and the source for that claim.
    *
    * The product's stated principle is observe and question, never accuse. A question with
-   * nothing behind it is just an insinuation — the reader has no way to check whether the
+   * nothing behind it is just an insinuation, the reader has no way to check whether the
    * effect is real or whether the tool is editorialising. Every taxonomy entry already
    * carries a one-line mechanism and a full citation to the literature; they were simply
    * never surfaced anywhere a reader could see them.
@@ -134,8 +134,8 @@ export interface CandidateInput {
 /**
  * Write what a page showed, without asking whether to show a card.
  *
- * Detections used to reach the event log only when a trigger fired, so the local record — and
- * the prevalence dataset built from it — described what shoppers saw at the moment of adding to
+ * Detections used to reach the event log only when a trigger fired, so the local record, and
+ * the prevalence dataset built from it, described what shoppers saw at the moment of adding to
  * cart, and nothing about what shops display while you browse. This is that missing half.
  *
  * Deliberately narrower than `decideDigest`: no cross-stage or temporal claims (those are
@@ -182,7 +182,7 @@ export async function recordPassive(
        * Always `passive_scan`, never a card-suppression reason.
        *
        * The first version ran these through `buildDigest`, so rows came back marked
-       * `below_salience_gate` or `dedup_family` — reasons describing why a card was not shown,
+       * `below_salience_gate` or `dedup_family`, reasons describing why a card was not shown,
        * when no card was ever due. Ranking is also the wrong operation here: family dedup would
        * drop the second distinct scarcity message on a page, which is exactly the kind of thing
        * a prevalence count wants to keep.
@@ -229,7 +229,7 @@ export async function decideDigest(
   if (dripFinding) {
     const c = dripCandidate(ledger, dripFinding);
     // A cross-stage finding has no on-screen node, so it cannot have dwell. It is credited
-    // with the gate and a nominal dwell — the shopper is looking at the total right now.
+    // with the gate and a nominal dwell, the shopper is looking at the total right now.
     if (c) pool.push({ candidate: c, visibleMs: 2000, passedGate: true });
   }
 
@@ -242,7 +242,7 @@ export async function decideDigest(
   //
   // They were held back as "v1.1 during store review" alongside Tier 2. The engine, its
   // store and its tests all shipped from day one and the observation history has been
-  // accumulating since the first visit — so the claims were sitting one import away from
+  // accumulating since the first visit, so the claims were sitting one import away from
   // working, on data the extension had already collected. Nothing about them needed more
   // time; they needed connecting.
   //
@@ -253,8 +253,8 @@ export async function decideDigest(
       const observation = await readOffer(origin, offerKey);
       if (observation) {
         for (const c of temporalCandidates(observation)) {
-          // A temporal claim has no on-screen node — it is a statement about history, not
-          // about this render — so it cannot have dwell. Credited like the cross-stage
+          // A temporal claim has no on-screen node, it is a statement about history, not
+          // about this render, so it cannot have dwell. Credited like the cross-stage
           // findings above, which are in the same position.
           pool.push({ candidate: c, visibleMs: 2000, passedGate: true });
         }
@@ -306,7 +306,7 @@ export async function decideDigest(
     // A pattern the user switched off is not recorded at all, not merely withheld from the
     // card. The settings page promises exactly that, and a local database quietly
     // accumulating rows for something someone asked us to stop watching for would make that
-    // promise false — in a product whose whole claim is that it does not do things behind
+    // promise false, in a product whose whole claim is that it does not do things behind
     // your back.
     if (!decision.surfaced && decision.reason === "user_disabled") continue;
     // `surfaced` must mean "the user saw this", not "we intended to show it". Previously it
@@ -352,7 +352,7 @@ export async function decideDigest(
   await putEvents(events);
 
   /**
-   * Queue anonymous counts, if and only if consent is on. `enqueue` is a no-op otherwise —
+   * Queue anonymous counts, if and only if consent is on. `enqueue` is a no-op otherwise,
    * not queue-then-discard, because a queue that fills while consent is off is a queue that
    * leaks the moment someone turns it on, and switching it on consents to future sharing,
    * not to everything that happened before.
