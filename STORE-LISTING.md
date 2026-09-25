@@ -15,11 +15,14 @@ Pensa
 
 ## Short description (132 char limit)
 
+Taken from the manifest, not typed into the dashboard. Keep the two identical:
+
 ```
-Notices persuasion techniques on shopping pages and asks a question about them. Runs on your device. Nothing is sent anywhere.
+Notices persuasion techniques on shopping pages and asks a question about them. Runs on your device; sharing is off by default.
 ```
 
-*(124 characters.)*
+*(127 characters. "Nothing is sent anywhere" was the old wording and is no longer true: with
+sharing switched on, counts go to the endpoint below.)*
 
 ## Category
 
@@ -133,20 +136,9 @@ The full source, including the list of sites and the exact wording of every prom
 public.
 ```
 
-> **ORDERING DEPENDENCY, the repo must be public BEFORE this listing is submitted.**
->
-> `viditChhajed/pensa` is private today, deliberately: the decision is to stay
-> private while the detectors are still being refined, and to flip public immediately before
-> launch. That is a sound order, refine in private, ship in public, but it makes the
-> paragraph above **false until the flip happens**, in the one direction a reviewer can check
-> in ten seconds.
->
-> So this is not an open question, it is a sequencing item, and it lives in the pre-submission
-> checklist below. Add the repo URL to the paragraph when you flip it; an unverifiable claim
-> of openness is weaker than a link.
->
-> Before flipping: the history is public forever afterwards, and EVAL.md records real browsing
-> sessions. Audit the history first.
+> **Done.** `viditChhajed/pensa` is public, so the "open source" paragraph is checkable. The
+> history was audited before the flip: 89 commits, 496 blobs, no secrets, no personal data, no
+> unscrubbed fixture, `corpus/` never tracked.
 
 ---
 
@@ -217,19 +209,14 @@ Identify persuasion techniques displayed on shopping pages and present the user 
 question about them.
 ```
 
-**Data usage disclosures**, depends on whether a telemetry endpoint is deployed. Read this
-before ticking anything; a listing that says "collects nothing" while the extension posts
-counts is the kind of mismatch that fails review.
-
-*If `TELEMETRY_ENDPOINT` in `src/shared/constants.ts` is empty* (the shipped default): tick
-nothing. Nothing is transmitted, and four e2e tests assert it.
-
-*If an endpoint is configured* (the build you upload once the sink is deployed): tick
-**Web history** and **User activity**. The shop's domain is browsing activity; whether Add to
-Cart was clicked is user activity (a click). Use this wording (fits the 1,000-character field):
+**Data usage disclosures.** The uploaded zip is built WITH the endpoint (see "The zip to
+upload"), so it can transmit once a user opts in. Tick **Web history** and **User activity**:
+the shop's domain is browsing activity, and whether Add to Cart was clicked is a click. A
+listing that says "collects nothing" while the extension posts counts is the kind of mismatch
+that fails review. Use this wording (it fits the 1,000-character field):
 
 ```
-Optional and off by default. Pensa asks once, on its first card, with two equal answers; closing the card counts as no. When on, it reports which persuasion technique appeared on which shop (main domain only, e.g. shein.com), at which checkout stage, and on which day. On product and listing pages it also reports whether the Add to Cart button was clicked, alongside the techniques on screen beforehand, as separate counts. It never sends the page address, product, search, page text, prices, account details, any identifier for the user, or any time more precise than the day. Only pages judged to be shops are reported. Reports are batched on a six-hour timer and stored only as aggregate counts. Users can view the exact reports before any are sent, and switching sharing off deletes anything unsent. The data is used for research on how common these techniques are and how often people add items after seeing them.
+Optional and off by default. Pensa asks once, on the card that opens when it is installed, with two equally weighted answers and nothing preselected; if that card is closed unanswered, it asks once more on the first in-page card. When on, it reports which persuasion technique appeared on which shop (main domain only, e.g. shein.com), at which checkout stage, and on which day. On product and listing pages it also reports whether the Add to Cart button was clicked, alongside the techniques on screen beforehand, as separate counts. It never sends the page address, product, search, page text, prices, account details, any identifier for the user, or any time more precise than the day. Only pages judged to be shops are reported. Reports are batched on a six-hour timer and stored only as aggregate counts. Users can view the exact reports before any are sent, and switching sharing off deletes anything unsent. The data is used for research on how common these techniques are and how often people add items after seeing them.
 ```
 
 Chrome Web Store user-data policy also requires the in-product consent to be prominent and
@@ -272,22 +259,25 @@ committed policy disagree. Re-check the page after any edit to PRIVACY.md.
 
 ### NEEDS YOU
 
-| Asset | Spec | Why I cannot do it |
+| Asset | Spec | Why |
 |---|---|---|
-| **Screenshots** (1–5) | 1280×800 or 640×400 PNG | Must show the extension running on a real shopping page. That needs the manual grant flow, which raises a native dialog no automation can accept. |
-| **Demo video** (optional) | YouTube link | Same reason. Optional, but it measurably helps review. |
-| **Developer account** | $5 one-time | Payment and identity verification, I cannot and should not do this. |
-| **Publisher identity** | Real name or verified org | Store requirement. |
+| **Demo video** (optional) | YouTube link | Needs a person to record and narrate. Optional, but it measurably helps review. |
+| **Developer account** | $5 one-time | **Done.** Payment and identity verification, which only you can do. |
+| **Publisher identity** | Real name or verified org | **Done.** Store requirement. |
+
+Screenshots are no longer in this table: the permission is granted at install, so
+`npm run screenshots` drives the real build against a live retailer without any manual step,
+and the install card shoots itself in `tests/e2e/welcome.spec.ts`.
 
 **Suggested screenshots**, in order of usefulness to a reviewer (`05-welcome.png` is generated
 by `tests/e2e/welcome.spec.ts`, the rest by `npm run screenshots`):
 
-0. The install page, showing how sharing consent is asked: what is shared, what is not, and two
+0. The install card, showing how sharing consent is asked: what is shared, what is not, and two
    equally weighted answers with nothing preselected. Worth including, it is the prominent
    disclosure the user-data policy asks for, in one image.
 
 1. The card on a real product page, showing one question.
-2. The popup on a shopping page, saying Pensa is running there and showing today's summary.
+2. The popup on a shopping page, saying Pensa is checking it and showing the day's summary.
 3. Settings → *What was noticed today*, showing the Noticed / Shown split.
 4. Settings → *What to watch for*, showing a switch per technique and the frequency control.
    This is the screenshot that answers "can I turn it down?", which is the first thing a
@@ -299,18 +289,19 @@ Cart, or on arrival at checkout.
 
 ---
 
-## Submit as **Unlisted** first, recommendation
+## Where this stands
 
-Fully reviewed, installable by link, not publicly discoverable. It lets you validate that
-review passes and that precision holds up on real traffic before a public listing exists to
-be judged. Flipping to Public later is one setting.
+1.0.0 was reviewed and listed (as Vero). Everything below is therefore an UPDATE, not a first
+submission: a new version number, new package, and a listing whose name, description, images
+and privacy URL all change with it. An update goes through review again, and the broad host
+permission means it may take days rather than hours.
 
 ---
 
 ## Pre-submission checklist
 
-- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green, 608 unit + eval, 48 e2e
-- [x] `host_permissions` empty in the built manifest (CI-enforced, checked: `[]`)
+- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green, 633 unit + eval, 59 e2e
+- [x] `host_permissions` is exactly `["https://*/*"]` in the built manifest, with 115 `exclude_matches` from the denylist (both CI-enforced by `tests/unit/manifest.test.ts`)
 - [x] Icons present at all four sizes
 - [x] Privacy policy URL live and reachable
 - [x] **Spot-check re-run against THIS build.** It was the real gate and it earned that
@@ -325,8 +316,9 @@ be judged. Flipping to Public later is one setting.
       attribution that had never worked and a 400-character text cap that made Pensa silent on
       every travel and ticketing site. All are fixed and regression-tested; 157 claims stand on
       the repaired build. Tally and provenance in [EVAL.md](EVAL.md).
-- [x] Screenshots captured, `npm run screenshots`, four 1280×800 PNGs in `store/screenshots/`,
-      taken from the running build against a live retailer
+- [x] Screenshots captured: four 1280×800 PNGs from `npm run screenshots`, taken from the
+      running build against a live retailer, plus `05-welcome.png` of the install card from
+      `npx playwright test tests/e2e/welcome.spec.ts`
 - [x] Pre-publication audit of the full history, 89 commits, 496 blobs. No secrets, no
       personal data, no fixture ever committed unscrubbed, `corpus/` never tracked. The worry
       recorded here previously ("EVAL.md holds real browsing sessions") was unfounded: that
@@ -350,13 +342,18 @@ A zip from a plain `npm run build` has the send path compiled out entirely and w
 contribute to the dataset. Because the uploaded build transmits (when the user opts in), the
 Data usage section must use the "endpoint is configured" wording above and tick **Web history**.
 
-### Still yours to do
+### Still yours to do, for the 1.1.0 update
 
-- [ ] **Chrome Web Store developer account**, $5 one-time, with identity verification
-- [ ] **Flip the repo to public**, the listing says the source is public. The audit above
-      says it is safe to flip; nothing else blocks it
-- [ ] **Decide listing visibility.** Unlisted first is still the recommendation above: fully
-      reviewed, installable by link, not publicly discoverable, one setting to flip later
+- [ ] Upload `.output/pensa-1.1.0-chrome.zip` (built with the endpoint, below)
+- [ ] Replace the listing description from `store/description.txt`
+- [ ] Replace all screenshots and both promo tiles: the published ones still say Vero
+- [ ] Update Homepage and Support URLs to `github.com/viditChhajed/pensa` and its `/issues`
+- [ ] Update the privacy policy URL to `https://viditchhajed.github.io/pensa-docs/privacy.html`
+- [ ] Re-paste the permission justifications and the data-usage wording above, and tick
+      **Web history** and **User activity**
+- [ ] Submit for review
+
+Done already: the developer account, the public repo, and the listing itself.
 
 **What is NOT done, and should not be claimed:** the §10 *human* pass. A person browsing
 30–40 pages and judging each card is the only thing that catches a claim that was true and

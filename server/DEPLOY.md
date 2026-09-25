@@ -3,6 +3,12 @@
 About ten minutes. Everything runs from the repo root. Nothing in the extension contacts this
 until step 6, and a plain `npm run build` still produces an extension that sends nothing.
 
+> **This is already deployed** for this project: Worker `pensa-counts` at
+> `https://pensa-counts.viditchhajed.workers.dev/counts`, D1 database `pensa-counts`, with the
+> v3 schema (both tables and all seven views) applied and verified end to end. Follow the steps
+> below to stand up a fresh one, or to re-apply the schema after changing `schema.sql`, which is
+> safe to re-run: every statement is `create ... if not exists`.
+
 ## 1. Log in (once)
 
 ```bash

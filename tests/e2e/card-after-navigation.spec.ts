@@ -49,6 +49,10 @@ async function open(start = "pdp-navigates.html"): Promise<{ page: Page; logs: s
     await route.fulfill({ status: 204, body: "" });
   });
   await page.goto(`http://shop.example.com/${start}`, { waitUntil: "domcontentloaded" });
+  // Dwell only accrues on a VISIBLE page, and the install opens a welcome tab that takes the
+  // foreground. Without this the shop sits in the background, nothing clears the salience
+  // gate, and the card never has a candidate to show.
+  await page.bringToFront();
   return { page, logs };
 }
 

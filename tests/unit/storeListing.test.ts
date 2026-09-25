@@ -170,3 +170,105 @@ describe("README describes what ships", () => {
     ).toBe(false);
   });
 });
+
+/**
+ * Cross-document consistency.
+ *
+ * Every one of these was wrong at least once: the docs described a per-site permission flow
+ * two models ago, claimed the telemetry sink was undeployed while it was live, quoted a
+ * short description that no longer matched the manifest, and named a detector that had been
+ * deleted. Prose drifts silently; these are the parts that can be checked.
+ */
+describe("the docs agree with the build", () => {
+  const DOCS = [
+    "README.md",
+    "STORE-LISTING.md",
+    "PRIVACY.md",
+    "MANUAL-VERIFICATION.md",
+    "SPOT-CHECK.md",
+    "server/README.md",
+    "server/DEPLOY.md",
+    "store/description.txt",
+  ];
+  const text = (f: string) => readFileSync(f, "utf8");
+
+  it("quotes the manifest's own short description verbatim in the listing", () => {
+    if (!existsSync(MANIFEST)) return;
+    const manifest = JSON.parse(readFileSync(MANIFEST, "utf8")) as { description: string };
+    expect(
+      listing.includes(manifest.description),
+      "STORE-LISTING.md quotes a short description the manifest does not have",
+    ).toBe(true);
+    expect(manifest.description.length).toBeLessThanOrEqual(132);
+  });
+
+  it("names the version that is actually built", () => {
+    if (!existsSync(MANIFEST)) return;
+    const { version } = JSON.parse(readFileSync(MANIFEST, "utf8")) as { version: string };
+    expect(listing.includes(version), `STORE-LISTING.md never mentions ${version}`).toBe(true);
+    expect(
+      listing.includes(`pensa-${version}-chrome.zip`),
+      `STORE-LISTING.md does not name the zip for ${version}`,
+    ).toBe(true);
+  });
+
+  /**
+   * A mention is fine when the sentence says the thing is gone. What must not survive is a doc
+   * still describing it as how Pensa works, so the check is for an unmarked mention: the line
+   * itself, or the one either side of it, has to carry a word that retires it.
+   */
+  const RETIRED =
+    /no longer|not called|nothing calls|nowhere|never called|removed|gone|obsolete|deliberately absent|used to|there is no/i;
+  function unmarkedMentions(doc: string, needle: string): string[] {
+    const lines = readFileSync(doc, "utf8").split("\n");
+    return lines.flatMap((line, i) => {
+      if (!line.includes(needle)) return [];
+      const around = [lines[i - 1] ?? "", line, lines[i + 1] ?? ""].join(" ");
+      return RETIRED.test(around) ? [] : [`${doc}:${i + 1}  ${line.trim().slice(0, 90)}`];
+    });
+  }
+
+  it("does not name a detector that was removed, except to say it was", () => {
+    // EVAL.md is exempt: it is a dated record of past runs, and says so at the top.
+    const hits = DOCS.flatMap((d) => unmarkedMentions(d, "bnpl"));
+    expect(hits, `the installment detector is described as current:\n${hits.join("\n")}`).toEqual(
+      [],
+    );
+  });
+
+  it("does not describe the per-site permission flow as current", () => {
+    const hits = DOCS.flatMap((d) =>
+      ["permissions.request", "Enable on this site", "declarativeContent"].flatMap((needle) =>
+        unmarkedMentions(d, needle),
+      ),
+    );
+    expect(hits, `a retired permission flow is described as current:\n${hits.join("\n")}`).toEqual(
+      [],
+    );
+  });
+
+  it("does not claim the sink is undeployed while an endpoint is documented", () => {
+    for (const doc of DOCS) {
+      const body = text(doc).toLowerCase();
+      if (!body.includes("pensa-counts.viditchhajed.workers.dev")) continue;
+      for (const stale of ["not deployed", "no server is connected"]) {
+        expect(
+          body.includes(stale),
+          `${doc} says "${stale}" and also names the live endpoint`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("points at the current privacy policy, never the old one", () => {
+    for (const doc of DOCS) {
+      const body = text(doc);
+      if (!body.includes("vero-docs")) continue;
+      // The only legitimate mention is the redirect note, which must name the new URL too.
+      expect(
+        body.includes("pensa-docs"),
+        `${doc} mentions vero-docs without the current pensa-docs URL`,
+      ).toBe(true);
+    }
+  });
+});

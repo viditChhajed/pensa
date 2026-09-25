@@ -1,7 +1,8 @@
 # Spot-check guide, the two things only you can do
 
-Both need a human at a real Chrome window. Neither can be automated: one raises a native OS
-dialog, the other is a judgement call about whether a detection was correct.
+Both need a human at a real Chrome window. Neither can be automated: one is the install
+experience Chrome renders outside the page, the other is a judgement call about whether a
+detection was correct and, harder, whether it was worth making.
 
 Start here:
 
@@ -13,58 +14,46 @@ Then load `.output/chrome-mv3` unpacked at `chrome://extensions` with Developer 
 
 ---
 
-# A. Permission-gesture check (~5 minutes)
+# A. Install and first-run check (~5 minutes)
 
-This is plan §1.4 / step 1d. `chrome.permissions.request()` raises a **native OS dialog**,
-which lives outside the page DOM, so no automation can accept it. It is the one link in the
-grant chain that has never been verified.
+There is no per-site enablement any more: the broad permission is granted by Chrome at
+install, and nothing calls `permissions.request()`. What a person still has to look at is the
+install card Chrome opens on top of that, and the three states the popup can report.
 
 ### Steps
 
-1. Go to **https://www.etsy.com** (on the allowlist).
-2. Look at the toolbar icon.
-   - **Expect:** full colour.
-   - *If grey:* the declarativeContent rules did not install. Check the service worker
-     console for errors.
-3. Click the icon. The popup opens and should say *"www.etsy.com looks like a shopping site."*
-4. Click **Enable on this site**.
+1. Load the unpacked build. A tab opens with the install card.
 
-   ### ✅ PASS, Chrome's permission prompt appears immediately
-   ### ❌ FAIL, no prompt appears
+   ### ✅ PASS: one question, `✓ Yes` and `✕ No` the same size, nothing preselected, **More details** collapsed
+   ### ❌ FAIL: anything preselected, or one answer louder than the other
 
-   A failure here means an `await` crept in ahead of `permissions.request()` and consumed the
-   user gesture. The popup resolves the origin when it *opens*, precisely so the click
-   handler can stay synchronous. Culprit would be
-   [src/entrypoints/popup/main.ts](src/entrypoints/popup/main.ts).
+2. Click **More details**. It should say what a report carries and what it never carries,
+   in place, without leaving the card. Answer either way; Settings should agree with it.
 
-5. Click **Allow**, then reload the Etsy page.
-6. Open `chrome://extensions` → **Inspect views: service worker**.
+3. Go to **https://www.etsy.com** and open a product page. Click the toolbar icon.
 
-   ### ✅ PASS, no `[pensa] content script registration failed`
-   ### ❌ FAIL, that error appears
+   ### ✅ PASS: "Pensa is checking etsy.com."
+   ### ❌ FAIL: "idle" on an obvious product page. Read the page's console: the commerce gate logs its score and every signal it found.
 
-7. In that same inspector: **Application → Storage → Extension storage → Session**.
+4. Open `chrome://extensions` → **Inspect views: service worker** → Application → Storage →
+   Extension storage → Session.
 
-   ### ✅ PASS, a key like `ledger:https://www.etsy.com` exists
-   ### ❌ FAIL, no such key
-
-   This is the silent failure the plan warns about (§1.3): registration succeeding is **not**
-   injection. A registered script stays inert without permission, and the no-op looks exactly
-   like "the detector found nothing."
+   ### ✅ PASS: a key like `ledger:https://www.etsy.com` exists
+   ### ❌ FAIL: no such key, which means nothing was ever reported to the worker
 
 ### Also worth 60 seconds
 
-| Site | Expected icon | Why |
+| Site | Expect in the popup | Why |
 |---|---|---|
-| https://www.wikipedia.org | **grey** | not commerce |
-| https://www.etsy.com | **colour** | allowlisted |
-| https://www.chase.com | **grey, and the popup must refuse to offer enablement** | denylist |
+| https://www.wikipedia.org | "Pensa is idle on wikipedia.org." | not a shop, and nothing is recorded |
+| https://www.etsy.com | "Pensa is checking etsy.com." | a shop |
+| https://www.chase.com | "Pensa does not run on www.chase.com." | denylist, enforced in two layers |
 
-The Chase case is the important one. A permission prompt on a bank is the worst outcome this
-product can produce, so the denylist is checked *before* any commerce score and cannot be
-overridden by one.
+The Chase case is the important one, and the check is that **no `ledger:` key exists for it**.
+The denylist is applied before any commerce score, and the content script refuses to run at
+all on those hosts, so a page there should leave no trace whatsoever.
 
-**Report back:** pass/fail for step 4, step 6, step 7, and the three icon states.
+**Report back:** the four steps above, and the three popup states.
 
 ---
 
@@ -81,8 +70,9 @@ columns.
 **≥6 retailers across ≥6 categories, 30–40 pages total.** Breadth beats depth: five pages on
 one site teaches less than one page on five sites.
 
-Categories are the allowlist's own (`rulepacks/allowlist.v1.json`). Suggested sites, all on
-the allowlist so enablement is one click:
+Categories are the allowlist's own (`rulepacks/allowlist.v1.json`). That list no longer
+decides where Pensa runs, it only tags a shop's category for the dataset, so any shop is fair
+game; these are simply dense ones:
 
 | Category | Suggested | Why it earns a slot |
 |---|---|---|
@@ -103,10 +93,12 @@ and dtc as the negative control.
 
 ### What to do on each retailer
 
-1. Enable the site from the popup.
-2. Open a **product page**. Let it sit ~10 seconds so dwell accrues (the salience gate needs
-   800 ms of real on-screen time before anything can surface).
-3. **Add to cart.** Watch for the card.
+1. Open a **product page**. Nothing to enable: Pensa runs on every https page it is not
+   forbidden.
+2. Let it sit ~10 seconds so dwell accrues (the salience gate needs 800 ms of real on-screen
+   time before anything can surface).
+3. **Add to cart.** Watch for the card. On a shop that navigates to a cart page rather than
+   opening a drawer, the card should appear there instead, within a second or two.
 4. Go to the **cart**.
 5. Proceed toward **checkout** as far as you can *without paying and without creating an
    account under false information*. Stop at payment entry.

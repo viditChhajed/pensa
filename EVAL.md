@@ -3,6 +3,19 @@
 **Status: two hand runs (6 retailers) plus two automated audits (22 sites, 64 pages). The
 §10 gate is met. The §10 HUMAN pass is still outstanding.**
 
+> **This file is a record of what was measured, when.** Everything below predates 1.1.0 and is
+> left exactly as it was written, including rows for `bnpl.installments`, which 1.1.0 removed
+> as a detector (splitting a small price into payments changes nobody's decision, and pay-later
+> options often genuinely help). Those rows still describe real firings from the builds that
+> had it, so they are history rather than a claim about what ships now.
+>
+> What 1.1.0 changed that these numbers do not cover: the installment detector is gone, cards
+> now survive an Add to Cart that navigates away, the frequency debounce is per page rather
+> than per shop, hidden cart drawers no longer make a product page read as a cart, and the
+> add-to-cart outcome measure was added. No detector's scoring changed, so the precision
+> figures below still describe the detectors that remain. Nothing here has been re-run against
+> 1.1.0.
+
 The header used to say precision was unmeasured while the tables below held two runs of
 data, the file contradicted itself, which is the specific failure this document exists to
 prevent. What is true now:
@@ -70,14 +83,14 @@ disabling a noisy detector is a normal outcome, and shipping one is not.
 | `anchoring.reference_price` | ~23 | ~23 | **0** | 1 (shein PDP struck pair) | **ship as-is** |
 | `pricing.charm` | ~12 | unknown | **0 confirmed** | 0 | **ship, fix evidence** |
 | `scarcity.stock` | 4 | 4 | **0** | 1 (booking "only 3 left at this price") | **ship as-is** |
-| `urgency.countdown` | 0 |, | 0 | 1 (shein "Last 5 hours") | **ship as-is** |
-| `defaults.preselected` | 0 |, | 0 | 1 (frontier pre-ticked attestation) | **ship as-is** |
-| `social_proof.live_activity` | 0 |, | 0 | 0 observed | **ship as-is** |
-| `confirmshaming.decline_copy` | 0 |, | **0** | 0 | **ship as-is**, correctly silent on glossier's plain "No thanks" |
+| `urgency.countdown` | 0 | n/a | 0 | 1 (shein "Last 5 hours") | **ship as-is** |
+| `defaults.preselected` | 0 | n/a | 0 | 1 (frontier pre-ticked attestation) | **ship as-is** |
+| `social_proof.live_activity` | 0 | n/a | 0 | 0 observed | **ship as-is** |
+| `confirmshaming.decline_copy` | 0 | n/a | **0** | 0 | **ship as-is**, correctly silent on glossier's plain "No thanks" |
 | `goal_gradient.threshold` | 1 | 1 | **0** | 1 (shein "add $2.77 more to cart for") | **ship as-is** |
 | `bnpl.installments` | 4 | 4 | **0** | 1 (glossier Afterpay, phrase split by markup) | **ship as-is** |
-| `pricing.drip` | 0 |, | 0 | unmeasurable, see below | **ship, blocked on stage classifier** |
-| `basket.sneak` | 0 |, | 0 | unmeasurable, needs an account | **ship as-is** |
+| `pricing.drip` | 0 | n/a | 0 | unmeasurable, see below | **ship, blocked on stage classifier** |
+| `basket.sneak` | 0 | n/a | 0 | unmeasurable, needs an account | **ship as-is** |
 
 ### Decision: NOTHING is disabled and NO threshold is raised.
 
@@ -107,28 +120,28 @@ string can carry session and account identifiers, and this file is committed.
 | # | detector | page | retailer | category | stage | fired? | outcome | correct? | false positive? | notes |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 1 | anchoring.reference_price | search results | booking.com | ota_travel | browse | Y | no-room | **unverified** | ? | Fired x9 every pass. User: more than 9 exist when scrolled, fewer than 9 visible unscrolled, count matches neither. Matched text not captured (logging added after). RE-CHECK. |
-| 2 | scarcity.stock | search results | booking.com | ota_travel | browse | **N** | not-fired |, |, | **MISS.** "only 3 left at this price" visibly on page. Lexicon wants "only N left"/"N left in stock"; "at this price" is rate availability, not covered. |
+| 2 | scarcity.stock | search results | booking.com | ota_travel | browse | **N** | not-fired | n/a | n/a | **MISS.** "only 3 left at this price" visibly on page. Lexicon wants "only N left"/"N left in stock"; "at this price" is rate availability, not covered. |
 | 3 | bnpl.installments | event/ticket select | ticketmaster | ticketing | pdp | Y | no-room | **Y** | N | Correct x2. PayPal "Pay Now or Pay In 4" + Klarna both visibly present. |
-| 4 | pricing.drip | event/ticket select | ticketmaster | ticketing | pdp | N | not-fired |, |, | Not reachable: checkout requires an account. Also page showed "$76.50 (incl. fees)", fees appear bundled, so there may be no drip here to find. |
+| 4 | pricing.drip | event/ticket select | ticketmaster | ticketing | pdp | N | not-fired | n/a | n/a | Not reachable: checkout requires an account. Also page showed "$76.50 (incl. fees)", fees appear bundled, so there may be no drip here to find. |
 | 5 | (stage classifier) | event/ticket select | ticketmaster | ticketing | pdp | n/a | n/a | **N** | n/a | Page has quantity stepper, SUBTOTAL $153.00 and "Reserve Tickets", functionally a cart, classified pdp. hasOrderSummaryTriple needs subtotal AND total AND tax/shipping; only SUBTOTAL present. |
 | 6 | (all) | fare select | flyfrontier | airline | browse | N | not-fired | **Y** | N | Zero detections and correct: no struck prices, no charm fractions ($274/$336/$396/$554), no stock counts, no timer, no preselected boxes on that page. |
-| 7 | anchoring.reference_price | fare select | flyfrontier | airline | browse | N | not-fired |, |, | **MISS pattern.** "$274 Discount Den" vs "$277 Standard" is a genuine dual-price anchor with NO strikethrough. Detector requires line-through. Widening is risky, see note below. |
+| 7 | anchoring.reference_price | fare select | flyfrontier | airline | browse | N | not-fired | n/a | n/a | **MISS pattern.** "$274 Discount Den" vs "$277 Standard" is a genuine dual-price anchor with NO strikethrough. Detector requires line-through. Widening is risky, see note below. |
 | 8 | pricing.charm | upsell modal | flyfrontier | airline | browse | Y | no-room | **Y** | N | "*Annual membership costs $59.99 per year", genuinely charm priced, so correct. But low value: it is marketing small print, not the fare. Detector picks largest-rendered price and landed on a footnote. |
-| 9 | defaults.preselected | upsell modal | flyfrontier | airline | browse | **N** | not-fired |, |, | **MISS, clearest one so far.** Pre-ticked: "Basic Fare works for me. I understand purchasing options separately may result in a higher overall price." Preselected with direct cost consequence. Lexicon wants warranty/insurance/membership/protection, none present. |
-| 10 | (stage classifier) | upsell modal | flyfrontier | airline | browse |, |, | **N** |, | Deep inside a booking flow with an upsell interstitial, classified "browse". Second stage misclassification. |
+| 9 | defaults.preselected | upsell modal | flyfrontier | airline | browse | **N** | not-fired | n/a | n/a | **MISS, clearest one so far.** Pre-ticked: "Basic Fare works for me. I understand purchasing options separately may result in a higher overall price." Preselected with direct cost consequence. Lexicon wants warranty/insurance/membership/protection, none present. |
+| 10 | (stage classifier) | upsell modal | flyfrontier | airline | browse | n/a | n/a | **N** | n/a | Deep inside a booking flow with an upsell interstitial, classified "browse". Second stage misclassification. |
 | 11a | scarcity.stock | cart | shein | fast_fashion | **cart** | Y | no-room | **Y** | N | **CORRECT.** x4: "Almost Sold Out", "Checkout Now (1)Almost sold out!". Genuine scarcity copy, visibly on the page. Four hits are duplicates of the same badge rendered in several places. |
 | 11b | bnpl.installments | pdp | shein | fast_fashion | pdp | Y | no-room | **Y** | N | **CORRECT.** x2: "Pay now, or in 4 payments of $3.05" with a Klarna badge. Second confirmed correct site for this detector. |
-| 11c | (stage classifier) | cart | shein | fast_fashion | **cart** |, |, | **Y** |, | **First correct stage classification of the run.** us.shein.com/cart hit the path token and the order-summary triple. |
+| 11c | (stage classifier) | cart | shein | fast_fashion | **cart** | n/a | n/a | **Y** | n/a | **First correct stage classification of the run.** us.shein.com/cart hit the path token and the order-summary triple. |
 | 11d | pricing.charm | pdp | shein | fast_fashion | pdp | Y | no-room | **N** | **suspect** | Matched "Customers Also Viewed10#KnitEssentials-15%SHEIN PETITE Balle", concatenated blob text with no visible price. Also "4Local-50%Women's Casual Denim Spliced Jacket". Evidence is meaningless. CAUSE: charm picks the LARGEST-AREA priced node, which on a grid page is a big container whose text is every child run together. It should prefer leaf price nodes. |
-| 11e | anchoring.reference_price | pdp | shein | fast_fashion | pdp | **N** | not-fired |, |, | **MISS, and the clearest possible case.** PDP shows "$12.23 $16.19 -24%" with $16.19 struck through, a textbook was/now pair. Needs diagnosis against the live DOM. |
-| 11f | goal_gradient.threshold | cart | shein | fast_fashion | cart | **N** | not-fired |, |, | **MISS.** Cart shows "Add $2.77 more to cart for FREE STANDARD SHIPPING on SHEIN products!". Patterns want "add $X more to get/unlock/qualify"; "more to cart for" is not covered. Same lexical brittleness as the other misses. |
-| 11g | nagging.repeat_interstitial | home | shein | fast_fashion | browse |, |, |, |, | Two separate interstitials on load ("Welcome To The SHEIN US Site 30% OFF", then "Claim your 1 coupons 70% OFF"). Would have fired if shipped. Deferred to v1.1, noting that the field data supports it. |
+| 11e | anchoring.reference_price | pdp | shein | fast_fashion | pdp | **N** | not-fired | n/a | n/a | **MISS, and the clearest possible case.** PDP shows "$12.23 $16.19 -24%" with $16.19 struck through, a textbook was/now pair. Needs diagnosis against the live DOM. |
+| 11f | goal_gradient.threshold | cart | shein | fast_fashion | cart | **N** | not-fired | n/a | n/a | **MISS.** Cart shows "Add $2.77 more to cart for FREE STANDARD SHIPPING on SHEIN products!". Patterns want "add $X more to get/unlock/qualify"; "more to cart for" is not covered. Same lexical brittleness as the other misses. |
+| 11g | nagging.repeat_interstitial | home | shein | fast_fashion | browse | n/a | n/a | n/a | n/a | Two separate interstitials on load ("Welcome To The SHEIN US Site 30% OFF", then "Claim your 1 coupons 70% OFF"). Would have fired if shipped. Deferred to v1.1, noting that the field data supports it. |
 | 12a | goal_gradient.threshold | bag | glossier | dtc | pdp | Y | no-room | **Y** | N | **CORRECT.** "You're $15.50 away from free shipping", first confirmation for this detector. Note it fired here but MISSED shein's "Add $2.77 more to cart for FREE STANDARD SHIPPING", so the pattern set is partially right. |
 | 12b | anchoring.reference_price | pdp + bag | glossier | dtc | pdp | Y | off-screen | **Y** | **N** | **VERIFIED CORRECT.** Live-page probe found real `<s>` elements at y=3963-5932 with parent text "Regular price $26 / $91 / $36 / $127", genuine was/now pairs in a recommendations carousel, below the fold. Detected and correctly NOT surfaced. The salience gate did its job. |
-| 12d | bnpl.installments | pdp | glossier | dtc | pdp | **N** | not-fired |, |, | **MISS.** "or 4 interest-free payments of $8.75 with Afterpay" is plainly on the page and the regex covers "N interest-free payments of". Likely cause: the amount is bold, so the phrase is split across elements and no single node carries the whole match. Same root cause as the charm blob problem, node granularity. |
-| 12e | (stage classifier) | bag | glossier | dtc | **pdp** |, |, | **N** |, | Third misclassification. Shopping bag with Subtotal $35.00, Savings -$10.50, Estimated total $24.50 and a Checkout button, called "pdp". URL is /products/body-spritz, a Shopify bag drawer keeps the product URL, so the path token wins. |
-| 12f | nagging / confirmshaming | home | glossier | dtc | browse | **N** | not-fired |, |, | "Join the list" modal with a plain "No thanks" decline. confirmshaming CORRECTLY silent, "No thanks" is neutral, exactly the negative case in the unit tests. Good restraint. |
-| 13 | **obstruction.decline_attestation** | upsell modal | flyfrontier | airline | browse | **N** | not-fired |, |, | **NEW PATTERN, no detector exists.** Upgrade = 1 click. Decline = tick "I understand purchasing options separately may result in a higher overall price" + click. Asymmetric friction plus forced attestation. Added to taxonomy as Tier 3. |
+| 12d | bnpl.installments | pdp | glossier | dtc | pdp | **N** | not-fired | n/a | n/a | **MISS.** "or 4 interest-free payments of $8.75 with Afterpay" is plainly on the page and the regex covers "N interest-free payments of". Likely cause: the amount is bold, so the phrase is split across elements and no single node carries the whole match. Same root cause as the charm blob problem, node granularity. |
+| 12e | (stage classifier) | bag | glossier | dtc | **pdp** | n/a | n/a | **N** | n/a | Third misclassification. Shopping bag with Subtotal $35.00, Savings -$10.50, Estimated total $24.50 and a Checkout button, called "pdp". URL is /products/body-spritz, a Shopify bag drawer keeps the product URL, so the path token wins. |
+| 12f | nagging / confirmshaming | home | glossier | dtc | browse | **N** | not-fired | n/a | n/a | "Join the list" modal with a plain "No thanks" decline. confirmshaming CORRECTLY silent, "No thanks" is neutral, exactly the negative case in the unit tests. Good restraint. |
+| 13 | **obstruction.decline_attestation** | upsell modal | flyfrontier | airline | browse | **N** | not-fired | n/a | n/a | **NEW PATTERN, no detector exists.** Upgrade = 1 click. Decline = tick "I understand purchasing options separately may result in a higher overall price" + click. Asymmetric friction plus forced attestation. Added to taxonomy as Tier 3. |
 | 12 | | | | | | | | | | |
 | 4 | | | | | | | | | | |
 | 5 | | | | | | | | | | |
@@ -139,17 +152,17 @@ string can carry session and account identifiers, and this file is committed.
 | 10 | | | | | | | | | | |
 | 11a | scarcity.stock | cart | shein | fast_fashion | **cart** | Y | no-room | **Y** | N | **CORRECT.** x4: "Almost Sold Out", "Checkout Now (1)Almost sold out!". Genuine scarcity copy, visibly on the page. Four hits are duplicates of the same badge rendered in several places. |
 | 11b | bnpl.installments | pdp | shein | fast_fashion | pdp | Y | no-room | **Y** | N | **CORRECT.** x2: "Pay now, or in 4 payments of $3.05" with a Klarna badge. Second confirmed correct site for this detector. |
-| 11c | (stage classifier) | cart | shein | fast_fashion | **cart** |, |, | **Y** |, | **First correct stage classification of the run.** us.shein.com/cart hit the path token and the order-summary triple. |
+| 11c | (stage classifier) | cart | shein | fast_fashion | **cart** | n/a | n/a | **Y** | n/a | **First correct stage classification of the run.** us.shein.com/cart hit the path token and the order-summary triple. |
 | 11d | pricing.charm | pdp | shein | fast_fashion | pdp | Y | no-room | **N** | **suspect** | Matched "Customers Also Viewed10#KnitEssentials-15%SHEIN PETITE Balle", concatenated blob text with no visible price. Also "4Local-50%Women's Casual Denim Spliced Jacket". Evidence is meaningless. CAUSE: charm picks the LARGEST-AREA priced node, which on a grid page is a big container whose text is every child run together. It should prefer leaf price nodes. |
-| 11e | anchoring.reference_price | pdp | shein | fast_fashion | pdp | **N** | not-fired |, |, | **MISS, and the clearest possible case.** PDP shows "$12.23 $16.19 -24%" with $16.19 struck through, a textbook was/now pair. Needs diagnosis against the live DOM. |
-| 11f | goal_gradient.threshold | cart | shein | fast_fashion | cart | **N** | not-fired |, |, | **MISS.** Cart shows "Add $2.77 more to cart for FREE STANDARD SHIPPING on SHEIN products!". Patterns want "add $X more to get/unlock/qualify"; "more to cart for" is not covered. Same lexical brittleness as the other misses. |
-| 11g | nagging.repeat_interstitial | home | shein | fast_fashion | browse |, |, |, |, | Two separate interstitials on load ("Welcome To The SHEIN US Site 30% OFF", then "Claim your 1 coupons 70% OFF"). Would have fired if shipped. Deferred to v1.1, noting that the field data supports it. |
+| 11e | anchoring.reference_price | pdp | shein | fast_fashion | pdp | **N** | not-fired | n/a | n/a | **MISS, and the clearest possible case.** PDP shows "$12.23 $16.19 -24%" with $16.19 struck through, a textbook was/now pair. Needs diagnosis against the live DOM. |
+| 11f | goal_gradient.threshold | cart | shein | fast_fashion | cart | **N** | not-fired | n/a | n/a | **MISS.** Cart shows "Add $2.77 more to cart for FREE STANDARD SHIPPING on SHEIN products!". Patterns want "add $X more to get/unlock/qualify"; "more to cart for" is not covered. Same lexical brittleness as the other misses. |
+| 11g | nagging.repeat_interstitial | home | shein | fast_fashion | browse | n/a | n/a | n/a | n/a | Two separate interstitials on load ("Welcome To The SHEIN US Site 30% OFF", then "Claim your 1 coupons 70% OFF"). Would have fired if shipped. Deferred to v1.1, noting that the field data supports it. |
 | 12a | goal_gradient.threshold | bag | glossier | dtc | pdp | Y | no-room | **Y** | N | **CORRECT.** "You're $15.50 away from free shipping", first confirmation for this detector. Note it fired here but MISSED shein's "Add $2.77 more to cart for FREE STANDARD SHIPPING", so the pattern set is partially right. |
 | 12b | anchoring.reference_price | pdp + bag | glossier | dtc | pdp | Y | off-screen | **Y** | **N** | **VERIFIED CORRECT.** Live-page probe found real `<s>` elements at y=3963-5932 with parent text "Regular price $26 / $91 / $36 / $127", genuine was/now pairs in a recommendations carousel, below the fold. Detected and correctly NOT surfaced. The salience gate did its job. |
-| 12d | bnpl.installments | pdp | glossier | dtc | pdp | **N** | not-fired |, |, | **MISS.** "or 4 interest-free payments of $8.75 with Afterpay" is plainly on the page and the regex covers "N interest-free payments of". Likely cause: the amount is bold, so the phrase is split across elements and no single node carries the whole match. Same root cause as the charm blob problem, node granularity. |
-| 12e | (stage classifier) | bag | glossier | dtc | **pdp** |, |, | **N** |, | Third misclassification. Shopping bag with Subtotal $35.00, Savings -$10.50, Estimated total $24.50 and a Checkout button, called "pdp". URL is /products/body-spritz, a Shopify bag drawer keeps the product URL, so the path token wins. |
-| 12f | nagging / confirmshaming | home | glossier | dtc | browse | **N** | not-fired |, |, | "Join the list" modal with a plain "No thanks" decline. confirmshaming CORRECTLY silent, "No thanks" is neutral, exactly the negative case in the unit tests. Good restraint. |
-| 13 | **obstruction.decline_attestation** | upsell modal | flyfrontier | airline | browse | **N** | not-fired |, |, | **NEW PATTERN, no detector exists.** Upgrade = 1 click. Decline = tick "I understand purchasing options separately may result in a higher overall price" + click. Asymmetric friction plus forced attestation. Added to taxonomy as Tier 3. |
+| 12d | bnpl.installments | pdp | glossier | dtc | pdp | **N** | not-fired | n/a | n/a | **MISS.** "or 4 interest-free payments of $8.75 with Afterpay" is plainly on the page and the regex covers "N interest-free payments of". Likely cause: the amount is bold, so the phrase is split across elements and no single node carries the whole match. Same root cause as the charm blob problem, node granularity. |
+| 12e | (stage classifier) | bag | glossier | dtc | **pdp** | n/a | n/a | **N** | n/a | Third misclassification. Shopping bag with Subtotal $35.00, Savings -$10.50, Estimated total $24.50 and a Checkout button, called "pdp". URL is /products/body-spritz, a Shopify bag drawer keeps the product URL, so the path token wins. |
+| 12f | nagging / confirmshaming | home | glossier | dtc | browse | **N** | not-fired | n/a | n/a | "Join the list" modal with a plain "No thanks" decline. confirmshaming CORRECTLY silent, "No thanks" is neutral, exactly the negative case in the unit tests. Good restraint. |
+| 13 | **obstruction.decline_attestation** | upsell modal | flyfrontier | airline | browse | **N** | not-fired | n/a | n/a | **NEW PATTERN, no detector exists.** Upgrade = 1 click. Decline = tick "I understand purchasing options separately may result in a higher overall price" + click. Asymmetric friction plus forced attestation. Added to taxonomy as Tier 3. |
 | 12 | | | | | | | | | | |
 | 13 | | | | | | | | | | |
 | 14 | | | | | | | | | | |
@@ -196,7 +209,7 @@ string can carry session and account identifiers, and this file is committed.
   | `no-room` | No room | ranked in, but nothing rendered. Now rare by design: the card is anchored under the toolbar icon and is allowed to overlap page content, so it no longer refuses a page for being crowded. If you see this, say so, it means something else is wrong. |
   | `off-screen` | Off-screen | found, but never on screen long enough to have been seen (<800 ms), so never a candidate |
   | `not-fired` | absent from the table | the detector produced nothing at all |
-  | `deduped` |, | a stronger detection in the same pattern family won the slot |
+  | `deduped` | n/a | a stronger detection in the same pattern family won the slot |
 
   **Threshold problems look like `not-fired`. Placement problems look like `no-room`.**
   I act on those two completely differently: `not-fired` means loosening a lexicon or
@@ -456,10 +469,10 @@ lexemes alongside the sample.
 | # | detector | page | retailer | stage | fired? | outcome | correct? | FP? | notes |
 |---|---|---|---|---|---|---|---|---|---|
 | 20 | anchoring.reference_price | hotel select | booking | cart | Y | not-shown | **Y** | N | x8-9, "$100"/"$120"/"$90". Real struck rates. |
-| 21 |, | your details | booking | **browse** |, |, |, |, | **BUG.** Checkout page classified `browse`, so no trigger and no card. Fixed: checkout detection required shipping-address autocomplete; a hotel booking has none. |
+| 21 | n/a | your details | booking | **browse** | n/a | n/a | n/a | n/a | **BUG.** Checkout page classified `browse`, so no trigger and no card. Fixed: checkout detection required shipping-address autocomplete; a hotel booking has none. |
 | 22 | scarcity.stock | suite listing | ticketmaster | browse | Y | not-shown | **unverified** | ? | "Enjoy the US Open in a spacious, private luxury suite locate". Base copy scores 0 in isolation, so the match is in the truncated remainder. RE-CHECK with lexeme logging. |
-| 23 |, | ticket select | ticketmaster | **cart** |, |, | **Y** |, | Correctly `cart` (was `pdp` before the classifier rewrite). Journey ended at the sign-in wall. |
-| 24 |, | fare select / bundle | flyfrontier | checkout | **N** | not-fired |, |, | **MISS.** Zero detections on a page of pure persuasion. The decline is a CHECKBOX: "I understand purchasing options separately may result in a higher overall price." Blocked three ways at once, see the follow-ups below. |
+| 23 | n/a | ticket select | ticketmaster | **cart** | n/a | n/a | **Y** | n/a | Correctly `cart` (was `pdp` before the classifier rewrite). Journey ended at the sign-in wall. |
+| 24 | n/a | fare select / bundle | flyfrontier | checkout | **N** | not-fired | n/a | n/a | **MISS.** Zero detections on a page of pure persuasion. The decline is a CHECKBOX: "I understand purchasing options separately may result in a higher overall price." Blocked three ways at once, see the follow-ups below. |
 | 25 | goal_gradient.threshold | cart | shein | cart | Y | not-shown | **Y** | N | "Add $2.45 more to cart for FREE STANDARD SHIPPING [add,more]". **Previously a recorded miss; the fix is confirmed in the field.** |
 | 26 | scarcity.stock | cart | shein | cart | Y | not-shown | **Y** | N | x9 "Almost Sold Out". Correct, but nine duplicates of the same badge. |
 | 27 | bnpl.installments | pdp/cart | shein | cart | Y | **off-screen** | **Y** | N | "Pay now, or in 4 payments of $3.13". score=0.70 (below the 0.75 threshold) AND dwell=0ms. Two independent reasons it can never surface. |
@@ -537,7 +550,7 @@ its own.
 
 | Site | Worst pass | Sustained | Backoff reached |
 |---|---|---|---|
-| etsy | 104ms |, | 1s |
+| etsy | 104ms | n/a | 1s |
 | booking.com | 1598ms | 60-200ms | 15s (ceiling) |
 | ticketmaster | 1689ms | 50-970ms | 15s (ceiling) |
 | flyfrontier | 949ms | 64-192ms | 9.5s |
@@ -563,8 +576,8 @@ element, so quadratic. One bottom-up text pass makes it linear.
 
 | Site | CPU before | CPU after | meta | harvest | detectors | Backoff |
 |---|---|---|---|---|---|---|
-| target |, | under budget |, |, |, | 300ms (floor) |
-| ikea | 128ms | under budget |, |, |, | 300ms (floor) |
+| target | n/a | under budget | n/a | n/a | n/a | 300ms (floor) |
+| ikea | 128ms | under budget | n/a | n/a | n/a | 300ms (floor) |
 | newegg | 119ms | **92ms** | 50 | 41 | 0 | ~0.9s |
 | rei | 75ms | **75ms** | 29 | 44 | 2 | ~0.75s |
 
@@ -604,11 +617,11 @@ like a catastrophe.
 | `nagging.repeat_interstitial` | 3 | **3** | **0** | A cookie banner and the scrim behind it are two elements and one interruption |
 | `urgency.countdown` | 33 | 3 | 31 | Two "Save this event" *buttons* and a sensor part number |
 | `scarcity.stock` | 9 | 2 | 7 → **5** | A product-grid blob claimed with evidence containing no scarcity word. Two survived into run 2 and were fixed after it; verified live rather than by re-running the whole audit |
-| `anchoring.reference_price` | 37 | 0 | 35 |, |
-| `pricing.charm` | 28 | 0 | 28 |, |
-| `goal_gradient.threshold` | 28 | 0 | 28 |, |
-| `social_proof.live_activity` | 8 | 0 | 8 |, |
-| `bnpl.installments` | 5 | 0 | 7 |, |
+| `anchoring.reference_price` | 37 | 0 | 35 | n/a |
+| `pricing.charm` | 28 | 0 | 28 | n/a |
+| `goal_gradient.threshold` | 28 | 0 | 28 | n/a |
+| `social_proof.live_activity` | 8 | 0 | 8 | n/a |
+| `bnpl.installments` | 5 | 0 | 7 | n/a |
 
 **No detector exceeded §10's "~4 false positives" gate except `framing.savings_ratio`, which
 failed it five times over.** It is fixed rather than disabled, but see the caveat below.
