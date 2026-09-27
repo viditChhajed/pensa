@@ -75,7 +75,7 @@ same imagination, they agreed with each other and with nothing else.
 
 | pattern | recall | precision | |
 |---|---|---|---|
-| `goal_gradient.threshold` | 0.72 | 0.98 | |
+| `goal_gradient.threshold` | 0.71 | 0.98 | |
 | `urgency.countdown` | 0.71 | 0.92 | |
 | `social_proof.live_activity` | 0.58 | 1.00 | |
 | `scarcity.stock` | 0.54 | 1.00 | |
@@ -85,7 +85,7 @@ Against the first measurement, before any of this was rewritten:
 
 | pattern | was | now |
 |---|---|---|
-| `goal_gradient.threshold` | 0.04 | **0.72** |
+| `goal_gradient.threshold` | 0.04 | **0.71** |
 | `urgency.countdown` | 0.11 | **0.71** |
 | `social_proof.live_activity` | 0.00 | **0.58** |
 | `scarcity.stock` | 0.43 | **0.54** |

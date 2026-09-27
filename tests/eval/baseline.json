@@ -3,7 +3,7 @@
     "scarcity.stock": 0.542,
     "urgency.countdown": 0.709,
     "social_proof.live_activity": 0.583,
-    "goal_gradient.threshold": 0.725
+    "goal_gradient.threshold": 0.713
   },
   "positives": {
     "scarcity.stock": 24,

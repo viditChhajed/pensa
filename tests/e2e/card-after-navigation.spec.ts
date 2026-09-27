@@ -70,7 +70,10 @@ test("a card appears after an add-to-cart that navigates to the cart page", asyn
 
   await expect
     .poll(() => hasCard(page), {
-      timeout: 20_000,
+      // The worker holds a lost card for 60s (PENDING_CARD_TTL_MS), and the cart page has to
+      // boot, judge itself a shop and ask for it. Under a loaded full-suite run that took
+      // more than 20s, so this waits within the product's own window rather than inside it.
+      timeout: 45_000,
       message: `no card on the cart page. log:\n  ${logs.join("\n  ")}`,
     })
     .toBe(true);

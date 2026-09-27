@@ -7,6 +7,7 @@ import { buildDigest } from "@/background/digest";
 import { confirmshamingDetector } from "@/content/detectors/confirmshaming";
 import { defaultsDetector } from "@/content/detectors/defaults";
 import { interferenceDetector } from "@/content/detectors/interference";
+import { socialProofDetector } from "@/content/detectors/socialProof";
 import { urgencyDetector } from "@/content/detectors/urgency";
 import { harvest } from "@/content/harvest";
 import { watchInteractions } from "@/content/interactions";
@@ -244,5 +245,55 @@ describe("the observer holds no page text until the page is a shop", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(o.state.textHistories.size).toBeGreaterThan(0);
     o.stop();
+  });
+});
+
+describe("live activity sees the two shapes it used to miss", () => {
+  const score = (html: string) =>
+    Math.max(0, ...detects(socialProofDetector, html).map((c) => c.rawScore));
+
+  it("reads a cart counter written the way shops write it", () => {
+    // The old rule wanted "15 in carts" with nothing in between.
+    expect(score(`<p>15 people have this in their cart</p>`)).toBeGreaterThanOrEqual(0.75);
+    expect(score(`<p>3 shoppers have added this to their bag</p>`)).toBeGreaterThanOrEqual(0.75);
+  });
+
+  it("reads a named stranger's purchase on a node that never moved", () => {
+    // Scored zero before: the copy matched, but only an inserted-then-removed node counted.
+    expect(score(`<p>Sarah from Sydney just bought this</p>`)).toBeGreaterThanOrEqual(0.75);
+    expect(score(`<p>Someone in Denver just purchased this item</p>`)).toBeGreaterThanOrEqual(0.75);
+  });
+
+  it("does not read the shopper's OWN order as someone else's activity", () => {
+    for (const own of [
+      "You just bought this",
+      "Thanks, your order was just placed",
+      "I just purchased this item",
+    ]) {
+      expect(score(`<p>${own}</p>`), own).toBe(0);
+    }
+  });
+
+  it("does not fire on a heading with no named buyer", () => {
+    expect(score(`<p>Recently purchased</p>`)).toBe(0);
+    expect(score(`<p>Recently purchased items</p>`)).toBe(0);
+  });
+
+  it("does not fire on a customer story in prose", () => {
+    const prose =
+      "Sarah from Sydney just bought this jacket for her trip to the mountains and told us " +
+      "it kept her warm through a week of rain, which is exactly what we designed it for";
+    expect(score(`<p>${prose}</p>`)).toBe(0);
+  });
+
+  it("still scores an actual toast higher than a static notice", () => {
+    const statik = score(`<p>Sarah from Sydney just bought this</p>`);
+    const ctx = contextFrom(`<p>Sarah from Sydney just bought this</p>`, {
+      patch: (n) => {
+        (n as { ephemeral: boolean }).ephemeral = true;
+      },
+    });
+    const toast = Math.max(0, ...socialProofDetector.run(ctx).map((c) => c.rawScore));
+    expect(toast).toBeGreaterThan(statik);
   });
 });

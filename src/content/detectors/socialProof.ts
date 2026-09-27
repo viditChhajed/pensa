@@ -17,6 +17,20 @@ import type { DetectionCandidate } from "@/shared/schema";
 import type { CandidateNode, Detector, PageContext } from "../types";
 import { candidate, matchLexemes, visibleCandidates } from "./util";
 
+/**
+ * "15 people have this in their cart", "3 shoppers have added this to their bag".
+ *
+ * Named separately because it carries its own tense: holding something in a cart is a claim
+ * about NOW, so it counts as its own recency window. Without that it scored 0.65 against a
+ * 0.75 surface threshold, which is the "correct, recorded, and never shown" trap.
+ *
+ * The older carts rule wanted the count adjacent to the noun ("15 in carts"); the way shops
+ * actually write it puts a subject and a verb in between. Bounded to a short span so it
+ * cannot reach across a sentence into an unrelated "cart".
+ */
+const CART_HOLDING =
+  /\b(\d{1,5})\s+(?:other\s+)?(?:people|shoppers|customers|users|others)\s+(?:have|has|added)\b[^.!?]{0,24}?\b(?:carts?|bags?|baskets?)\b/;
+
 /** Present-tense activity, or an explicit recency window. */
 const COUNTER_PATTERNS: readonly RegExp[] = [
   /\b(\d{1,4})\s*(?:other\s+)?(?:people|shoppers|customers|users|others)\s+(?:are\s+)?(?:viewing|looking at|watching|browsing)\b/,
@@ -66,7 +80,34 @@ const COUNTER_PATTERNS: readonly RegExp[] = [
   /\bpeople want this\b/,
   /\bin high demand\b/,
   /\b(\d{1,4})\s+others? (?:are )?(?:looking|interested)\b/,
+  /**
+   * "15 people have this in their cart", found by probing 1.1.0 against ordinary copy.
+   *
+   * The carts rule above wanted the count adjacent to the noun ("15 in carts"); the way most
+   * shops actually write it puts a subject and a verb in between. Bounded to a short span so
+   * it cannot reach across a sentence into an unrelated "cart".
+   */
+  CART_HOLDING,
 ];
+
+/**
+ * First and second person are the shopper's OWN order, not somebody else's activity.
+ * "You just bought this" and "Thanks, your order is confirmed" are confirmations.
+ */
+const OWN_PURCHASE = /\b(?:you|your|i|we|my|our)\b/;
+
+/**
+ * What separates a live-activity widget from a testimonial when neither one moves.
+ *
+ * `JUST_NOW` is the widget's tell: it claims the purchase happened moments ago. A review says
+ * "I bought this in March"; a widget says "just bought" or "3 minutes ago". `REVIEW_MARKERS`
+ * catches the other direction, the furniture of a genuine review, which is legitimate
+ * reporting and not manufactured urgency.
+ */
+const JUST_NOW =
+  /\bjust\s+(?:bought|purchased|ordered|booked|claimed)\b|\b(?:moments?|\d{1,3}\s*(?:seconds?|secs?|minutes?|mins?|hours?|hrs?))\s+ago\b/;
+const REVIEW_MARKERS =
+  /\b(?:verified (?:buyer|purchase|review)|reviews?|rated|stars?)\b|["\u201c\u201d]/;
 
 /** "Sarah in Denver just bought this", the classic injected toast. */
 const TOAST_PATTERN =
@@ -96,6 +137,16 @@ const EXCLUSIONS: readonly RegExp[] = [
 const WEIGHTS: Record<string, number> = {
   counterCopy: 0.55,
   ephemeralToast: 0.6,
+  /**
+   * A named stranger's purchase, on a node that never moved.
+   *
+   * `ephemeralToast` needs the insert-then-remove timing, which is the strongest evidence
+   * available and is why it scores highest. But plenty of shops render the same claim as a
+   * static rotating panel, and "Sarah from Sydney just bought this" scored ZERO because of
+   * it. The claim is the same; only the delivery differs. Weighted below the ephemeral case
+   * and requiring a place name, so it cannot fire on a bare "recently purchased" heading.
+   */
+  namedPurchase: 0.5,
   placeName: 0.15,
   recencyWindow: 0.2,
   shortText: 0.1,
@@ -122,10 +173,30 @@ export const socialProofDetector: Detector = {
       if (seen.has(n.selectorPath)) continue;
 
       const counter = COUNTER_PATTERNS.some((re) => re.test(t)) ? 1 : 0;
-      const toastCopy = TOAST_PATTERN.test(t);
+      const toastCopy = TOAST_PATTERN.test(t) && !OWN_PURCHASE.test(t);
       const toast = toastCopy && isToast(n) ? 1 : 0;
+      const placeName = PLACE_HINT.test(n.text) ? 1 : 0;
+      /**
+       * A static purchase notice about a named stranger.
+       *
+       * This used to score nothing at all: only an inserted-then-removed node counted, on the
+       * reasoning that a permanent notice is a testimonial and the timing IS the signal. Half
+       * of that holds. Plenty of shops render the same manufactured claim as a static rotating
+       * panel, and it was reported from the field as a miss. So the claim counts when it is
+       * shaped like the widget rather than like a review: a named stranger, a purchase said to
+       * have happened moments ago, short, and none of the furniture a real review carries.
+       */
+      const named =
+        toast === 0 &&
+        toastCopy &&
+        placeName === 1 &&
+        t.length < 80 &&
+        JUST_NOW.test(t) &&
+        !REVIEW_MARKERS.test(t)
+          ? 1
+          : 0;
 
-      if (counter === 0 && toast === 0) continue;
+      if (counter === 0 && toast === 0 && named === 0) continue;
       seen.add(n.selectorPath);
 
       out.push(
@@ -136,8 +207,13 @@ export const socialProofDetector: Detector = {
           {
             counterCopy: counter,
             ephemeralToast: toast,
-            placeName: PLACE_HINT.test(n.text) ? 1 : 0,
-            recencyWindow: /\bin the (?:last|past)\b|\bright now\b|\btoday\b/.test(t) ? 1 : 0,
+            namedPurchase: named,
+            placeName,
+            // A cart-holding claim is present tense by construction, so it is its own window.
+            recencyWindow:
+              /\bin the (?:last|past)\b|\bright now\b|\btoday\b/.test(t) || CART_HOLDING.test(t)
+                ? 1
+                : 0,
             shortText: t.length < 80 ? 1 : 0,
           },
           WEIGHTS,

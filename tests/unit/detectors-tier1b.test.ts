@@ -26,10 +26,35 @@ describe("social_proof.live_activity", () => {
     expect(out[0]?.subSignals.ephemeralToast).toBe(1);
   });
 
-  it("does NOT fire on the same toast copy when the node is static", () => {
-    // A permanent testimonial is not manufactured live activity. The timing IS the signal.
-    const ctx = contextFrom(`<div>Sarah in Denver just bought this</div>`);
-    expect(socialProofDetector.run(ctx)).toHaveLength(0);
+  it("fires on static toast copy, below the ephemeral case", () => {
+    // This asserted the opposite until 1.1.0: a static node scored nothing, on the reasoning
+    // that the insert/remove timing IS the signal. It is the STRONGEST signal, and it is not
+    // the only one. Shops render the same manufactured claim as a fixed rotating panel, and
+    // "Sarah from Sydney just bought this" was reported from the field as a miss.
+    const statik = socialProofDetector.run(
+      contextFrom(`<div>Sarah in Denver just bought this</div>`),
+    );
+    expect(statik).toHaveLength(1);
+    expect(statik[0]?.subSignals.namedPurchase).toBe(1);
+    expect(statik[0]?.subSignals.ephemeralToast).toBe(0);
+
+    const moving = socialProofDetector.run(
+      contextFrom(`<div class="toast">Sarah in Denver just bought this</div>`, {
+        patch: (n) => markEphemeral(n, 0, 8000),
+      }),
+    );
+    expect(moving[0]?.rawScore ?? 0).toBeGreaterThan(statik[0]?.rawScore ?? 0);
+  });
+
+  it("does NOT fire on a genuine review that mentions a purchase", () => {
+    // The other direction: review furniture means reporting, not manufactured urgency.
+    for (const review of [
+      `<div>Sarah in Denver, verified buyer: "just bought this and love it"</div>`,
+      `<div>Sarah in Denver rated this 5 stars after buying it</div>`,
+      `<div>Sarah in Denver bought this in March</div>`,
+    ]) {
+      expect(socialProofDetector.run(contextFrom(review)), review).toHaveLength(0);
+    }
   });
 
   it("does NOT fire on a review count", () => {
