@@ -9,7 +9,7 @@
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
-import { stageLocalBuild } from "./localBuild";
+import { closeWelcomeTab, stageLocalBuild } from "./localBuild";
 
 const PAGES = resolve("tests/e2e/pages");
 let context: BrowserContext;
@@ -23,6 +23,7 @@ test.beforeAll(async () => {
   });
   let [sw] = context.serviceWorkers();
   if (!sw) sw = await context.waitForEvent("serviceworker", { timeout: 15_000 });
+  await closeWelcomeTab(context);
   await sw.evaluate(() => new Promise((r) => setTimeout(r, 1500)));
 });
 

@@ -1,6 +1,6 @@
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
 import { PATTERN_GROUPS } from "@/entrypoints/options/groups";
-import { stageLocalBuild } from "./localBuild";
+import { closeWelcomeTab, stageLocalBuild } from "./localBuild";
 
 let context: BrowserContext;
 let extensionId: string;
@@ -14,6 +14,7 @@ test.beforeAll(async () => {
   });
   let [sw] = context.serviceWorkers();
   if (!sw) sw = await context.waitForEvent("serviceworker", { timeout: 15_000 });
+  await closeWelcomeTab(context);
   extensionId = new URL(sw.url()).host;
   await sw.evaluate(() => new Promise((r) => setTimeout(r, 1000)));
 });

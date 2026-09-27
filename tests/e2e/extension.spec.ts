@@ -17,6 +17,7 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { type BrowserContext, chromium, expect, test } from "@playwright/test";
+import { closeWelcomeTab } from "./localBuild";
 
 const EXTENSION_PATH = resolve(".output/chrome-mv3");
 
@@ -36,6 +37,7 @@ test.beforeAll(async () => {
   // The service worker's URL carries the extension id.
   let [sw] = context.serviceWorkers();
   if (!sw) sw = await context.waitForEvent("serviceworker", { timeout: 15_000 });
+  await closeWelcomeTab(context);
   extensionId = new URL(sw.url()).host;
 });
 

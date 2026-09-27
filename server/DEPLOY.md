@@ -34,10 +34,10 @@ npm run sink:schema
 ```
 
 This creates `counts`, whose primary key **is** the cohort (site, technique, stage, day…), so
-no row finer than that can exist, plus four views: `site_prevalence`, `pattern_reach`,
-`pattern_by_stage`, and `site_prevalence_public`. **Anything you publish comes from
-`site_prevalence_public`**, which only releases a shop/technique pair once 20 independent
-batches have reported it.
+no row finer than that can exist, plus the prevalence views: `site_prevalence`,
+`pattern_reach`, `pattern_by_stage`, and `site_prevalence_public`. **Anything you publish
+comes from a `_public` view**, which only releases a shop and technique pair once 20
+independent batches have reported it.
 
 Version 3 adds an `outcomes` table (add-to-cart outcomes per technique, with a `_page`
 baseline per view) and three views: `pattern_add_rate`, `site_pattern_add_rate` (each
@@ -116,6 +116,7 @@ purpose, not sold, not used for creditworthiness. The wording is in STORE-LISTIN
 npm run dataset                              # per-site prevalence -> dataset/
 npm run dataset -- --view pattern_reach      # how many shops use each technique
 npm run dataset -- --view pattern_by_stage   # where in the funnel
+npm run dataset -- --view site_pattern_add_rate  # add rate vs that shop's own baseline
 npm run dataset -- --public                  # only the publishable cut
 npm run dataset -- --sql "select * from site_prevalence where site = 'shein.com'"
 ```

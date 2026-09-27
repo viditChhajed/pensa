@@ -13,7 +13,7 @@
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
-import { stageLocalBuild } from "./localBuild";
+import { closeWelcomeTab, stageLocalBuild } from "./localBuild";
 
 const PAGES = resolve("tests/e2e/pages");
 const ORIGIN = "http://shop.example.com";
@@ -28,6 +28,7 @@ test.beforeAll(async () => {
   });
   let [sw] = context.serviceWorkers();
   if (!sw) sw = await context.waitForEvent("serviceworker", { timeout: 15_000 });
+  await closeWelcomeTab(context);
   extensionId = new URL(sw.url()).hostname;
   await sw.evaluate(() => new Promise((r) => setTimeout(r, 1200)));
 });
@@ -79,6 +80,10 @@ test("browsing a shop records what it showed, once per piece of copy", async () 
   // Nothing is clicked. No add to cart, no checkout.
   const reader = await context.newPage();
   await reader.goto(`chrome-extension://${extensionId}/options.html`);
+  // Opening the reader backgrounded the shop, and Chrome throttles a hidden page's timers.
+  // The passes this test waits for are timer-driven, so the shop has to be the visible tab.
+  // Reading IndexedDB from the hidden reader is unaffected.
+  await shop.bringToFront();
 
   await expect
     .poll(async () => (await events(reader)).length, {

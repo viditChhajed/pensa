@@ -17,7 +17,7 @@ import { createServer, type Server } from "node:http";
 import { type BrowserContext, chromium, expect, test } from "@playwright/test";
 import { MIN_BATCH } from "@/shared/constants";
 import { type CountRow, handle, type OutcomeRow } from "../../server/handler";
-import { stageLocalBuild } from "./localBuild";
+import { closeWelcomeTab, stageLocalBuild } from "./localBuild";
 
 const PORT = 9911;
 const ENDPOINT = `http://127.0.0.1:${PORT}/counts`;
@@ -82,6 +82,7 @@ test.beforeAll(async () => {
   });
   let [sw] = context.serviceWorkers();
   if (!sw) sw = await context.waitForEvent("serviceworker", { timeout: 15_000 });
+  await closeWelcomeTab(context);
   extensionId = new URL(sw.url()).host;
   await sw.evaluate(() => new Promise((r) => setTimeout(r, 1200)));
 });

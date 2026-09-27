@@ -80,3 +80,20 @@ export function stageLocalBuild(
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
   return dir;
 }
+
+/**
+ * Close the welcome tab a fresh install opens, and focus the page the test drives.
+ *
+ * Every persistent context is a first install, so `chrome.runtime.onInstalled` opens
+ * `welcome.html` and Chrome gives it the foreground. That is right for a person and wrong for
+ * a test: the page under test ends up hidden, and a hidden page accrues no dwell (the salience
+ * gate is `visibilityState`-gated) while Chrome throttles its timers. The symptom is a spec
+ * that passes alone and times out in a full run.
+ */
+export async function closeWelcomeTab(context: {
+  pages: () => { url: () => string; close: () => Promise<void> }[];
+}): Promise<void> {
+  for (const page of context.pages()) {
+    if (page.url().includes("welcome.html")) await page.close();
+  }
+}

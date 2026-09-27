@@ -20,6 +20,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type BrowserContext, chromium, expect, test } from "@playwright/test";
 import { TELEMETRY_ENDPOINT } from "@/shared/constants";
+import { closeWelcomeTab } from "./localBuild";
 
 let context: BrowserContext;
 let extensionId: string;
@@ -44,6 +45,7 @@ test.beforeAll(async () => {
 
   let [sw] = context.serviceWorkers();
   if (!sw) sw = await context.waitForEvent("serviceworker", { timeout: 15_000 });
+  await closeWelcomeTab(context);
   extensionId = new URL(sw.url()).host;
   await sw.evaluate(() => new Promise((r) => setTimeout(r, 1000)));
 });

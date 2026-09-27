@@ -19,7 +19,7 @@ import {
   type Page,
   test,
 } from "@playwright/test";
-import { stageLocalBuild } from "./localBuild";
+import { closeWelcomeTab, stageLocalBuild } from "./localBuild";
 
 const PAGES = resolve("tests/e2e/pages");
 const ORIGIN = "https://shop.example.com";
@@ -35,6 +35,7 @@ test.beforeAll(async () => {
   });
   let [sw] = context.serviceWorkers();
   if (!sw) sw = await context.waitForEvent("serviceworker", { timeout: 15_000 });
+  await closeWelcomeTab(context);
   extensionId = new URL(sw.url()).host;
   await sw.evaluate(() => new Promise((r) => setTimeout(r, 1500)));
 });

@@ -5,6 +5,7 @@
  *   npm run dataset -- --view pattern_reach
  *   npm run dataset -- --sql "select * from counts where site = 'shein.com'"
  *   npm run dataset -- --public            -> only the publishable cut (>= 20 batches)
+ *   npm run dataset -- --view site_pattern_add_rate   -> add rate beside each shop's baseline
  *
  * Reads through wrangler, so it uses your own Cloudflare login and nothing else. There is
  * deliberately no read endpoint on the worker: the sink accepts POSTs and answers nothing,
@@ -25,11 +26,19 @@ const CONFIG = resolve("server/cloudflare/wrangler.toml");
 
 /** The views schema.sql defines. Anything else must be passed as --sql, on purpose. */
 const VIEWS = new Set([
+  // Prevalence: how common a technique is.
   "site_prevalence",
   "site_prevalence_public",
   "pattern_reach",
   "pattern_by_stage",
   "counts",
+  // Outcomes: how often a page view showing a technique was followed by an add to cart.
+  // ASSOCIATION, not effect: read the comment above these views in schema.sql before
+  // quoting a number from them.
+  "pattern_add_rate",
+  "site_pattern_add_rate",
+  "site_pattern_add_rate_public",
+  "outcomes",
 ]);
 
 function arg(name) {
