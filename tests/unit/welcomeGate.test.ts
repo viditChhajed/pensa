@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shouldOpenWelcome } from "@/background/welcome";
+import { shouldOpenWelcome, stripAnswered } from "@/background/welcome";
 import { DEFAULT_SETTINGS } from "@/shared/schema";
 
 /**
@@ -28,5 +28,34 @@ describe("the install card is offered until the question is answered", () => {
     // closes the question, and this person has not seen it.
     const onButUnasked = { ...DEFAULT_SETTINGS, telemetryConsent: true };
     expect(shouldOpenWelcome(onButUnasked)).toBe(true);
+  });
+});
+
+describe("a carried-over card never re-asks an answered question", () => {
+  const reply = {
+    type: "show-digest" as const,
+    items: [{ patternId: "scarcity.stock", prompt: "?", label: "x" }],
+    mode: "card" as const,
+    askConsent: true,
+    askFrequency: true,
+  };
+
+  it("strips the sharing question once it has been answered", () => {
+    // The failure it prevents: answer Yes, leave within 1.5s, see the question again on the
+    // next page, close it, and the close counts as No, overwriting the Yes.
+    const out = stripAnswered(reply, { ...DEFAULT_SETTINGS, telemetryConsentAskedAt: 1 });
+    expect(out.askConsent).toBeUndefined();
+    expect(out.items).toEqual(reply.items);
+  });
+
+  it("strips the frequency question once it has been answered", () => {
+    const out = stripAnswered(reply, { ...DEFAULT_SETTINGS, frequencyAskedAt: 1 });
+    expect(out.askFrequency).toBeUndefined();
+  });
+
+  it("keeps a question nobody has answered yet", () => {
+    const out = stripAnswered(reply, DEFAULT_SETTINGS);
+    expect(out.askConsent).toBe(true);
+    expect(out.askFrequency).toBe(true);
   });
 });

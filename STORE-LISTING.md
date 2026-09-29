@@ -211,12 +211,12 @@ question about them.
 
 **Data usage disclosures.** The uploaded zip is built WITH the endpoint (see "The zip to
 upload"), so it can transmit once a user opts in. Tick **Web history** and **User activity**:
-the shop's domain is browsing activity, and whether Add to Cart was clicked is a click. A
+the shop's domain is browsing activity, and whether Add to Cart or Reserve was clicked is a click. A
 listing that says "collects nothing" while the extension posts counts is the kind of mismatch
 that fails review. Use this wording (it fits the 1,000-character field):
 
 ```
-Optional and off by default. Pensa asks once, on the card that opens when it is installed, with two equally weighted answers and nothing preselected; if that card is closed unanswered, it asks once more on the first in-page card. When on, it reports which persuasion technique appeared on which shop (main domain only, e.g. shein.com), at which checkout stage, and on which day. On product and listing pages it also reports whether the Add to Cart button was clicked, alongside the techniques on screen beforehand, as separate counts. It never sends the page address, product, search, page text, prices, account details, any identifier for the user, or any time more precise than the day. Only pages judged to be shops are reported. Reports are batched on a six-hour timer and stored only as aggregate counts. Users can view the exact reports before any are sent, and switching sharing off deletes anything unsent. The data is used for research on how common these techniques are and how often people add items after seeing them.
+Optional and off by default. Pensa asks once when installed, with two equally weighted answers and nothing preselected; if that is closed unanswered, it asks once more on the first in-page card. When on, it reports which persuasion technique appeared on which shop (main domain only, e.g. shein.com), at which checkout stage, and on which day. On product and listing pages it also reports whether Add to Cart (or Reserve, on travel and ticket sites) was clicked, beside the techniques shown beforehand, as separate counts. It never sends the page address, product, search, page text, prices, account details, any identifier for the user, or any time more precise than the day. Only pages judged to be shops are reported. Reports are batched every six hours and stored only as aggregate counts. Users can view the exact reports before any are sent; switching sharing off deletes anything unsent. It is used to research how common these techniques are and how often people buy after seeing them.
 ```
 
 Chrome Web Store user-data policy also requires the in-product consent to be prominent and
@@ -292,8 +292,10 @@ Cart, or on arrival at checkout.
 ## Where this stands
 
 1.0.0 was reviewed and listed as Vero; 1.1.0, the rename to Pensa, has been live since
-2026-09-24. 1.2.0 is an update to that: same listing, new package. It changes no permission and
-no data practice, so the listing copy and disclosures carry over unchanged. An update still
+2026-09-24. 1.2.0 was submitted on 2026-09-29 and must not ship (it can overwrite a user's Yes to
+sharing with a No); 1.3.0 replaces it. 1.3.0 changes no permission. It does widen what the
+outcome field counts (Reserve and Book on travel and ticket sites, not only Add to Cart), so the
+data-usage wording above changed with it and must be re-pasted. An update still
 goes through review, and the broad host permission means it may take days rather than hours.
 Once approved, Chrome updates existing installs on its own within a few hours.
 
@@ -301,7 +303,7 @@ Once approved, Chrome updates existing installs on its own within a few hours.
 
 ## Pre-submission checklist
 
-- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green, 633 unit + eval, 59 e2e
+- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green, 672 unit + eval, 61 e2e
 - [x] `host_permissions` is exactly `["https://*/*"]` in the built manifest, with 115 `exclude_matches` from the denylist (both CI-enforced by `tests/unit/manifest.test.ts`)
 - [x] Icons present at all four sizes
 - [x] Privacy policy URL live and reachable
@@ -326,10 +328,11 @@ Once approved, Chrome updates existing installs on its own within a few hours.
       file records short labels, never URLs with query strings. No history rewrite needed.
 - [x] LICENSE added (ISC, matching `package.json`), a public repo without one grants nobody
       any rights
-- [x] Version bumped in `wxt.config.ts`, 1.2.0 (1.0.0 was published as Vero; 1.1.0, the
-      rename to Pensa, has been live since 2026-09-24). Every upload must carry a higher
-      version than the published one or the dashboard refuses it.
-- [x] `npm run zip`, `.output/pensa-1.2.0-chrome.zip`
+- [x] Version bumped in `wxt.config.ts`, 1.3.0 (1.0.0 was published as Vero; 1.1.0, the
+      rename to Pensa, has been live since 2026-09-24; 1.2.0 was submitted and is withdrawn).
+      Every upload must carry a higher version than the published one or the dashboard
+      refuses it.
+- [x] `npm run zip`, `.output/pensa-1.3.0-chrome.zip`
 
 ### The zip to upload
 
@@ -345,19 +348,21 @@ A zip from a plain `npm run build` has the send path compiled out entirely and w
 contribute to the dataset. Because the uploaded build transmits (when the user opts in), the
 Data usage section must use the "endpoint is configured" wording above and tick **Web history**.
 
-### Still yours to do, for the 1.2.0 update
+### Still yours to do, for the 1.3.0 update
 
-- [ ] Upload `.output/pensa-1.2.0-chrome.zip` (built with the endpoint, below) under
+- [ ] **Cancel the 1.2.0 review** (Package, the pending submission, "Cancel review"), so 1.2.0
+      never reaches users
+- [ ] Upload `.output/pensa-1.3.0-chrome.zip` (built with the endpoint, below) under
       **Package → Upload new package**
-- [ ] Check the listing's screenshots and promo tiles say Pensa, not Vero, and replace them
-      from `store/screenshots/` and `store/promo/` if not. `01-card.png` now shows the in-page
-      card asking the new question
-- [ ] Nothing in Privacy practices changes: same permissions, same data, same wording
+- [ ] Privacy practices: re-paste the data-usage wording above (it now says "or Reserve"), and
+      keep **Web history** and **User activity** ticked
+- [ ] Re-paste the description from `store/description.txt` (same change)
+- [ ] Replace `01-card.png` and add `05-welcome.png` from `store/screenshots/`
 - [ ] Submit for review
 
 Done already: the developer account, the public repo, and the listing itself.
 
-**What is NOT done, and should not be claimed:** the §10 *human* pass. A person browsing
-30–40 pages and judging each card is the only thing that catches a claim that was true and
-useless, and the automated audit cannot stand in for it, it reads the detector's log, never
+**Done once, and should not be overclaimed:** the §10 *human* pass ran on 2026-09-29 against
+1.2.0 (EVAL.md). One run across 11 shops is a start. The automated audit cannot stand in for
+it, because it reads the detector's log, never
 the card. [MANUAL-VERIFICATION.md](MANUAL-VERIFICATION.md) §3 has the protocol.

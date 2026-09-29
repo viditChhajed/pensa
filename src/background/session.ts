@@ -9,7 +9,7 @@
 
 import { ALLOWLIST_VERSION } from "@/shared/category";
 import { DETECTOR_VERSION } from "@/shared/constants";
-import { pickPrompt } from "@/shared/copy/prompts";
+import { contextualPrompt, pickPrompt, withPairing } from "@/shared/copy/prompts";
 import type {
   DetectionCandidate,
   DetectionEvent,
@@ -19,7 +19,13 @@ import type {
 } from "@/shared/schema";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
 import { putEvents, readOffer, readSettings } from "./db";
-import { buildDigest, frequencyKey, type RankInput, shouldShowDigest } from "./digest";
+import {
+  buildDigest,
+  frequencyKey,
+  MAX_DIGEST_ITEMS,
+  type RankInput,
+  shouldShowDigest,
+} from "./digest";
 import { detectDrip, detectSneak, dripCandidate } from "./dripPricing";
 import { loadLedger, noteDigest, noteEvents, saveLedger } from "./sessionLedger";
 import { enqueue } from "./telemetry";
@@ -375,12 +381,16 @@ export async function decideDigest(
   const used = await usedPrompts();
   const items: DigestItem[] = [];
   for (const ranked of mode === "card" ? displayable : result.items.slice(0, 1)) {
-    const prompt = pickPrompt(ranked.patternId as PatternId, used);
+    const src = pool[ranked.inputIndex];
+    // Wording from what this page actually showed (the anchor's scale, the store a stock
+    // claim names) when the detector could read it; the generic pool otherwise.
+    const prompt =
+      contextualPrompt(ranked.patternId as PatternId, src?.candidate.evidence.facts) ??
+      pickPrompt(ranked.patternId as PatternId, used);
     if (!prompt) continue;
     used.add(prompt);
     // The matched text, trimmed to something a card can hold. A checkbox has no text of its
     // own, so fall back to its accessible name via the lexemes that matched it.
-    const src = pool[ranked.inputIndex];
     const sample = (src?.candidate.evidence.textSample ?? "").replace(/\s+/g, " ").trim();
     const lexemes = src?.candidate.evidence.matchedLexemes ?? [];
     const evidence =
@@ -404,6 +414,14 @@ export async function decideDigest(
   if (items.length === 0) {
     await saveLedger(ledger);
     return { items: [], mode: "suppressed" };
+  }
+
+  // A deadline and a crossed-out price on the same card get one more line about the pairing,
+  // when there is room for it. A card is at most four items and the pairing is the least
+  // important of them, so it never displaces a finding.
+  if (mode === "card") {
+    const paired = withPairing(items, MAX_DIGEST_ITEMS);
+    items.splice(0, items.length, ...paired);
   }
 
   freq.shown.add(frequencyKey(origin, stage, pageKey));

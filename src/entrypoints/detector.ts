@@ -573,8 +573,6 @@ export default defineUnlistedScript(() => {
    * exist until the page is confirmed, and text recording starts at the same moment.
    */
   function onCommerceConfirmed(): void {
-    // First, so a card lost to the navigation that brought us here appears as soon as possible.
-    void collectPendingCard();
     observer.startRecording();
     triggers.attach();
     void refreshDisabled();
@@ -639,11 +637,27 @@ export default defineUnlistedScript(() => {
       askConsent: reply.askConsent === true,
       // Any answer, including closing the card, is recorded so the question is never
       // asked twice. Only an explicit "Yes, share" turns sharing on.
-      onConsent: (answer) =>
+      onConsent: (answer) => {
         void send({
           type: "set-settings",
           patch: { telemetryConsent: answer === true, telemetryConsentAskedAt: Date.now() },
-        }),
+        });
+        // Answering is proof the card was seen. Without this, answering and leaving within
+        // CARD_SEEN_MS left the card waiting to be shown again, question and all.
+        if (answer !== null) void send({ type: "card-seen", origin: pageOrigin });
+      },
+      askFrequency: reply.askFrequency === true,
+      // A choice changes the setting; closing the card keeps it. Either way, never asked again.
+      onFrequency: (answer) => {
+        void send({
+          type: "set-settings",
+          patch: {
+            frequencyAskedAt: Date.now(),
+            ...(answer ? { digestFrequency: answer } : {}),
+          },
+        });
+        if (answer !== null) void send({ type: "card-seen", origin: pageOrigin });
+      },
     });
     console.info(`[pensa] ${source} ${reply.mode} -> rendered ${rendered}`);
     setTimeout(() => void send({ type: "card-seen", origin: pageOrigin }), CARD_SEEN_MS);
@@ -668,7 +682,15 @@ export default defineUnlistedScript(() => {
     if (!commerceConfirmed) return;
     // Before anything awaits: the view ends at the click, with exactly what was on screen
     // before it. A re-scan below would let the drawer the click opened into the exposure set.
-    if (kind === "add_to_cart") reportView(true);
+    //
+    // On travel and ticketing there is no cart: "Reserve", "Book now" or picking a specific
+    // ticket listing IS the commitment. Counting only add-to-cart recorded zero conversions
+    // for those categories in the first real batch (booking.com and stubhub.com both 0 of N),
+    // a bias that would have run through every rate the dataset produced. A stage change into
+    // checkout is not a click on this view, so it does not end it.
+    if (kind === "add_to_cart" || (kind === "checkout_intent" && !label.startsWith("stage:"))) {
+      reportView(true);
+    }
     // A setting changed in another tab should apply to the digest being built right now.
     await refreshDisabled();
 
@@ -795,6 +817,11 @@ export default defineUnlistedScript(() => {
   console.info(`[pensa] active on ${pageOrigin}, build ${BUILD_STAMP}`);
 
   observer.start();
+  // Before the commerce verdict, not after it. A card lost to the navigation that brought us
+  // here belongs to this shop (the worker matches by registrable domain), and the page that
+  // follows a click, booking's secure. checkout for one, may take seconds to look like a shop,
+  // by which time a shopper has moved on. The worker stores nothing about this request.
+  void collectPendingCard();
   // Attached at boot so a toggle made in the first moments is not missed, but choices are only
   // REPORTED from a confirmed shop, until then they wait here, as family keys and booleans.
   watchInteractions((choices) => {

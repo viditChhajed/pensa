@@ -1,6 +1,6 @@
 {
   "name": "pensa",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Pensa, MV3 extension that notices e-commerce persuasion patterns and asks Socratic questions about them.",
   "scripts": {
     "dev": "wxt",

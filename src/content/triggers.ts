@@ -23,6 +23,22 @@ const CHECKOUT_NAME =
   /\bcheckout\b|\bcheck out\b|\bplace order\b|\bcontinue to payment\b|\bproceed to\b|\bpay now\b|\bcomplete (order|purchase)\b|\bi'?ll reserve\b|\breserve (?:now|tickets?|room)\b|\bbook now\b|\bconfirm (?:and pay|booking|reservation)\b/i;
 
 /**
+ * Picking a specific seated-event listing is the decision on a ticket resale site.
+ *
+ * Found in the first human spot-check: StubHub showed "Only 4 left", "Last tickets" and a
+ * $1,424 crossed out above $1,004, all detected, and no card ever appeared. Its listing rows
+ * are `<a role="button">` named like "Section 409, Row 4, $1,243"; there is no Add to Cart,
+ * and the next step is a quantity picker and a bare "Continue". So a click on a listing whose
+ * name carries a seat location AND a price is the checkout intent.
+ *
+ * Seat vocabulary needs a seat identifier after it ("Row 4", "Row AA", "Section 409", "Sec
+ * 104"), so a product called "Row Boat Planter" or "Sectional Sofa" cannot trip it.
+ */
+const SEAT_LISTING =
+  /\b(?:section|sec\.?)\s+[a-z]?\d{1,4}\b|\brow\s+(?:\d{1,3}|[a-z]{1,2})\b(?![a-z])/i;
+const HAS_PRICE = /[$£€¥₹]\s?\d|\b\d[\d,.]*\s?(?:usd|eur|gbp|cad|aud)\b/i;
+
+/**
  * Attribute values that name an add-to-cart control, matched as WHOLE TOKENS.
  *
  * These were substring matches, so the short token "atc" matched `watch-video`, `match-card`,
@@ -123,6 +139,7 @@ export class TriggerWatcher {
 
     if (ATC_NAME.test(name) || matchesAtcAttrs(el)) kind = "add_to_cart";
     else if (CHECKOUT_NAME.test(name)) kind = "checkout_intent";
+    else if (SEAT_LISTING.test(name) && HAS_PRICE.test(name)) kind = "checkout_intent";
     if (!kind) return;
 
     if (!this.claim(kind)) return;

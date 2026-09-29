@@ -178,8 +178,9 @@ exactly seven fields and no others:
 | **day** | the date, never a time |
 | **added to cart** | yes or no |
 
-"Added to cart" means you clicked an Add to Cart button, not that the item was actually added.
-Pensa does not check. A page's reports are sent as separate counts, never as a list of what one
+"Added to cart" means you clicked an Add to Cart button, not that the item was actually added:
+Pensa does not check. On travel and ticket pages, which have no cart, the equivalent click
+counts instead: "Reserve", "Book now", or picking a specific ticket listing. A page's reports are sent as separate counts, never as a list of what one
 page showed together, because that combination could identify the page. Nothing about the item
 is included: not its name, price, or address.
 

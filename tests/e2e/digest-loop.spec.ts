@@ -46,6 +46,18 @@ test.beforeEach(async () => {
   // this the second and third are debounced by the first and fail as `mode=suppressed`.
   const [sw] = context.serviceWorkers();
   await sw?.evaluate(() => chrome.storage.session.clear());
+  // These tests are about the findings on a card. Mark both one-time questions answered so
+  // no card carries one: a question section at the bottom sits exactly where the "Why this
+  // works" test clicks, and answering it by accident would switch cards off for the file.
+  await sw?.evaluate(() =>
+    chrome.storage.local.set({
+      settings: {
+        telemetryConsent: false,
+        telemetryConsentAskedAt: Date.now(),
+        frequencyAskedAt: Date.now(),
+      },
+    }),
+  );
 });
 
 async function openFixture(name: string): Promise<{ page: Page; logs: string[] }> {

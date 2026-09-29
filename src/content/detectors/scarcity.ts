@@ -7,7 +7,7 @@
  * is a fixture for it.
  */
 
-import type { DetectionCandidate } from "@/shared/schema";
+import type { DetectionCandidate, EvidenceFacts } from "@/shared/schema";
 import type { CandidateNode, Detector, PageContext } from "../types";
 import { candidate, matchLexemes, visibleCandidates } from "./util";
 
@@ -48,6 +48,12 @@ const STOCK_PATTERNS: readonly RegExp[] = [
   /\balmost (?:gone|sold out)\b/,
   /\bselling fast\b/,
   /\bhurry,? only\b/,
+  /**
+   * "Last tickets", on StubHub listing rows, found in the first human spot-check beside an
+   * "Only 4 left" that was detected. The same claim with the count left out. Units only: a
+   * bare "last" is in every page's footer.
+   */
+  /\blast (?:few |remaining )?(?:tickets?|seats?|rooms?|spots?|pairs?|units?|pieces?)\b/,
   // "limited availability" reads as scarcity to a shopper exactly as "limited quantity"
   // does, and had no pattern. Found by asserting every shipped pattern is reachable.
 ];
@@ -231,6 +237,45 @@ function tally(matches: readonly StockMatch[]): { numeric: number; qualitative: 
   };
 }
 
+/**
+ * What the claim is scoped to, for the card's wording.
+ *
+ * From the spot-check: Target said "only 1 left at Polaris" and the card said "only a few
+ * were left", which drops the one thing that made the claim matter. One left at the store
+ * near you is a reason to hurry that one left in a warehouse is not, and the question should
+ * be about the claim the shopper actually read. Text here is already lowercased.
+ */
+const PLACE =
+  /\b(?:left|in stock|available|remaining)\s+(?:at|near)\s+(?!(?:this|the|a|checkout|your cart)\b)([a-z][a-z0-9'&.-]*(?: [a-z][a-z0-9'&.-]*){0,3})/;
+const NEARBY = /\b(?:nearby|near you|in store|in-store|for (?:store )?pickup|at your store)\b/;
+const AT_THIS_PRICE = /\bat this (?:price|rate|sale price|deal)\b|\bat (?:the |this )?sale price\b/;
+const COUNT = /\bonly (\d{1,4})\b|\b(\d{1,4}) (?:left|remaining)\b/;
+/** Words that end a store name in running text: "at Polaris for pickup today". */
+const PLACE_STOP = /\s(?:for|today|tomorrow|to|in|by|and|with|on|when|if)\b.*$/;
+
+function titleCase(s: string): string {
+  return s.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+}
+
+export function scarcityFacts(text: string): EvidenceFacts | undefined {
+  const facts: EvidenceFacts = {};
+  const count = COUNT.exec(text);
+  const n = count ? Number(count[1] ?? count[2]) : Number.NaN;
+  if (Number.isInteger(n) && n >= 0) facts.count = n;
+
+  const place = PLACE.exec(text);
+  if (place?.[1]) {
+    const name = place[1].replace(PLACE_STOP, "").trim();
+    facts.scope = "location";
+    if (name.length > 1 && name.length <= 48) facts.place = titleCase(name);
+  } else if (NEARBY.test(text)) {
+    facts.scope = "location";
+  } else if (AT_THIS_PRICE.test(text)) {
+    facts.scope = "price";
+  }
+  return Object.keys(facts).length > 0 ? facts : undefined;
+}
+
 export const scarcityDetector: Detector = {
   id: "scarcity.stock@1",
   patternId: "scarcity.stock",
@@ -349,6 +394,7 @@ export const scarcityDetector: Detector = {
           matchLexemes(n, LEXEMES),
         ),
       );
+      attachFacts(out, `${t} ${n.containerText}`);
     }
 
     for (const n of leftovers) {
@@ -385,8 +431,16 @@ export const scarcityDetector: Detector = {
           n.containerText,
         ),
       );
+      attachFacts(out, n.containerText);
     }
 
     return out;
   },
 };
+
+/** Attach scope, place and count to the candidate just pushed, when the text states them. */
+function attachFacts(out: DetectionCandidate[], text: string): void {
+  const last = out[out.length - 1];
+  const facts = scarcityFacts(text);
+  if (last && facts) last.evidence.facts = facts;
+}

@@ -7,27 +7,34 @@ and, at add-to-cart or checkout, asks a question about what was actually on scre
 ("this page showed a countdown timer") and asks a question. It never asserts intent,
 deception, or illegality, an ethical constraint first, and a store-review one second.
 
-## Status: 1.1.0 is live in the Chrome Web Store, 1.2.0 is built and awaiting upload
+## Status: 1.1.0 is live, 1.2.0 is in review and should not ship, 1.3.0 is the one to publish
 
 1.0.0 went out under the name **Vero**, which several other extensions already used, so 1.1.0
 renamed everything to **Pensa**. Nobody had installed 1.0.0 at the time, which is why
 identifiers that would normally have to be preserved (the IndexedDB name, the storage keys, the
-D1 database) were renamed too. 1.1.0 has been the published version since 2026-09-24, and
-carries the rename, the install-time sharing question, the add-to-cart outcome measure, the
-removal of installment detection, and the card and popup fixes below.
+D1 database) were renamed too. 1.1.0 has been the published version since 2026-09-24.
 
-**1.2.0 is built and tested but not uploaded.** What the published 1.1.0 is missing:
+**1.2.0 was submitted on 2026-09-29 and carries a bug that can flip a user's "Yes" to sharing
+into a "No"** (answer on the first card, leave within 1.5 seconds, close the same card when it
+reappears on the next page). Found by the 1.3.0 tests, fixed in 1.3.0. Cancel the 1.2.0 review
+and submit 1.3.0 in its place.
 
-- **The sharing question only opens on a fresh install.** 1.1.0 gates the card on Chrome
-  reporting the reason as `"install"`, so anyone who received 1.1.0 as an update, or reloads an
-  unpacked build, is never asked. 1.2.0 gates on whether the question has been ANSWERED, so it
-  keeps asking until someone clicks Yes or No, and never again after.
-- The in-page card asked a different, longer question than the install card. 1.2.0 asks the
-  same one in both places.
-- Two live-activity shapes that scored zero are detected (see below).
+**1.3.0 is built and tested but not uploaded.** It is everything the first human spot-check
+([EVAL.md](EVAL.md), 2026-09-29) asked for, on top of 1.2.0:
 
-Every upload needs a higher version than the published one, which is why this is 1.2.0 and not
-a new 1.1.0. [STORE-LISTING.md](STORE-LISTING.md) has the checklist.
+- **The "how often" question is on the first card**, not only in Settings.
+- **Anchors need a gap worth mentioning** (15% and 5 currency units), and cards give the scale:
+  "crossed out $52, 1.5 times the $35 you would pay".
+- **Scarcity cards say what the claim is scoped to**: "only 1 was left at your nearby store,
+  Polaris", or "at this price". "Last tickets" is detected.
+- **StubHub-style ticket listings** count as the checkout decision, and a card follows the shop
+  across subdomains (booking's www. to secure.).
+- **Reserve, Book now and ticket picks** count as the commitment in the outcome measure.
+- The 1.2.0 sharing bug above, and everything 1.2.0 itself carried (the sharing question asked
+  until answered, the same question in both places, two more live-activity shapes).
+
+Every upload needs a higher version than the published one, which is why this is 1.3.0.
+[STORE-LISTING.md](STORE-LISTING.md) has the checklist.
 
 The privacy policy is live at <https://viditchhajed.github.io/pensa-docs/privacy.html> and is
 generated verbatim from [PRIVACY.md](PRIVACY.md), so the published and committed copies cannot
@@ -36,8 +43,8 @@ drift. The older `vero-docs` address still redirects to it.
 | | |
 |---|---|
 | Patterns shipped | **19**, 13 on-page + 2 cross-stage + 4 derived from visit history |
-| Unit tests | 633, plus the recall eval |
-| Real-browser e2e | 59 passing, 3 skipped (sites unreachable from this network) |
+| Unit tests | 672, plus the recall eval |
+| Real-browser e2e | 61 passing, 3 skipped (sites unreachable from this network) |
 | Bundle | 234 KB gzipped across all bundles, but the number that matters is the content script on every page load: **32 KB**. The service worker is 183 KB, most of it the Public Suffix List that names shops correctly, loaded once per worker wake and never in a page |
 | `host_permissions` | `https://*/*`, granted at install, with banking/health/government/webmail excluded in two layers |
 | Network requests | **zero unless sharing is switched on**, asserted against the compiled bundles; with it on, the only address that can be contacted is the declared endpoint, also asserted. Sharing is off until answered, and a plain `npm run build` compiles the send path out entirely |
@@ -140,11 +147,16 @@ does it.
   before launch. But it reads
   the detector's own log rather than the card, so it cannot tell you that a claim was
   technically true and useless to a shopper, the failure that actually drives uninstalls.
-  The hand pass plan §10 asked for (30–40 pages, judging each card) has **not** been run
-  against this build; what has is 6 retailers and ~44 firings with zero confirmed false
-  positives. Every threshold is still a hand-set guess, marked `confidenceBasis: "hand_set"`
+  The hand pass plan §10 asked for has now run once (2026-09-29, 11 shops, [EVAL.md](EVAL.md)):
+  every card shown was true, 7 findings on 5 cards, and the tester rated 3 worth interrupting
+  for, 1 probably, and 1 not (true, but printed too small to have influenced anyone). One run is
+  a start, not a result, and it was the 1.2.0 build. Every threshold is still a hand-set guess, marked `confidenceBasis: "hand_set"`
   so it cannot be mistaken for a calibrated value. **No stronger precision claim than the one
   in the table above may be made anywhere.**
+- **A true claim printed too small to notice still gets a card.** From the first human pass:
+  Shein's "Almost sold out" was correct and so small the tester never saw it on the page. Dwell
+  is measured; size is not. A floor on rendered size before something can surface is the next
+  measurement, not yet made.
 - **`framing.savings_ratio` ships unproven.** After its fix it produced no firings at all
   across those 22 retailers. Its unit tests show it still fires on the textbook shapes, but a
   quiet report means unproven, not working.
@@ -192,6 +204,10 @@ Sharing is off until someone says yes. They are asked twice at most:
    answers nothing.
 2. **On the first in-page card**, and only if the install card went unanswered. Same rules.
 
+The first card that is NOT asking about sharing asks one more thing, once: how often cards
+should appear (every checkout, once per shop, or summary only). That setting used to live only
+in Settings, which almost nobody opens. Choosing it in Settings counts as answering it.
+
 Both are built to the constraints Pensa's own detectors look for: the two answers are the same
 control, nothing is preselected, nothing is focused, and no claim is made that sharing is risk
 free. `tests/e2e/welcome.spec.ts` and `tests/unit/consentAsk.test.ts` assert those properties
@@ -202,7 +218,7 @@ With sharing on, two kinds of record are queued, batched, and flushed on a six-h
 | | |
 |---|---|
 | **Prevalence** | which technique appeared on which shop, at which stage, on which day, with a confidence quartile. Eight fields |
-| **Outcome** | per product or listing page view: one `_page` baseline row plus one row per technique that cleared the salience gate BEFORE the add-to-cart click, and whether that click happened. Seven fields |
+| **Outcome** | per product or listing page view: one `_page` baseline row plus one row per technique that cleared the salience gate BEFORE the decision, and whether the decision happened: an Add to Cart click, or on travel and ticket sites "Reserve", "Book now" or a ticket-listing pick. Seven fields |
 
 Both record types are `.strict()` in the extension and re-validated field by field on the
 server, so an accidentally added field is refused at both ends. The sink is deployed:

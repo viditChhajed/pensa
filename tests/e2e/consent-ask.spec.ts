@@ -170,6 +170,68 @@ test("once answered, the next card does not ask again", async () => {
   const found = await buttons(cdp);
   expect(found.has("Yes")).toBe(false);
   expect(found.has("No")).toBe(false);
+
+  // With sharing answered, this card carries the one-time "how often" question instead.
+  const once = found.get("Once per shop");
+  expect(once, `no frequency question. buttons: ${[...found.keys()].join(", ")}`).toBeDefined();
+  expect(found.has("Every checkout")).toBe(true);
+  expect(found.has("Summary only, no cards")).toBe(true);
+  await cdp.send("DOM.enable");
+  await press(page, cdp, once as number);
+  await expect
+    .poll(
+      async () =>
+        (await worker<{ digestFrequency: string }>({ type: "get-settings" })).digestFrequency,
+    )
+    .toBe("once_per_site");
+  const after = await worker<{ frequencyAskedAt?: number }>({ type: "get-settings" });
+  expect(after.frequencyAskedAt).toBeGreaterThan(0);
+  // Put it back, so the tests after this one see a card on every checkout.
+  await worker({ type: "set-settings", patch: { digestFrequency: "every_checkout" } });
+  await page.close();
+});
+
+test("Reserve on a listing page ends the view as a commitment, like Add to Cart", async () => {
+  // booking.com and stubhub.com recorded 0 adds in the first real batch because reserving is
+  // not "add to cart". On travel and ticketing it is the decision.
+  await worker({ type: "set-settings", patch: { telemetryConsent: false } });
+  await worker({ type: "set-settings", patch: { telemetryConsent: true } });
+  const page = await context.newPage();
+  const logs: string[] = [];
+  page.on("console", (m) => {
+    if (m.text().includes("[pensa]")) logs.push(m.text());
+  });
+  await page.route("**/*", async (route) => {
+    if (new URL(route.request().url()).pathname === "/hotel.html") {
+      await route.fulfill({
+        status: 200,
+        contentType: "text/html",
+        body: `<!doctype html><html><head><title>Hotel</title>
+          <script type="application/ld+json">{"@type":"Product","name":"Deluxe Room","offers":{"@type":"Offer","price":"85.00","priceCurrency":"USD"}}</script>
+          <meta property="og:type" content="product"></head>
+          <body><h1>Deluxe Room</h1><p>$85 per night</p><p><s>$120</s> $85</p>
+          <button id="reserve" type="button">I'll reserve</button></body></html>`,
+      });
+      return;
+    }
+    await route.fulfill({ status: 204, body: "" });
+  });
+  await page.goto(`${ORIGIN}/hotel.html`, { waitUntil: "domcontentloaded" });
+  await page.bringToFront();
+  await page.waitForTimeout(3000);
+  await page.click("#reserve");
+  await page.waitForTimeout(800);
+
+  const pending = await worker<{ records: Record<string, unknown>[] }>({
+    type: "get-pending-telemetry",
+  });
+  const outcomes = pending.records.filter((r) => "addedToCart" in r);
+  const settingsNow = await worker({ type: "get-settings" });
+  expect(
+    outcomes.length,
+    `Reserve produced no outcome rows.\nqueued: ${JSON.stringify(pending.records).slice(0, 600)}\nsettings: ${JSON.stringify(settingsNow)}\nlog:\n  ${logs.join("\n  ")}`,
+  ).toBeGreaterThan(0);
+  expect(outcomes.every((r) => r.addedToCart === true)).toBe(true);
   await page.close();
 });
 

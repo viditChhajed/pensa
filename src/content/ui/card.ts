@@ -399,7 +399,8 @@ export const CONSENT_COPY = {
   ask: "Do you opt in to sharing anonymous data to help a high schooler's research project?",
   detail:
     "Shared: which technique appeared on which shop (like shein.com), the day, and whether " +
-    "you added the item to your cart. Never the page, the product, prices, or anything that " +
+    "you added the item to your cart or reserved it. Never the page, the product, prices, or " +
+    "anything that " +
     "identifies you. You can change this at any time in Settings.",
   yes: "Yes",
   no: "No",
@@ -410,9 +411,50 @@ export const CONSENT_COPY = {
 /** `true`/`false` for an answer, `null` for a card closed without one. */
 export type ConsentAnswer = boolean | null;
 
+/**
+ * The one-time "how often" question, attached to the first card.
+ *
+ * The frequency setting was only in Settings, which almost nobody opens, so most people would
+ * never learn cards can be turned down, and the first thing they would try is uninstalling.
+ * Asked once, right after the person has seen what a card is, so the choice is informed.
+ *
+ * Same rules as the sharing question: the answers are the same control, nothing is
+ * preselected (not even the current setting), and closing the card is an answer: it keeps
+ * the setting as it is and the question is not asked again.
+ */
+export type FrequencyChoice = "every_checkout" | "once_per_site" | "never_interrupt";
+/** A choice, or `null` for a card closed without one. */
+export type FrequencyAnswer = FrequencyChoice | null;
+
+export const FREQUENCY_COPY = {
+  heading: "How often?",
+  ask: "Would you like a card like this every time you check out?",
+  options: [
+    { value: "every_checkout", text: "Every checkout" },
+    { value: "once_per_site", text: "Once per shop" },
+    { value: "never_interrupt", text: "Summary only, no cards" },
+  ],
+  detail:
+    "With summary only, Pensa still notices everything and shows it in its popup, but never " +
+    "stops you. You can change this at any time in Settings.",
+  thanks: {
+    every_checkout: "Got it. You will see a card at every checkout.",
+    once_per_site: "Got it. At most one card per shop each time you open your browser.",
+    never_interrupt: "Got it. No more cards; the popup keeps the summary.",
+  },
+} as const satisfies {
+  heading: string;
+  ask: string;
+  options: readonly { value: FrequencyChoice; text: string }[];
+  detail: string;
+  thanks: Record<FrequencyChoice, string>;
+};
+
 export interface ShowOptions {
   askConsent?: boolean;
   onConsent?: (answer: ConsentAnswer) => void;
+  askFrequency?: boolean;
+  onFrequency?: (answer: FrequencyAnswer) => void;
 }
 
 export class DigestCard {
@@ -424,6 +466,8 @@ export class DigestCard {
   private recheckQueued = false;
   /** Set while an unanswered sharing question is on screen; called once, then cleared. */
   private pendingConsent: ((answer: ConsentAnswer) => void) | null = null;
+  /** Set while an unanswered frequency question is on screen; called once, then cleared. */
+  private pendingFrequency: ((answer: FrequencyAnswer) => void) | null = null;
 
   /**
    * Renders and returns what was ACTUALLY displayed. Layout can shift between the capacity
@@ -449,6 +493,10 @@ export class DigestCard {
     if (placement.mode === "card" && opts.askConsent && opts.onConsent) {
       this.pendingConsent = opts.onConsent;
       body.append(this.consent());
+    } else if (placement.mode === "card" && opts.askFrequency && opts.onFrequency) {
+      // Never both on one card: two questions under the findings is a form, not a card.
+      this.pendingFrequency = opts.onFrequency;
+      body.append(this.frequency());
     }
     root.append(this.styles(), body);
 
@@ -543,6 +591,7 @@ export class DigestCard {
       .consent p + p { margin-top: 6px; }
       .consent .detail { font-size: 12px; color: #5b616e; }
       .answers { display: flex; gap: 8px; margin-top: 10px; }
+      .answers.stack { flex-direction: column; }
       /* Both answers share this rule and nothing else. Same size, weight, colour, border. */
       button.answer {
         flex: 1 1 0; text-align: center; font-size: 13px; font-weight: 600;
@@ -755,9 +804,56 @@ export class DigestCard {
     return box;
   }
 
+  private answerFrequency(value: FrequencyAnswer): void {
+    const cb = this.pendingFrequency;
+    this.pendingFrequency = null;
+    cb?.(value);
+  }
+
+  private frequency(): HTMLElement {
+    const box = document.createElement("div");
+    box.className = "consent";
+    box.setAttribute("role", "group");
+    box.setAttribute("aria-label", FREQUENCY_COPY.heading);
+
+    const h = document.createElement("p");
+    h.className = "label";
+    h.textContent = FREQUENCY_COPY.heading;
+    const ask = document.createElement("p");
+    ask.textContent = FREQUENCY_COPY.ask;
+    const detail = document.createElement("p");
+    detail.className = "detail";
+    detail.textContent = FREQUENCY_COPY.detail;
+
+    // Stacked, full width: three answers side by side would not fit the card, and wrapping
+    // them unevenly would make one look like the default.
+    const row = document.createElement("div");
+    row.className = "answers stack";
+    for (const option of FREQUENCY_COPY.options) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "answer";
+      b.setAttribute("data-frequency", option.value);
+      b.textContent = option.text;
+      b.addEventListener("click", () => {
+        this.answerFrequency(option.value);
+        const done = document.createElement("p");
+        done.className = "detail";
+        done.textContent = FREQUENCY_COPY.thanks[option.value];
+        box.replaceChildren(done);
+      });
+      row.append(b);
+    }
+
+    box.append(h, ask, row, detail);
+    return box;
+  }
+
   dismiss(): void {
     // Closed with the question unanswered: that is a no, recorded so it is not asked again.
     if (this.pendingConsent) this.answer(null);
+    // Closed without choosing how often: keep the setting, and do not ask again.
+    if (this.pendingFrequency) this.answerFrequency(null);
     if (this.recheck) {
       removeEventListener("scroll", this.recheck);
       removeEventListener("resize", this.recheck);

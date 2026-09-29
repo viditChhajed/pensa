@@ -94,7 +94,12 @@ function renderFrequency(current: DigestFrequency): void {
     radio.value = choice.value;
     radio.checked = choice.value === current;
     radio.addEventListener("change", () => {
-      void send({ type: "set-settings", patch: { digestFrequency: choice.value } });
+      // Choosing here answers the question the first card would otherwise ask, so it is
+      // recorded as asked: nobody should be asked on a card what they already chose here.
+      void send({
+        type: "set-settings",
+        patch: { digestFrequency: choice.value, frequencyAskedAt: Date.now() },
+      });
     });
     const span = document.createElement("span");
     span.textContent = choice.label;

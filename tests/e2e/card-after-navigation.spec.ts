@@ -15,7 +15,10 @@ const PAGES = resolve("tests/e2e/pages");
 let context: BrowserContext;
 
 test.beforeAll(async () => {
-  const build = stageLocalBuild("pensa-nav-");
+  const build = stageLocalBuild("pensa-nav-", [
+    "http://shop.example.com/*",
+    "http://checkout.example.com/*",
+  ]);
   context = await chromium.launchPersistentContext("", {
     channel: "chromium",
     args: [`--disable-extensions-except=${build}`, `--load-extension=${build}`],
@@ -93,5 +96,45 @@ test("a card that WAS seen is not shown a second time on the next page", async (
   await page.goto("http://shop.example.com/cart-page.html", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(4000);
   expect(await hasCard(page), `card shown twice. log:\n  ${logs.join("\n  ")}`).toBe(false);
+  await page.close();
+});
+
+test("a card survives a jump to another subdomain of the same shop", async () => {
+  // booking.com moves "I'll reserve" from www. to secure., and the card built on www. was
+  // waiting for www. forever. It now belongs to the shop, example.com here.
+  const [sw] = context.serviceWorkers();
+  await sw?.evaluate(() => chrome.storage.session.clear());
+  const page = await context.newPage();
+  await page.route("**/*", async (route) => {
+    const url = new URL(route.request().url());
+    const name = url.pathname.slice(1);
+    if (name === "pdp-navigates.html") {
+      await route.fulfill({
+        status: 200,
+        contentType: "text/html",
+        body: readFileSync(join(PAGES, name), "utf8").replace(
+          'action="/cart-page.html"',
+          'action="http://checkout.example.com/cart-page.html"',
+        ),
+      });
+      return;
+    }
+    if (name === "cart-page.html") {
+      await route.fulfill({
+        status: 200,
+        contentType: "text/html",
+        body: readFileSync(join(PAGES, name), "utf8"),
+      });
+      return;
+    }
+    await route.fulfill({ status: 204, body: "" });
+  });
+  await page.goto("http://shop.example.com/pdp-navigates.html", { waitUntil: "domcontentloaded" });
+  await page.bringToFront();
+  await page.waitForTimeout(2500);
+  await Promise.all([page.waitForURL(/checkout\.example\.com/), page.click("#atc")]);
+  await expect
+    .poll(() => hasCard(page), { timeout: 45_000, message: "the card did not follow the shop" })
+    .toBe(true);
   await page.close();
 });

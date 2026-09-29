@@ -41,6 +41,23 @@ const WEIGHTS: Record<string, number> = {
   struckIsHigher: 0.15,
 };
 
+/**
+ * When a crossed-out price is worth a card.
+ *
+ * From the first human spot-check: "a 7.99 anchor for a 5.99 item isn't doing much". A
+ * reference price moves a decision when the gap is large relative to the price AND large
+ * enough in money to register, so both are required. 15% and 5 units were chosen against
+ * that run: $100 for an $85 room (15%, $15) counts; $7.99 for $5.99 ($2) and $11 for $8 ($3)
+ * do not; $1,424 for $1,004 and "more than double" obviously do.
+ *
+ * Below the line the anchor is still RECORDED, because the page did show it and prevalence
+ * is measured on what shops display. It is capped under the surface threshold so it never
+ * becomes a card.
+ */
+const MIN_DISCOUNT_PERCENT = 15n;
+const MIN_GAP_MINOR = 500n;
+const SMALL_GAP_SCORE_CAP = 0.6;
+
 /** How many ancestor levels to search for the matching live price. */
 const MAX_PAIR_DISTANCE = 3;
 
@@ -127,6 +144,13 @@ export const anchoringDetector: Detector = {
 
       seen.add(struck.node.selectorPath);
 
+      const gap = anchor.amount - current.amount;
+      const smallGap = gap * 100n < anchor.amount * MIN_DISCOUNT_PERCENT || gap < MIN_GAP_MINOR;
+      const ratio =
+        current.amount > 0n
+          ? Math.round((Number(anchor.amount) / Number(current.amount)) * 10) / 10
+          : undefined;
+
       const context = `${scopeText} ${struck.node.containerText} ${struck.node.normalizedText}`;
       const lexemeHits = LEXEMES.filter((l) => context.includes(l));
       const percentBadge = /\b\d{1,2}%\s*off\b|\b-\s?\d{1,2}%/.test(context);
@@ -142,11 +166,24 @@ export const anchoringDetector: Detector = {
             lexeme: lexemeHits.length > 0 ? 1 : 0,
             percentBadge: percentBadge ? 1 : 0,
             struckIsHigher: 1,
+            // Unweighted: carried for the record, it changes nothing in the sum.
+            smallGap: smallGap ? 1 : 0,
           },
           WEIGHTS,
           [...lexemeHits],
         ),
       );
+      const found = out[out.length - 1];
+      if (found) {
+        if (smallGap) found.rawScore = Math.min(found.rawScore, SMALL_GAP_SCORE_CAP);
+        // The page's own strings, so the card can say "crossed out $52, 1.5 times the $35
+        // you would pay" in the shop's currency and formatting rather than Pensa's.
+        found.evidence.facts = {
+          anchor: anchor.raw.trim().slice(0, 32),
+          current: current.raw.trim().slice(0, 32),
+          ...(ratio !== undefined && ratio > 0 ? { ratio } : {}),
+        };
+      }
     }
 
     return out;

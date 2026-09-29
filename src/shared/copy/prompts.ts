@@ -13,6 +13,7 @@
  * 4-6 variants per pattern, sampled without replacement within a session, so a repeat user
  * is not shown the same sentence every time they check out.
  */
+import type { EvidenceFacts } from "../schema";
 import type { PatternId } from "../taxonomy";
 
 export const PROMPTS: Partial<Record<PatternId, readonly string[]>> = {
@@ -190,3 +191,103 @@ export function pickPrompt(
 }
 
 export const PROMPTED_PATTERNS = Object.keys(PROMPTS) as PatternId[];
+
+/**
+ * Wording built from what the page actually showed, used in place of the generic pool
+ * whenever the detector could read the facts.
+ *
+ * From the first human spot-check, which rated these cards "true, but add context":
+ *
+ *   - An anchor's STRENGTH was the point and the card never said it. "They crossed out $52,
+ *     1.5x the price you are buying it at" is the note verbatim, and "more than double" was
+ *     what made the Etsy card land.
+ *   - Target's "only 1 left at Polaris" became "only a few were left", which drops the thing
+ *     that made it persuasive: one left at the store near you.
+ *
+ * Every output is held to the same copy rules as the pools (tests/unit/copy-lint.test.ts
+ * lints CONTEXTUAL_SAMPLES), and each states only what the page displayed. Returns null when
+ * the facts are not enough to say more than the pool already does.
+ */
+export function contextualPrompt(
+  patternId: PatternId,
+  facts: EvidenceFacts | undefined,
+): string | null {
+  if (!facts) return null;
+
+  if (patternId === "anchoring.reference_price" && facts.anchor && facts.current) {
+    const scale =
+      facts.ratio === undefined
+        ? `next to the ${facts.current} you would pay`
+        : facts.ratio >= 2
+          ? `more than double the ${facts.current} you would pay`
+          : `${formatRatio(facts.ratio)} times the ${facts.current} you would pay`;
+    return `The page crossed out ${facts.anchor}, ${scale}. Without that number, would this item be worth the same to you?`;
+  }
+
+  if (patternId === "scarcity.stock") {
+    const n = facts.count;
+    const howMany = n === undefined ? null : n === 1 ? "only 1 was left" : `only ${n} were left`;
+    const ask = "Does knowing that change what the item is worth to you?";
+
+    if (facts.scope === "location") {
+      const where = facts.place ? `at your nearby store, ${facts.place}` : "at a store near you";
+      return howMany
+        ? `The page said ${howMany} ${where}. ${ask}`
+        : `The page said stock was low ${where}. ${ask}`;
+    }
+    if (facts.scope === "price") {
+      return howMany
+        ? `The page said ${howMany} at this price. ${ask}`
+        : `The page said stock was limited at this price. ${ask}`;
+    }
+    if (howMany) return `The page said ${howMany}. ${ask}`;
+  }
+
+  return null;
+}
+
+/** "1.5", "1.3", never "1.50" or "1.0". */
+function formatRatio(r: number): string {
+  return (Math.round(r * 10) / 10).toFixed(1).replace(/\.0$/, "");
+}
+
+/**
+ * Shown when a deadline and a crossed-out price are on the same card. From the spot-check:
+ * "highlight how countdown + reference working together is even more strong". The question
+ * is about the pairing, and it asserts nothing about why the page paired them.
+ */
+export const COMBO_DEADLINE_AND_ANCHOR = {
+  patternId: "combo.deadline_and_anchor",
+  label: "Working together",
+  prompt:
+    "A deadline and a crossed-out price appeared on this page together. Would either one alone have made you want to decide this fast?",
+} as const;
+
+/** Representative inputs, so the lint can hold contextual wording to the same rules. */
+export const CONTEXTUAL_SAMPLES: readonly { patternId: PatternId; facts: EvidenceFacts }[] = [
+  { patternId: "anchoring.reference_price", facts: { anchor: "$52", current: "$35", ratio: 1.5 } },
+  {
+    patternId: "anchoring.reference_price",
+    facts: { anchor: "$269.76", current: "$120", ratio: 2.2 },
+  },
+  { patternId: "anchoring.reference_price", facts: { anchor: "£1,424", current: "£1,004" } },
+  { patternId: "scarcity.stock", facts: { scope: "location", place: "Polaris", count: 1 } },
+  { patternId: "scarcity.stock", facts: { scope: "location", count: 3 } },
+  { patternId: "scarcity.stock", facts: { scope: "location", place: "Polaris" } },
+  { patternId: "scarcity.stock", facts: { scope: "price", count: 4 } },
+  { patternId: "scarcity.stock", facts: { scope: "price" } },
+  { patternId: "scarcity.stock", facts: { count: 4 } },
+];
+
+/**
+ * Append the pairing line when a card already shows both a crossed-out price and a
+ * deadline, and there is room. Pure, so the rule is testable without a worker.
+ */
+export function withPairing<T extends { patternId: string; label: string; prompt: string }>(
+  items: readonly T[],
+  max: number,
+): (T | typeof COMBO_DEADLINE_AND_ANCHOR)[] {
+  const ids = new Set(items.map((i) => i.patternId));
+  const pair = ids.has("anchoring.reference_price") && ids.has("urgency.countdown");
+  return pair && items.length < max ? [...items, COMBO_DEADLINE_AND_ANCHOR] : [...items];
+}

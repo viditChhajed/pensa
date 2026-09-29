@@ -222,6 +222,8 @@ export interface ShowDigest {
    * the card is closed, and only while sharing is off. See src/content/ui/card.ts.
    */
   askConsent?: boolean;
+  /** Attach the one-time "how often" question. Never on the same card as askConsent. */
+  askFrequency?: boolean;
 }
 
 export async function send<T = unknown>(msg: Message): Promise<T | null> {

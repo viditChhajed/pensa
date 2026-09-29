@@ -390,11 +390,19 @@ describe("anchoring on a savings-badge layout", () => {
   ];
 
   for (const [name, html] of shapes) {
-    it(`fires above the surface threshold: ${name}`, () => {
+    it(`is detected on the layout, and a large enough gap surfaces: ${name}`, () => {
+      // The layout was the field miss, so detection on it stays pinned.
       const found = anchoringDetector.run(contextFrom(html));
       expect(found).toHaveLength(1);
-      // 0.75 is the shipped surfaceThreshold; below it the card would never show.
-      expect(found[0]?.rawScore ?? 0).toBeGreaterThanOrEqual(0.75);
+
+      // Bombas' own $60 over $55 is an 8% gap, which the 1.3.0 threshold deliberately keeps
+      // off a card ("a 7.99 anchor for a 5.99 item isn't doing much"). Recorded, not shown.
+      expect(found[0]?.rawScore ?? 0).toBeLessThan(0.75);
+      expect(found[0]?.rawScore ?? 0).toBeGreaterThanOrEqual(0.35);
+
+      // The same layout with a gap worth mentioning surfaces. 0.75 is the surfaceThreshold.
+      const wide = anchoringDetector.run(contextFrom(html.replace("$60", "$80")));
+      expect(wide[0]?.rawScore ?? 0).toBeGreaterThanOrEqual(0.75);
     });
   }
 

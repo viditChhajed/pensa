@@ -16,6 +16,66 @@
 > figures below still describe the detectors that remain. Nothing here has been re-run against
 > 1.1.0.
 
+## Human spot-check, run 1 (2026-09-29, build 1.2.0)
+
+The §10 human pass, finally. One hour on a local 1.2.0 build with sharing on, 11 shops across
+every category the run sheet named. The run sheet is `SPOT-CHECK-RUN.md`; the judgements
+below are the tester's own, and the causes are from the exported detection log (235 rows).
+
+**Every card shown was true.** 7 findings across 5 cards, 0 false. That is the first
+precision figure in this file measured on the CARD a person read rather than on the firing.
+
+| Shop | On the card | True | Worth it? | Tester's note |
+|---|---|---|---|---|
+| booking.com | reference price, fees added later | yes | probably | $100 anchor for an $85 room. The card appeared on "I'll reserve" and vanished as the page changed |
+| shein.com | limited stock | yes | **no** | Printed so small the tester never noticed it on the page |
+| etsy.com | countdown, reference price | yes | yes | The anchor was more than double; say so. The two together are the story |
+| target.com | limited stock | yes | yes | Said "only a few left"; the page said "only 1 left at Polaris", the store nearby |
+| glossier.com | reference price | yes | yes | Give the scale of the anchor |
+
+**Worth it: 3 yes, 1 probably, 1 no.** The "no" is a salience problem, not a precision one:
+the claim was true and too small to have influenced anyone. Not fixed; a font-size or area
+floor on what can surface is the obvious next measurement.
+
+**The one miss was a trigger gap, not a detection gap.** StubHub showed "Only 4 left", "Last
+tickets" and $1,424 struck above $1,004. All 20 of its log rows are `passive_scan`: every claim
+but "Last tickets" was detected, and no card was ever due, because the listing rows are
+`<a role="button">` named "Section 409, Row 4, $1,243" and nothing about that reads as a
+purchase. Confirmed against StubHub's live markup before changing anything.
+
+### What 1.3.0 changed because of it
+
+- **Anchors need a gap worth mentioning:** at least 15% and at least 5 currency units, from the
+  tester's "a 7.99 anchor for a 5.99 item isn't doing much". Smaller anchors are still
+  recorded, never carded.
+- **Cards state the facts the page showed:** "crossed out $52, 1.5 times the $35 you would
+  pay", "more than double" when it is; "only 1 was left at your nearby store, Polaris". Both
+  from the tester's wording.
+- **A countdown and an anchor on one card get a line about the pairing** (Etsy note).
+- **A seat-and-price listing click is the checkout intent** (StubHub), and "Last tickets" is
+  scarcity (it was prefiltered out before any detector saw it).
+- **A card carries across subdomains** of the same shop (booking's www. to secure.).
+- **Reserve, Book now and a ticket-listing pick end a page view as a commitment** for the
+  outcome measure. The first real batch had booking and stubhub at 0 adds of N, a bias that
+  would have run through every rate.
+- **The "how often" question moves out of Settings** onto the first card that is not asking
+  about sharing.
+
+### A bug the new tests found in 1.2.0
+
+Answering the sharing question and leaving within 1.5 seconds left the card, question
+included, waiting for the next page of the shop. Shown again and closed there, the close
+counted as "no" and overwrote the "yes". Fixed in 1.3.0 two ways: answering marks the card
+seen, and a carried card has any answered question removed before it is shown.
+
+### The data pipeline, end to end
+
+The first real batch reached D1: 75 detections across 19 cohorts and 29 page-view outcomes,
+from 4 of the 11 shops. The rest were still queued locally at the time of writing, which is
+the batching working as designed (25 reports, or a day, or a forced flush).
+
+---
+
 The header used to say precision was unmeasured while the tables below held two runs of
 data, the file contradicted itself, which is the specific failure this document exists to
 prevent. What is true now:

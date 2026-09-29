@@ -198,6 +198,13 @@ const TRIGGER_WORDS = [
   "i accept",
   "almost gone",
   "selling fast",
+  // "Last tickets" on StubHub listing rows: no digit, no currency, and none of the words
+  // above, so the node never reached a detector. Found in the first human spot-check.
+  "last ticket",
+  "last seat",
+  "last room",
+  "last spot",
+  "last pair",
   "in carts",
   // These are shipped scarcity patterns whose text carries no digit, no currency glyph and
   // none of the words above, so the prefilter rejected the node and the detector never saw

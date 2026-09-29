@@ -1,7 +1,13 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { PROMPTS, pickPrompt } from "@/shared/copy/prompts";
+import {
+  COMBO_DEADLINE_AND_ANCHOR,
+  CONTEXTUAL_SAMPLES,
+  contextualPrompt,
+  PROMPTS,
+  pickPrompt,
+} from "@/shared/copy/prompts";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
 
 /**
@@ -73,10 +79,20 @@ function gradeLevel(text: string): number {
   return 0.39 * (words.length / sentenceCount) + 11.8 * (syllableCount / words.length) - 15.59;
 }
 
-const ALL: { patternId: PatternId; prompt: string }[] = Object.entries(PROMPTS).flatMap(
-  ([patternId, pool]) =>
+const ALL: { patternId: PatternId; prompt: string }[] = [
+  ...Object.entries(PROMPTS).flatMap(([patternId, pool]) =>
     (pool ?? []).map((prompt) => ({ patternId: patternId as PatternId, prompt })),
-);
+  ),
+  // Wording built from page facts is held to exactly the same rules as the pools.
+  ...CONTEXTUAL_SAMPLES.flatMap(({ patternId, facts }) => {
+    const prompt = contextualPrompt(patternId, facts);
+    return prompt ? [{ patternId, prompt }] : [];
+  }),
+  {
+    patternId: "urgency.countdown" as PatternId,
+    prompt: COMBO_DEADLINE_AND_ANCHOR.prompt,
+  },
+];
 
 describe("prompt copy", () => {
   it("has prompts to lint", () => {

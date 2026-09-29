@@ -272,3 +272,14 @@ describe("the docs agree with the build", () => {
     }
   });
 });
+
+describe("the copy meant for dashboard fields fits those fields", () => {
+  it("keeps the data-usage wording within the 1,000-character field", () => {
+    // It grew past the limit once when the outcome disclosure gained "or Reserve", and the
+    // dashboard refuses the paste rather than truncating it.
+    const after = listing.split("Use this wording (it fits the 1,000-character field):")[1] ?? "";
+    const body = (after.split("```")[1] ?? "").trim();
+    expect(body.length, "the data-usage wording is missing").toBeGreaterThan(200);
+    expect(body.length).toBeLessThanOrEqual(1000);
+  });
+});

@@ -20,9 +20,9 @@ import {
   saveLedger,
 } from "@/background/sessionLedger";
 import { discardQueue, flush, pendingRecords } from "@/background/telemetry";
-import { shouldOpenWelcome } from "@/background/welcome";
+import { shouldAskFrequency, shouldOpenWelcome, stripAnswered } from "@/background/welcome";
 import { TELEMETRY_ENDPOINT } from "@/shared/constants";
-import { matchesPattern } from "@/shared/domain";
+import { matchesPattern, registrableDomain } from "@/shared/domain";
 import type { ShowDigest } from "@/shared/messages";
 import { Message } from "@/shared/messages.schema";
 import { decodePriceSnapshot } from "@/shared/wire";
@@ -151,6 +151,23 @@ const PENDING_PREFIX = "pending-card:";
 /** How long a lost card waits for the next page. Long enough for a slow cart page to load. */
 const PENDING_CARD_TTL_MS = 60_000;
 
+/**
+ * A waiting card belongs to the SHOP, not the exact origin.
+ *
+ * Keyed by origin, a card built on www.booking.com was waiting for www.booking.com while the
+ * shopper had already been moved to secure.booking.com, where no page ever asked for it.
+ * From the spot-check: the card "showed right as I click I'll reserve, the page changed very
+ * fast and the card disappeared". Checkout on another subdomain is common, so the key is the
+ * registrable domain.
+ */
+function pendingKey(origin: string): string {
+  try {
+    return PENDING_PREFIX + registrableDomain(new URL(origin).hostname);
+  } catch {
+    return PENDING_PREFIX + origin;
+  }
+}
+
 async function handleMessage(raw: unknown): Promise<unknown> {
   // Cross-context input is a trust boundary like any other.
   const parsed = Message.safeParse(raw);
@@ -215,17 +232,19 @@ async function handleMessage(raw: unknown): Promise<unknown> {
     }
 
     case "take-pending-card": {
-      const key = PENDING_PREFIX + msg.origin;
+      const key = pendingKey(msg.origin);
       const got = (await chrome.storage.session.get(key))[key] as
         | { reply: ShowDigest; ts: number }
         | undefined;
       await chrome.storage.session.remove(key);
-      if (got && Date.now() - got.ts <= PENDING_CARD_TTL_MS) return got.reply;
+      if (got && Date.now() - got.ts <= PENDING_CARD_TTL_MS) {
+        return stripAnswered(got.reply, await readSettings());
+      }
       return { type: "show-digest", items: [], mode: "suppressed" } satisfies ShowDigest;
     }
 
     case "card-seen":
-      await chrome.storage.session.remove(PENDING_PREFIX + msg.origin);
+      await chrome.storage.session.remove(pendingKey(msg.origin));
       return { ok: true };
 
     case "pageview":
@@ -279,12 +298,17 @@ async function handleMessage(raw: unknown): Promise<unknown> {
         items: decision.items,
         mode: decision.mode,
         ...(askConsent ? { askConsent: true } : {}),
+        ...(decision.mode === "card" &&
+        decision.items.length > 0 &&
+        shouldAskFrequency(settings, askConsent)
+          ? { askFrequency: true }
+          : {}),
       } satisfies ShowDigest;
       // Held until a page confirms the card stayed on screen. See TakePendingCard: on a site
       // whose Add to Cart navigates, this reply arrives at a page that is already gone.
       if (reply.mode !== "suppressed" && reply.items.length > 0) {
         await chrome.storage.session.set({
-          [PENDING_PREFIX + msg.origin]: { reply, ts: Date.now() },
+          [pendingKey(msg.origin)]: { reply, ts: Date.now() },
         });
       }
       return reply;

@@ -108,6 +108,29 @@ export const ComputedStyleEvidence = z
   .partial();
 export type ComputedStyleEvidence = z.infer<typeof ComputedStyleEvidence>;
 
+/**
+ * What a card can say about a finding beyond quoting it: the scale of an anchor, where a
+ * scarcity claim applies. Filled by the detector, which is the only place that still has
+ * the page's own strings, and read by the worker when it words the card.
+ *
+ * Local only, like the rest of Evidence: nothing here is part of any report.
+ */
+export const EvidenceFacts = z.object({
+  /** The crossed-out price exactly as the page wrote it, e.g. "$1,424". */
+  anchor: z.string().max(32).optional(),
+  /** The price being charged, exactly as the page wrote it. */
+  current: z.string().max(32).optional(),
+  /** anchor / current. */
+  ratio: z.number().positive().max(1000).optional(),
+  /** What a scarcity claim is scoped to: one store, one price, or nothing stated. */
+  scope: z.enum(["location", "price"]).optional(),
+  /** The store or place a location-scoped claim names, e.g. "Polaris". */
+  place: z.string().max(48).optional(),
+  /** The number in "only 3 left". */
+  count: z.number().int().min(0).max(9999).optional(),
+});
+export type EvidenceFacts = z.infer<typeof EvidenceFacts>;
+
 export const Evidence = z.object({
   /** Depth-capped CSS path. Stable enough to re-find a node, short enough to store. */
   selectorPath: z.string().max(512),
@@ -116,6 +139,7 @@ export const Evidence = z.object({
   /** LOCAL ONLY. Never included in any egress payload. */
   textSample: z.string().max(240).optional(),
   matchedLexemes: z.array(z.string().max(64)).max(24),
+  facts: EvidenceFacts.optional(),
   computedStyle: ComputedStyleEvidence.optional(),
   boundingBox: z.object({
     x: z.number(),
@@ -473,6 +497,13 @@ export const Settings = z.object({
   /** Off by default. Not a preselected checkbox, see §11. */
   telemetryConsent: z.boolean().default(false),
   telemetryConsentAskedAt: z.number().int().optional(),
+  /**
+   * When the "how often should cards appear" question was answered, or dismissed. The
+   * frequency setting was only reachable from Settings, which almost nobody opens, so the
+   * first card asks it once. Set by any answer, including closing the card, or by changing
+   * the setting in Settings; after that it is never asked again.
+   */
+  frequencyAskedAt: z.number().int().optional(),
   disabledDetectors: z.array(z.string()).default([]),
   retentionDays: z.number().int().min(1).max(365).default(30),
 });
