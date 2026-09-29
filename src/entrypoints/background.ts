@@ -20,6 +20,7 @@ import {
   saveLedger,
 } from "@/background/sessionLedger";
 import { discardQueue, flush, pendingRecords } from "@/background/telemetry";
+import { shouldOpenWelcome } from "@/background/welcome";
 import { TELEMETRY_ENDPOINT } from "@/shared/constants";
 import { matchesPattern } from "@/shared/domain";
 import type { ShowDigest } from "@/shared/messages";
@@ -49,32 +50,23 @@ export default defineBackground(() => {
   });
 
   /**
-   * Open the welcome page once, on a fresh install.
+   * Open the install card, and keep offering it until the question has an answer.
    *
    * It carries the sharing question. That setting lived only in Settings, which almost nobody
-   * opens, so the measurement this project exists for received nothing, the honest fix is to
+   * opens, so the measurement this project exists for received nothing. The honest fix is to
    * ask at the one moment the person is already paying attention to this extension, not to
-   * flip the default. `reason` is checked: an update or a browser upgrade must not reopen it,
-   * which is the usual way a welcome page turns into a nuisance.
+   * flip the default.
+   *
+   * Every `onInstalled` reason counts, not just "install". Keying on that one reason meant a
+   * reloaded unpacked build or a version update never asked, and the card silently never
+   * appeared. `shouldOpenWelcome` keys on whether the question was ANSWERED instead, so this
+   * cannot nag someone who already said no.
    *
    * Nothing is recorded by opening it. The setting changes only if a button is clicked.
    */
-  chrome.runtime.onInstalled.addListener((details) => {
-    if (details.reason !== "install") return;
-    chrome.tabs.create({ url: chrome.runtime.getURL("welcome.html") }).catch((err: unknown) => {
-      // A welcome tab that cannot open is not worth failing an install over; the same
-      // question still reaches the user on their first card.
-      console.warn("[pensa] welcome page did not open", err);
-    });
+  chrome.runtime.onInstalled.addListener(() => {
+    void offerWelcome();
   });
-
-  // No `chrome.permissions.onAdded` / `onRemoved` listener any more, and that is not an
-  // oversight. They existed to re-derive the runtime registration when an optional origin
-  // was granted or revoked from the popup. There are no optional origins now, nothing in
-  // this extension calls `permissions.request` or `permissions.remove`, and the content
-  // script is declared in the manifest, so a permission change has nothing to reconcile.
-  // If a user narrows site access from chrome://extensions, Chrome simply stops injecting;
-  // that needs no cooperation from us, and the popup reports it (see diagnose-registration).
 
   chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
     // The .catch is load-bearing. Without it a throw anywhere inside handleMessage skips
@@ -129,6 +121,17 @@ async function flushTelemetry(): Promise<void> {
     }
   } catch (err) {
     console.error("[pensa] telemetry flush failed", err);
+  }
+}
+
+async function offerWelcome(): Promise<void> {
+  try {
+    if (!shouldOpenWelcome(await readSettings())) return;
+    await chrome.tabs.create({ url: chrome.runtime.getURL("welcome.html") });
+  } catch (err) {
+    // A card that cannot open is not worth failing an install over: the same question still
+    // reaches the user on their first in-page card.
+    console.warn("[pensa] welcome card did not open", err);
   }
 }
 
