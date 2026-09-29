@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",
+    "build:live": "node scripts/build-live.mjs",
     "zip": "wxt zip",
     "compile": "tsc --noEmit",
     "test": "vitest run",

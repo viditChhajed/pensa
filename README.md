@@ -301,6 +301,17 @@ deliberately:
 TELEMETRY_ENDPOINT=https://pensa-counts.viditchhajed.workers.dev/counts npm run zip
 ```
 
+To run a local copy that actually reports, load `.output/chrome-mv3-live` instead of
+`.output/chrome-mv3`:
+
+```bash
+npm run build:live
+```
+
+`.output/chrome-mv3` is rebuilt by every test run with the send path compiled out, which is
+what the zero-egress tests need. Loading it and then wondering why the dataset stays empty is
+a trap worth avoiding once: the live directory is untouched by those rebuilds.
+
 Listing images: `npm run screenshots` writes `store/screenshots/01..04`, and
 `npx playwright test tests/e2e/welcome.spec.ts` writes `05-welcome.png`.
 
