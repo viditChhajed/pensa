@@ -12,8 +12,9 @@
  *
  *   npm run build:live
  */
-import { cpSync, rmSync } from "node:fs";
+
 import { execFileSync } from "node:child_process";
+import { cpSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 
 const ENDPOINT =

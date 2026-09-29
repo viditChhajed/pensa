@@ -7,22 +7,31 @@ and, at add-to-cart or checkout, asks a question about what was actually on scre
 ("this page showed a countdown timer") and asks a question. It never asserts intent,
 deception, or illegality, an ethical constraint first, and a store-review one second.
 
-## Status: reviewed and listed as 1.0.0, with 1.1.0 built and awaiting upload
+## Status: 1.1.0 is live in the Chrome Web Store, 1.2.0 is built and awaiting upload
 
-1.0.0 passed Chrome Web Store review and is listed. It went out under the name **Vero**, which
-several other extensions already used, so 1.1.0 renames everything to **Pensa**. Nobody had
-installed 1.0.0 at the time of the rename, which is why identifiers that would normally have to
-be preserved (the IndexedDB name, the storage keys, the D1 database) were renamed too.
+1.0.0 went out under the name **Vero**, which several other extensions already used, so 1.1.0
+renamed everything to **Pensa**. Nobody had installed 1.0.0 at the time, which is why
+identifiers that would normally have to be preserved (the IndexedDB name, the storage keys, the
+D1 database) were renamed too. 1.1.0 has been the published version since 2026-09-24, and
+carries the rename, the install-time sharing question, the add-to-cart outcome measure, the
+removal of installment detection, and the card and popup fixes below.
 
-**1.1.0 is built and tested but not uploaded.** It carries the rename, the install-time sharing
-question, the add-to-cart outcome measure, the removal of installment detection, and the card
-and popup fixes below. Uploading it, and replacing the listing's screenshots and promo tiles, is
-a person's job: [STORE-LISTING.md](STORE-LISTING.md) has the copy and the checklist.
+**1.2.0 is built and tested but not uploaded.** What the published 1.1.0 is missing:
+
+- **The sharing question only opens on a fresh install.** 1.1.0 gates the card on Chrome
+  reporting the reason as `"install"`, so anyone who received 1.1.0 as an update, or reloads an
+  unpacked build, is never asked. 1.2.0 gates on whether the question has been ANSWERED, so it
+  keeps asking until someone clicks Yes or No, and never again after.
+- The in-page card asked a different, longer question than the install card. 1.2.0 asks the
+  same one in both places.
+- Two live-activity shapes that scored zero are detected (see below).
+
+Every upload needs a higher version than the published one, which is why this is 1.2.0 and not
+a new 1.1.0. [STORE-LISTING.md](STORE-LISTING.md) has the checklist.
 
 The privacy policy is live at <https://viditchhajed.github.io/pensa-docs/privacy.html> and is
 generated verbatim from [PRIVACY.md](PRIVACY.md), so the published and committed copies cannot
-drift. The older `vero-docs` address redirects to it, because the listing still points there
-until 1.1.0 is published.
+drift. The older `vero-docs` address still redirects to it.
 
 | | |
 |---|---|
@@ -168,9 +177,11 @@ does it.
   that. `site_pattern_add_rate` reports a lift; nothing published from it may call that lift
   an effect. The outcome is also the CLICK, not a confirmed add: `TriggerWatcher` does not
   check whether the item reached the cart.
-- **Two live-activity shapes are not detected at all.** "15 people have this in their cart"
-  and "Sarah from Sydney just bought this" both score zero, found while testing 1.1.0. They
-  are ordinary copy and the detector should see them; it does not.
+- **Two live-activity shapes are detected only on the evidence of unit tests.** "15 people
+  have this in their cart" and "Sarah from Sydney just bought this" both scored zero until
+  1.2.0. They now score 0.85 and 0.75, and a static purchase notice is told apart from a
+  customer review. But the labelled corpus holds no example of either shape, so recall on
+  them is unmeasured, and the automated live audit predates the change.
 
 ## Sharing, and the dataset it feeds
 

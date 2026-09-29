@@ -291,10 +291,11 @@ Cart, or on arrival at checkout.
 
 ## Where this stands
 
-1.0.0 was reviewed and listed (as Vero). Everything below is therefore an UPDATE, not a first
-submission: a new version number, new package, and a listing whose name, description, images
-and privacy URL all change with it. An update goes through review again, and the broad host
-permission means it may take days rather than hours.
+1.0.0 was reviewed and listed as Vero; 1.1.0, the rename to Pensa, has been live since
+2026-09-24. 1.2.0 is an update to that: same listing, new package. It changes no permission and
+no data practice, so the listing copy and disclosures carry over unchanged. An update still
+goes through review, and the broad host permission means it may take days rather than hours.
+Once approved, Chrome updates existing installs on its own within a few hours.
 
 ---
 
@@ -325,8 +326,10 @@ permission means it may take days rather than hours.
       file records short labels, never URLs with query strings. No history rewrite needed.
 - [x] LICENSE added (ISC, matching `package.json`), a public repo without one grants nobody
       any rights
-- [x] Version bumped in `wxt.config.ts`, 1.1.0 (renamed from Vero; 1.0.0 was published as Vero)
-- [x] `npm run zip`, `.output/pensa-1.1.0-chrome.zip`
+- [x] Version bumped in `wxt.config.ts`, 1.2.0 (1.0.0 was published as Vero; 1.1.0, the
+      rename to Pensa, has been live since 2026-09-24). Every upload must carry a higher
+      version than the published one or the dashboard refuses it.
+- [x] `npm run zip`, `.output/pensa-1.2.0-chrome.zip`
 
 ### The zip to upload
 
@@ -342,15 +345,14 @@ A zip from a plain `npm run build` has the send path compiled out entirely and w
 contribute to the dataset. Because the uploaded build transmits (when the user opts in), the
 Data usage section must use the "endpoint is configured" wording above and tick **Web history**.
 
-### Still yours to do, for the 1.1.0 update
+### Still yours to do, for the 1.2.0 update
 
-- [ ] Upload `.output/pensa-1.1.0-chrome.zip` (built with the endpoint, below)
-- [ ] Replace the listing description from `store/description.txt`
-- [ ] Replace all screenshots and both promo tiles: the published ones still say Vero
-- [ ] Update Homepage and Support URLs to `github.com/viditChhajed/pensa` and its `/issues`
-- [ ] Update the privacy policy URL to `https://viditchhajed.github.io/pensa-docs/privacy.html`
-- [ ] Re-paste the permission justifications and the data-usage wording above, and tick
-      **Web history** and **User activity**
+- [ ] Upload `.output/pensa-1.2.0-chrome.zip` (built with the endpoint, below) under
+      **Package → Upload new package**
+- [ ] Check the listing's screenshots and promo tiles say Pensa, not Vero, and replace them
+      from `store/screenshots/` and `store/promo/` if not. `01-card.png` now shows the in-page
+      card asking the new question
+- [ ] Nothing in Privacy practices changes: same permissions, same data, same wording
 - [ ] Submit for review
 
 Done already: the developer account, the public repo, and the listing itself.

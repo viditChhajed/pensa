@@ -114,11 +114,12 @@ async function flushTelemetry(): Promise<void> {
     // waiting six more hours behind it.
     await sweepViews(settings);
     const result = await flush(settings);
-    // Every branch is worth seeing. "Nothing was sent" has several causes with different
-    // fixes: no consent, no endpoint compiled in, too few records yet, or a failed request.
-    if (result.reason !== "no_consent" || result.sent > 0) {
-      console.info(`[pensa] telemetry: ${result.reason}, ${result.sent} sent, ${result.held} held`);
-    }
+    // Every branch is logged, no_consent included. "Nothing was sent" has several causes with
+    // different fixes (no consent, no endpoint compiled in, too few records yet, a failed
+    // request), and no_consent used to be the one branch that stayed silent, so a person
+    // forcing a flush to diagnose an empty dataset saw nothing and could not tell why. One line
+    // per six hours in a console nobody opens by accident is not noise.
+    console.info(`[pensa] telemetry: ${result.reason}, ${result.sent} sent, ${result.held} held`);
   } catch (err) {
     console.error("[pensa] telemetry flush failed", err);
   }

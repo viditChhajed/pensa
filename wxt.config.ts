@@ -57,7 +57,7 @@ export default defineConfig({
     short_name: "Pensa",
     description:
       "Notices persuasion techniques on shopping pages and asks a question about them. Runs on your device; sharing is off by default.",
-    version: "1.1.0",
+    version: "1.2.0",
 
     // Justification for each, for the store listing:
     //   storage   - chrome.storage.session (the per-site session ledger, frequency state)

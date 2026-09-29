@@ -93,7 +93,17 @@ export function stageLocalBuild(
 export async function closeWelcomeTab(context: {
   pages: () => { url: () => string; close: () => Promise<void> }[];
 }): Promise<void> {
-  for (const page of context.pages()) {
-    if (page.url().includes("welcome.html")) await page.close();
+  // The worker reads settings BEFORE opening the tab (it only asks until the question is
+  // answered), so the tab appears a beat after install, not at it. Closing whatever happens to
+  // be open right now raced that: the helper found nothing, and the welcome tab arrived
+  // mid-test and hid the page under test. So wait for it, briefly, before closing it.
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const welcome = context.pages().filter((p) => p.url().includes("welcome.html"));
+    if (welcome.length > 0) {
+      for (const page of welcome) await page.close();
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 100));
   }
 }
