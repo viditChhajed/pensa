@@ -391,16 +391,18 @@ export interface CardItem {
  */
 export const CONSENT_COPY = {
   heading: "One question for you",
-  ask:
-    "Pensa is built by one young independent developer. Would you share what it notices? It " +
-    "supports that work and helps build a research dataset on how common these techniques " +
-    "are across shops, and how often people add an item to their cart after seeing one.",
+  /**
+   * The same question the install card asks, word for word. It used to be a different, longer
+   * pitch ("built by one young independent developer"), which meant the two places Pensa asks
+   * for the same thing told two different stories about who was asking and why.
+   */
+  ask: "Do you opt in to sharing anonymous data to help a high schooler's research project?",
   detail:
     "Shared: which technique appeared on which shop (like shein.com), the day, and whether " +
     "you added the item to your cart. Never the page, the product, prices, or anything that " +
     "identifies you. You can change this at any time in Settings.",
-  yes: "Yes, share",
-  no: "No thanks",
+  yes: "Yes",
+  no: "No",
   thanksYes: "Thank you. Sharing is on, and you can turn it off in Settings.",
   thanksNo: "Understood. Nothing will be shared.",
 } as const;

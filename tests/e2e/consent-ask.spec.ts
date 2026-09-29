@@ -127,9 +127,9 @@ test("the first card asks once, with equal answers, and 'Yes' turns sharing on",
   await cdp.send("DOM.enable");
   await cdp.send("Accessibility.enable");
   const found = await buttons(cdp);
-  const yes = found.get("Yes, share");
+  const yes = found.get("Yes");
   expect(yes, `answers not in the card. buttons: ${[...found.keys()].join(", ")}`).toBeDefined();
-  expect(found.get("No thanks")).toBeDefined();
+  expect(found.get("No")).toBeDefined();
 
   // Equal weight, measured in the rendered page rather than asserted from the stylesheet.
   const size = async (id: number) => {
@@ -138,7 +138,7 @@ test("the first card asks once, with equal answers, and 'Yes' turns sharing on",
     };
     return [model.width, model.height];
   };
-  expect(await size(yes as number)).toEqual(await size(found.get("No thanks") as number));
+  expect(await size(yes as number)).toEqual(await size(found.get("No") as number));
 
   await press(page, cdp, yes as number);
   await expect
@@ -168,8 +168,8 @@ test("once answered, the next card does not ask again", async () => {
   const cdp = await context.newCDPSession(page);
   await cdp.send("Accessibility.enable");
   const found = await buttons(cdp);
-  expect(found.has("Yes, share")).toBe(false);
-  expect(found.has("No thanks")).toBe(false);
+  expect(found.has("Yes")).toBe(false);
+  expect(found.has("No")).toBe(false);
   await page.close();
 });
 
