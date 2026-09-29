@@ -10,13 +10,14 @@ becomes anecdote. Two columns are the whole point of doing this by hand:
 
 ## Before you start
 
-- [ ] `chrome://extensions`: remove every other Pensa entry, load `.output/chrome-mv3-live`
-- [ ] Answer **Yes** on the install card
-- [ ] Service worker console (`Inspect views: service worker`), paste this and confirm the
-      reply line says `no_endpoint` is NOT the reason:
-      `chrome.alarms.create("telemetry", { when: Date.now() + 500 })`
-      Expect `[pensa] telemetry: too_small, 0 sent, N held` early on. `too_small` is fine.
-      `no_endpoint` or `no_consent` means stop and fix before spending the hour.
+- [ ] `chrome://extensions`: exactly ONE Pensa, loaded from `.output/chrome-mv3-live`, and
+      not the store version alongside it (two installs double-count every report)
+- [ ] Answer **Yes** on the card (if it does not appear, you already answered once: use
+      Settings, or Delete all my data and Reload)
+- [ ] Service worker console: paste the contents of `scripts/preflight-console.js`. It must
+      print **READY**. Anything else lists exactly what to fix
+- [ ] One shop, one product page, wait ~10s, Add to cart: a card appears, and the popup says
+      "Pensa is checking <shop>"
 - [ ] Note the start time here: ______
 
 ## Rules
