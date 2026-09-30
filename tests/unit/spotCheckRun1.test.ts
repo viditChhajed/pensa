@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { shouldAskFrequency } from "@/background/welcome";
 import { anchoringDetector } from "@/content/detectors/anchoring";
 import { scarcityDetector, scarcityFacts } from "@/content/detectors/scarcity";
+import { pageTextStats, prominenceOf } from "@/content/prominence";
 import { TriggerWatcher } from "@/content/triggers";
 import { DigestCard, FREQUENCY_COPY, type FrequencyAnswer } from "@/content/ui/card";
 import { contextualPrompt, withPairing } from "@/shared/copy/prompts";
@@ -222,5 +223,52 @@ describe('"how often" is asked on the card, not buried in Settings', () => {
   it("stays off a card that is asking about sharing", () => {
     show(true);
     expect(root?.querySelector("[data-frequency]")).toBeNull();
+  });
+});
+
+describe('fine print: "written very small, I didn\'t even notice it"', () => {
+  // Built from real measurements taken on the live sites, not invented values.
+  const node = (fontSizePx: number, fontWeight: number, effectiveBackground: string) =>
+    ({
+      text: "x",
+      style: { fontSizePx, fontWeight, effectiveBackground },
+    }) as unknown as import("@/content/types").CandidateNode;
+  const WHITE = "rgb(255, 255, 255)";
+  const PILL = "rgb(254, 226, 226)";
+
+  it("reads the page's own text size and background", () => {
+    const page = [
+      node(12, 400, WHITE),
+      node(12, 400, WHITE),
+      node(13, 400, WHITE),
+      node(16, 700, WHITE),
+    ];
+    expect(pageTextStats(page)).toEqual({ medianFontPx: 13, pageBackground: WHITE });
+  });
+
+  it("keeps StubHub's badges: 12px, weight 500, on a 12px page, in a red pill", () => {
+    const stats = { medianFontPx: 12, pageBackground: WHITE };
+    expect(prominenceOf(node(12, 500, PILL), stats).prominent).toBe(true);
+    // Even out of the pill, the same size as the page's text is not fine print.
+    expect(prominenceOf(node(12, 500, WHITE), stats).prominent).toBe(true);
+  });
+
+  it("drops plain text smaller than the page around it", () => {
+    const stats = { medianFontPx: 14, pageBackground: WHITE };
+    const fine = prominenceOf(node(11, 400, WHITE), stats);
+    expect(fine.prominent).toBe(false);
+    expect(fine.relativeSize).toBe(0.79);
+  });
+
+  it("keeps small text a page chose to emphasise, by weight or by a background", () => {
+    const stats = { medianFontPx: 14, pageBackground: WHITE };
+    expect(prominenceOf(node(11, 700, WHITE), stats).prominent).toBe(true);
+    expect(prominenceOf(node(11, 400, PILL), stats).prominent).toBe(true);
+  });
+
+  it("does not call Shein's whole page fine print because the page is small", () => {
+    // Measured: median 12-13px, price and title 14px. Relative, not absolute.
+    const stats = { medianFontPx: 12, pageBackground: WHITE };
+    expect(prominenceOf(node(12, 400, WHITE), stats).prominent).toBe(true);
   });
 });

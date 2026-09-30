@@ -429,6 +429,9 @@ async function handleMessage(raw: unknown): Promise<unknown> {
           suppressionReason: e.suppressionReason,
           visibleMs: e.salience.visibleMs,
           viewportFraction: e.salience.viewportFraction,
+          // How the finding was presented, for calibrating the fine-print rule from real runs.
+          relativeSize: e.salience.relativeSize ?? null,
+          prominent: e.salience.prominent ?? null,
           textSample: e.evidence.textSample ?? null,
           matchedLexemes: e.evidence.matchedLexemes,
         })),

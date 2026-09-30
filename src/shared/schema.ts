@@ -156,6 +156,10 @@ export const Salience = z.object({
   scrollDepthAtFirstView: z.number().min(0).max(1),
   /** Self-removing node (a toast), gates at 400ms rather than 800ms. */
   ephemeral: z.boolean().default(false),
+  /** Font size relative to the page's median text. See src/content/prominence.ts. */
+  relativeSize: z.number().min(0).max(20).optional(),
+  /** False for fine print: smaller than the page's text, not bold, not set apart. */
+  prominent: z.boolean().optional(),
 });
 export type Salience = z.infer<typeof Salience>;
 

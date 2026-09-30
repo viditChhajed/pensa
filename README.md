@@ -30,6 +30,8 @@ and submit 1.3.0 in its place.
 - **StubHub-style ticket listings** count as the checkout decision, and a card follows the shop
   across subdomains (booking's www. to secure.).
 - **Reserve, Book now and ticket picks** count as the commitment in the outcome measure.
+- **Fine print does not become a card**: text smaller than the page's own, not bold, and not set
+  apart is still recorded but never shown.
 - The 1.2.0 sharing bug above, and everything 1.2.0 itself carried (the sharing question asked
   until answered, the same question in both places, two more live-activity shapes).
 
@@ -43,8 +45,8 @@ drift. The older `vero-docs` address still redirects to it.
 | | |
 |---|---|
 | Patterns shipped | **19**, 13 on-page + 2 cross-stage + 4 derived from visit history |
-| Unit tests | 672, plus the recall eval |
-| Real-browser e2e | 61 passing, 3 skipped (sites unreachable from this network) |
+| Unit tests | 677, plus the recall eval |
+| Real-browser e2e | 63 passing, 3 skipped (sites unreachable from this network) |
 | Bundle | 234 KB gzipped across all bundles, but the number that matters is the content script on every page load: **32 KB**. The service worker is 183 KB, most of it the Public Suffix List that names shops correctly, loaded once per worker wake and never in a page |
 | `host_permissions` | `https://*/*`, granted at install, with banking/health/government/webmail excluded in two layers |
 | Network requests | **zero unless sharing is switched on**, asserted against the compiled bundles; with it on, the only address that can be contacted is the declared endpoint, also asserted. Sharing is off until answered, and a plain `npm run build` compiles the send path out entirely |
@@ -153,10 +155,15 @@ does it.
   a start, not a result, and it was the 1.2.0 build. Every threshold is still a hand-set guess, marked `confidenceBasis: "hand_set"`
   so it cannot be mistaken for a calibrated value. **No stronger precision claim than the one
   in the table above may be made anywhere.**
-- **A true claim printed too small to notice still gets a card.** From the first human pass:
-  Shein's "Almost sold out" was correct and so small the tester never saw it on the page. Dwell
-  is measured; size is not. A floor on rendered size before something can surface is the next
-  measurement, not yet made.
+- **The fine-print rule is calibrated on one side only.** From the first human pass, Shein's
+  "Almost sold out" was true and too small to notice, yet got a card. 1.3.0 keeps a finding off
+  a card when its text is smaller than the page's own text AND not bold AND not on a background
+  of its own (`src/content/prominence.ts`). It is relative because Shein's whole page is 12-14px,
+  and three-part because StubHub's wanted "Only 2 left" pills are 12px on a 12px page and stand
+  out only by the pill; both were measured live. The Shein badge itself could not be reproduced
+  (Shein shows it selectively), so whether this exact case is caught is unverified. Every
+  detection now records its relative size, and the export carries it, so the next run can
+  settle the threshold from real pairs.
 - **`framing.savings_ratio` ships unproven.** After its fix it produced no firings at all
   across those 22 retailers. Its unit tests show it still fires on the textbook shapes, but a
   quiet report means unproven, not working.

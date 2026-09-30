@@ -34,8 +34,9 @@ precision figure in this file measured on the CARD a person read rather than on 
 | glossier.com | reference price | yes | yes | Give the scale of the anchor |
 
 **Worth it: 3 yes, 1 probably, 1 no.** The "no" is a salience problem, not a precision one:
-the claim was true and too small to have influenced anyone. Not fixed; a font-size or area
-floor on what can surface is the obvious next measurement.
+the claim was true and too small to have influenced anyone. Addressed in 1.3.0 by a relative
+prominence rule (see the list below); partly verified, because the Shein badge could not be
+reproduced on the live site afterwards.
 
 **The one miss was a trigger gap, not a detection gap.** StubHub showed "Only 4 left", "Last
 tickets" and $1,424 struck above $1,004. All 20 of its log rows are `passive_scan`: every claim
@@ -60,6 +61,11 @@ purchase. Confirmed against StubHub's live markup before changing anything.
   would have run through every rate.
 - **The "how often" question moves out of Settings** onto the first card that is not asking
   about sharing.
+- **Fine print is recorded but never carded**: text smaller than the page's median, not bold,
+  and not on a background of its own. Measured live before choosing it: Shein's text is 12-14px
+  throughout, so an absolute floor would hide half the page; StubHub's wanted badges are 12px
+  pills on a 12px page, so size alone would hide them. Each detection now records its relative
+  size for the next run to calibrate against.
 
 ### A bug the new tests found in 1.2.0
 

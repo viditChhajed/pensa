@@ -1,6 +1,6 @@
 # Manual verification checklist
 
-Everything machine-verifiable runs in `npm run test:e2e` (real Chromium, real extension, 61
+Everything machine-verifiable runs in `npm run test:e2e` (real Chromium, real extension, 63
 tests, 3 skipped). What is left here is what a machine cannot judge: the install experience Chrome
 renders outside the page, and whether a card was *useful* rather than merely correct.
 
@@ -101,7 +101,7 @@ expect to see nothing at all during a short session. To force one:
 
 ## What IS automated
 
-`npm run test:e2e`, real Chromium, real extension, 61 passing (3 skipped where a live site is
+`npm run test:e2e`, real Chromium, real extension, 63 passing (3 skipped where a live site is
 unreachable from this network):
 
 - service worker boots; the manifest **as Chrome parsed it** asks for exactly `https://*/*`

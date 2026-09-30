@@ -31,6 +31,7 @@ import { extractObservations, isEmpty } from "@/content/observations";
 import { PageObserver } from "@/content/observer";
 import { resolveOffer } from "@/content/offerKey";
 import { extractPriceSnapshot } from "@/content/priceSummary";
+import { type Prominence, pageTextStats, prominenceOf } from "@/content/prominence";
 import { SalienceTracker } from "@/content/salience";
 import { drainAcrossIdle } from "@/content/scheduler";
 import { TriggerWatcher } from "@/content/triggers";
@@ -62,6 +63,8 @@ function newViewId(): string {
 interface Scored {
   candidate: DetectionCandidate;
   salienceKey: string;
+  /** Measured once, when found. See src/content/prominence.ts. */
+  prominence: Prominence;
 }
 
 export default defineUnlistedScript(() => {
@@ -294,6 +297,7 @@ export default defineUnlistedScript(() => {
     }
 
     const ctx = buildContext();
+    const textStats = pageTextStats(ctx.candidates);
 
     const collected: Scored[] = [];
 
@@ -322,7 +326,12 @@ export default defineUnlistedScript(() => {
           continue;
         }
         seenText.add(key);
-        collected.push({ candidate: c, salienceKey: c.nodeRef });
+        const node = ctx.candidates.find((x) => x.selectorPath === c.nodeRef);
+        collected.push({
+          candidate: c,
+          salienceKey: c.nodeRef,
+          prominence: node ? prominenceOf(node, textStats) : { relativeSize: 1, prominent: true },
+        });
         // Start dwell accounting for anything that might later be surfaced. Re-finding by
         // selector is best-effort by design, a miss costs a candidate, never a crash.
         const el = safeQuery(c.nodeRef);
@@ -404,7 +413,7 @@ export default defineUnlistedScript(() => {
         pathTemplate: pathTemplate(location.href),
         stage,
         intent: "record",
-        items: unreported.slice(0, 200).map(({ candidate, salienceKey }) => {
+        items: unreported.slice(0, 200).map(({ candidate, salienceKey, prominence }) => {
           const rec = salience.get(salienceKey);
           return {
             candidate,
@@ -413,8 +422,10 @@ export default defineUnlistedScript(() => {
               viewportFraction: rec.viewportFraction,
               scrollDepthAtFirstView: rec.scrollDepthAtFirstView,
               ephemeral: rec.ephemeral,
+              relativeSize: prominence.relativeSize,
+              prominent: prominence.prominent,
             },
-            passedGate: salience.passesGate(salienceKey),
+            passedGate: salience.passesGate(salienceKey) && prominence.prominent,
           };
         }),
       });
@@ -714,7 +725,7 @@ export default defineUnlistedScript(() => {
     }
 
     const snapshot = () =>
-      latest.map(({ candidate, salienceKey }) => {
+      latest.map(({ candidate, salienceKey, prominence }) => {
         const rec = salience.get(salienceKey);
         return {
           candidate,
@@ -723,8 +734,12 @@ export default defineUnlistedScript(() => {
             viewportFraction: rec.viewportFraction,
             scrollDepthAtFirstView: rec.scrollDepthAtFirstView,
             ephemeral: rec.ephemeral,
+            relativeSize: prominence.relativeSize,
+            prominent: prominence.prominent,
           },
-          passedGate: salience.passesGate(salienceKey),
+          // Seen long enough AND presented so it would be noticed. Fine print is recorded as
+          // below the salience gate: true, on screen, and not something a card should chase.
+          passedGate: salience.passesGate(salienceKey) && prominence.prominent,
         };
       });
 

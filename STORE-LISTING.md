@@ -303,7 +303,7 @@ Once approved, Chrome updates existing installs on its own within a few hours.
 
 ## Pre-submission checklist
 
-- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green, 672 unit + eval, 61 e2e
+- [x] `npm run build` clean; `npm test` and `npm run test:e2e` green, 677 unit + eval, 63 e2e
 - [x] `host_permissions` is exactly `["https://*/*"]` in the built manifest, with 115 `exclude_matches` from the denylist (both CI-enforced by `tests/unit/manifest.test.ts`)
 - [x] Icons present at all four sizes
 - [x] Privacy policy URL live and reachable
