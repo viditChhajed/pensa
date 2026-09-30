@@ -493,8 +493,10 @@ export default defineUnlistedScript(() => {
     );
     if (elapsed > PERF_BUDGET_MS) {
       // Naming the phase matters: "the pass is slow" has three possible causes with three
-      // different fixes, and the previous message did not distinguish them.
-      console.warn(
+      // different fixes, and the previous message did not distinguish them. `info`, not `warn`:
+      // this is the backoff doing its job, and Chrome files content-script warnings under the
+      // extension's Errors, where a heavy shop would fill the list in a minute.
+      console.info(
         `[pensa] pass used ${elapsed.toFixed(0)}ms CPU of ${wallMs.toFixed(0)}ms wall ` +
           `(budget ${PERF_BUDGET_MS}ms): ` +
           `meta ${phase.meta.toFixed(0)}ms, harvest ${phase.harvest.toFixed(0)}ms, ` +
@@ -702,8 +704,15 @@ export default defineUnlistedScript(() => {
     if (kind === "add_to_cart" || (kind === "checkout_intent" && !label.startsWith("stage:"))) {
       reportView(true);
     }
-    // A setting changed in another tab should apply to the digest being built right now.
-    await refreshDisabled();
+    // Nothing below may wait for a reply before the candidates are sent. On a shop whose Add
+    // to Cart loads a cart page, this page can be torn down before any reply arrives (Firefox
+    // does it the moment the next page loads), and a handler still awaiting a round trip then
+    // never sends its findings: no card, on the next page or anywhere. So these go out
+    // unawaited, and the worker keeps them in order (`inOrder` in the background entrypoint).
+    //
+    // A setting changed in another tab: the worker applies disabled detectors itself when it
+    // decides, so this refresh only updates later passes on this page.
+    void refreshDisabled();
 
     // Re-scan first. A click on add-to-cart usually changes the page (a drawer opens, a
     // count updates), and `latest` is otherwise whatever the last backed-off pass saw.
@@ -713,7 +722,7 @@ export default defineUnlistedScript(() => {
     const path = pathTemplate(location.href);
 
     if (kind === "add_to_cart") {
-      await send({
+      void send({
         type: "trigger",
         origin: pageOrigin,
         pathTemplate: path,

@@ -8,6 +8,7 @@
  */
 
 import type { PrevalenceRow } from "@/background/db";
+import { browserName, releaseSharingPermission, requestSharingPermission } from "@/shared/browser";
 import { send } from "@/shared/messages";
 import type { DigestFrequency, Settings } from "@/shared/schema";
 import { type PatternId, TAXONOMY } from "@/shared/taxonomy";
@@ -57,8 +58,7 @@ function renderSites(): void {
   if (excluded.length === 0) {
     const li = document.createElement("li");
     li.className = "muted";
-    li.textContent =
-      "Nothing is excluded by Chrome in this build, which should be impossible. Please report it.";
+    li.textContent = `Nothing is excluded by ${browserName()} in this build, which should be impossible. Please report it.`;
     sitesEl.append(li);
   }
 
@@ -77,9 +77,10 @@ function renderSites(): void {
    */
   const noteEl = document.getElementById("sitesNote") as HTMLParagraphElement;
   noteEl.textContent =
-    `${excluded.length} host patterns above are refused by Chrome itself. Pensa's code is ` +
+    `${excluded.length} host patterns above are refused by ${browserName()} itself. Pensa's code is ` +
     `never loaded there. A further ${DENYLIST_COVERAGE.inexpressible.length} rules cannot be ` +
-    "written as a Chrome pattern (things like “any site with 'bank' in its name” or “a " +
+    `written as a ${browserName()} pattern (things like` +
+    " “any site with 'bank' in its name” or “a " +
     "mychart. address on any domain”). Those are checked by Pensa, on page load, before " +
     "anything is read, a weaker guarantee than the list above, and worth knowing apart.";
 }
@@ -271,14 +272,24 @@ pendingWrap.addEventListener("toggle", () => {
 });
 
 telemetryEl.addEventListener("change", () => {
-  void send({
-    type: "set-settings",
-    patch: { telemetryConsent: telemetryEl.checked, telemetryConsentAskedAt: Date.now() },
-  }).then(() => {
-    // Switching it off clears the queue on the worker side; reflect that immediately rather
-    // than leaving a stale list on screen implying data is still pending.
-    if (pendingWrap.open) void renderPending();
-  });
+  // Firefox's own prompt first, inside the click: the gesture does not survive an await.
+  const wanted = telemetryEl.checked;
+  const permitted = wanted
+    ? requestSharingPermission()
+    : releaseSharingPermission().then(() => false);
+  void permitted
+    .then((allowed) => {
+      telemetryEl.checked = wanted && allowed;
+      return send({
+        type: "set-settings",
+        patch: { telemetryConsent: wanted && allowed, telemetryConsentAskedAt: Date.now() },
+      });
+    })
+    .then(() => {
+      // Switching it off clears the queue on the worker side; reflect that immediately rather
+      // than leaving a stale list on screen implying data is still pending.
+      if (pendingWrap.open) void renderPending();
+    });
 });
 
 interface ExportRow {

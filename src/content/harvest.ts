@@ -119,10 +119,12 @@ export function invalidateStyles(roots: Iterable<Element>): void {
     }
     budget -= descendants.length;
     if (budget < 0) {
-      // Loud, for the same reason the truncation warning is: a silent global flush and a
-      // page that simply never repeats a node look identical from the outside, and the
-      // first version of this fired on every batch without anything saying so.
-      console.warn(
+      // Said out loud, for the same reason the truncation note is: a silent global flush and
+      // a page that simply never repeats a node look identical from the outside, and the
+      // first version of this fired on every batch without anything saying so. `info`, not
+      // `warn`: Chrome files every content-script warning under the extension's Errors, and
+      // this is the backoff working, not a fault.
+      console.info(
         `[pensa] style cache flushed entirely: ${rootCount} dirty root(s) covering more ` +
           "than 50k elements between them",
       );
@@ -591,9 +593,11 @@ export function harvest(doc: Document, opts: HarvestOptions = {}): CandidateNode
       }
     }
 
-    // Loud, because the consequence is that the page was only partly seen. A quiet
-    // truncation looks exactly like a page that simply had fewer candidates.
-    console.warn(
+    // Said out loud, because the consequence is that the page was only partly seen. A quiet
+    // truncation looks exactly like a page that simply had fewer candidates. `info`, not
+    // `warn`: on a heavy storefront this fires on every pass, and Chrome would list each one
+    // under the extension's Errors as if something had broken.
+    console.info(
       `[pensa] harvest budget (${HARVEST_BUDGET_MS}ms) hit at ${stoppedAt} of ` +
         `${stoppedAt + dropped.length} candidates, ${dropped.length - rescued} not read` +
         (rescued > 0 ? `, ${rescued} ephemeral node(s) read anyway` : "") +

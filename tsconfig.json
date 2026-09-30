@@ -9,5 +9,5 @@
     "jsxImportSource": "preact",
     "types": ["chrome", "node", "vitest/globals"]
   },
-  "include": ["src", "scripts", "tests", "wxt.config.ts", "vitest.config.ts"]
+  "include": [".wxt/types/globals.d.ts", "src", "scripts", "tests", "wxt.config.ts", "vitest.config.ts"]
 }

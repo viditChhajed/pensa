@@ -4,6 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Pensa, Settings</title>
+    <!-- Without this WXT writes open_in_tab: false over the config's true, and Settings opens
+         squeezed into the browser's own extension dialog instead of a tab. -->
+    <meta name="manifest.open_in_tab" content="true" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>

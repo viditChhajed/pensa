@@ -42,7 +42,7 @@ The card is small, appears in a corner, and stays until you close it. It does no
 
 PRIVACY AND PERMISSIONS
 
-Chrome will tell you Pensa can read the websites you visit, and that is accurate: it needs to, because these techniques turn up on small and new shops as often as on big ones, and no list of sites would cover them. What it does with that access is narrow:
+Your browser will tell you Pensa can read the websites you visit, and that is accurate: it needs to, because these techniques turn up on small and new shops as often as on big ones, and no list of sites would cover them. What it does with that access is narrow:
 
 • It reads a page and decides whether it is a shop first. On anything else (email, news, documents, chat) it stops, records nothing, and stays out of the way.
 • It never runs on banking, health, government or webmail sites.

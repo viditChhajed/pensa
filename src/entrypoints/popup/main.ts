@@ -16,6 +16,7 @@
  * be told apart from a popup that failed to load.
  */
 
+import { browserName, siteAccessHint } from "@/shared/browser";
 import { BUILD_STAMP } from "@/shared/constants";
 import type { RegistrationReport } from "@/shared/messages";
 import { send } from "@/shared/messages";
@@ -27,12 +28,12 @@ const detailEl = document.getElementById("detail") as HTMLParagraphElement;
 const optionsLink = document.getElementById("options") as HTMLButtonElement;
 
 // Same reason as the detector's startup log: a stale unpacked load is otherwise invisible.
-document
-  .getElementById("app")
-  ?.insertAdjacentHTML(
-    "beforeend",
-    `<p class="detail score" style="opacity:.55">build ${BUILD_STAMP}</p>`,
-  );
+// Built with DOM calls rather than an HTML string: Firefox's reviewers flag any HTML insertion.
+const stampEl = document.createElement("p");
+stampEl.className = "detail score";
+stampEl.style.opacity = ".55";
+stampEl.textContent = `build ${BUILD_STAMP}`;
+document.getElementById("app")?.append(stampEl);
 
 optionsLink.addEventListener("click", () => {
   void chrome.runtime.openOptionsPage();
@@ -111,12 +112,12 @@ async function init(): Promise<void> {
     if (report.excluded) {
       statusEl.textContent = `Pensa does not run on ${parsed.hostname}.`;
       detailEl.textContent = "This site is on Pensa's permanent exclusion list.";
-      line.textContent = "Chrome is not allowed to load Pensa's detector here at all.";
+      line.textContent = `${browserName()} is not allowed to load Pensa's detector here at all.`;
     } else if (!report.granted) {
       statusEl.textContent = `Pensa is not running on ${domain}.`;
       detailEl.textContent =
-        "Chrome is withholding access to this site. Check Site access for Pensa in " +
-        "chrome://extensions if that was not deliberate.";
+        `${browserName()} is withholding access to this site. ${siteAccessHint()} ` +
+        "if that was not deliberate.";
       line.textContent = report.error ?? "";
     } else {
       line.textContent = report.error

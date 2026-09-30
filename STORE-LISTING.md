@@ -1,4 +1,7 @@
-# Chrome Web Store listing, draft
+# Store listings: Chrome Web Store, Edge Add-ons, Firefox Add-ons
+
+Chrome comes first below; [Edge](#edge-add-ons) and [Firefox](#firefox-add-ons) reuse most of it
+and list only what differs.
 
 Everything here is copy-ready except the four assets marked **NEEDS YOU**. Nothing in this
 document makes a precision or effectiveness claim, because there is no data to support one
@@ -332,7 +335,8 @@ Once approved, Chrome updates existing installs on its own within a few hours.
       rename to Pensa, has been live since 2026-09-24; 1.2.0 was submitted and is withdrawn).
       Every upload must carry a higher version than the published one or the dashboard
       refuses it.
-- [x] `npm run zip`, `.output/pensa-1.3.0-chrome.zip`
+- [x] `npm run release`, `.output/pensa-1.3.0-chrome.zip` (also the Edge upload), plus the
+      Firefox zip and its sources zip
 
 ### The zip to upload
 
@@ -341,11 +345,12 @@ and verified end to end: the shipped build posted a real batch, it landed in D1,
 research views read it back. So the upload is the build WITH the endpoint:
 
 ```bash
-TELEMETRY_ENDPOINT=https://pensa-counts.viditchhajed.workers.dev/counts npm run zip
+npm run release
 ```
 
-A zip from a plain `npm run build` has the send path compiled out entirely and will never
-contribute to the dataset. Because the uploaded build transmits (when the user opts in), the
+That builds all three store packages with the endpoint compiled in and checks each one before
+it finishes. A zip from a plain `npm run build` or `npm run zip` has the send path compiled out
+entirely and will never contribute to the dataset. Because the uploaded build transmits (when the user opts in), the
 Data usage section must use the "endpoint is configured" wording above and tick **Web history**.
 
 ### Still yours to do, for the 1.3.0 update
@@ -366,3 +371,104 @@ Done already: the developer account, the public repo, and the listing itself.
 1.2.0 (EVAL.md). One run across 11 shops is a start. The automated audit cannot stand in for
 it, because it reads the detector's log, never
 the card. [MANUAL-VERIFICATION.md](MANUAL-VERIFICATION.md) §3 has the protocol.
+
+---
+
+## Edge Add-ons
+
+Edge runs the Chrome build unchanged. **Upload the same `.output/pensa-1.3.0-chrome.zip`.**
+Pensa names Edge correctly in its popup and settings by checking at runtime, so there is no
+separate Edge build.
+
+**Account.** Register at <https://partner.microsoft.com/dashboard/microsoftedge/overview> with a
+Microsoft account. Free, no fee. Then **Create new extension** and upload the zip.
+
+| Field | What to enter |
+|---|---|
+| Availability | Public, all markets |
+| Category | Shopping |
+| Privacy policy | Yes, `https://viditchhajed.github.io/pensa-docs/privacy.html` |
+| Website | `https://github.com/viditChhajed/pensa` |
+| Support contact | your email |
+| Mature content | No |
+| Description | paste `store/description.txt` (Edge needs at least 250 characters) |
+| Store logo (300×300) | `store/logo-300.png`, from `node scripts/store-logo.mjs` |
+| Small promotional tile (440×280) | `store/promo/small-440x280.jpg` |
+| Large promotional tile (1400×560) | `store/promo/marquee-1400x560.jpg` |
+| Screenshots (1280×800) | `store/screenshots/01` to `05` |
+| Search terms | `shopping`, `dark patterns`, `persuasion`, `scarcity`, `countdown`, `behavioral economics` |
+
+The short description is taken from the manifest, the same 127 characters as Chrome.
+
+**Notes for certification** (paste into the field on the Submit page):
+
+```
+Pensa reads shopping pages to notice persuasion techniques (countdowns, low-stock messages, crossed-out prices, preselected add-ons) and, when the shopper clicks Add to Cart or goes to checkout, shows a small card asking a question about what it saw. To test: install, answer the one-question card that opens, visit any online shop (for example a product page on amazon.com or target.com), and click Add to Cart.
+
+It needs https://*/* because these techniques appear on small and new shops as often as large ones. It never runs on banking, health, government or webmail sites (excluded in the manifest and again in code). With default settings it makes no network requests. The only data that can leave the device is an optional, off-by-default report, asked for once at install, described in the privacy policy.
+
+Source code: https://github.com/viditChhajed/pensa
+```
+
+---
+
+## Firefox Add-ons
+
+Firefox gets its own build, from the same source. **Upload `.output/pensa-1.3.0-firefox.zip`**,
+and when asked whether the add-on uses a build tool, say yes and upload
+`.output/pensa-1.3.0-sources.zip`. Both come from `npm run release`.
+
+What differs from Chrome, and why:
+
+- **Sharing goes through Firefox's own consent.** Mozilla requires every new add-on to declare
+  its data collection in the manifest, and to route optional collection through Firefox's
+  built-in prompt. Pensa declares `required: none` and three optional categories
+  (browsing activity, website content, website activity). Saying yes on the install card or in
+  Settings opens Firefox's prompt, and sharing is on only if both say yes. Removing the
+  permission in `about:addons` switches sharing off and deletes the queue.
+- **No sharing question on the in-page card.** Firefox's prompt can only open from Pensa's own
+  pages, so on Firefox the install card and Settings ask; the first in-page card asks only how
+  often cards should appear.
+- **Firefox 140 or newer, desktop only.** 140 is the first version with the built-in consent,
+  and an ESR, so school and work computers are covered. Firefox for Android is left off until
+  it has been tried on a phone.
+- **The add-on id is `pensa@viditchhajed`.** It can never change after the first upload.
+
+`npx web-ext lint --source-dir .output/firefox-mv3` (Mozilla's own validator) reports 0 errors
+and two warnings, both expected: the Android version note above, and zod's `Function("")`
+probe, which Pensa switches off and which is explained to reviewers in
+[SOURCE-BUILD.md](SOURCE-BUILD.md). A rebuild from the sources zip matches the upload byte for
+byte.
+
+**Account.** Sign in at <https://addons.mozilla.org/developers/> with a Mozilla account. Free.
+Then **Submit a New Add-on**, choose **On this site** (listed), upload the zip, tick Firefox
+only (not Android).
+
+| Field | What to enter |
+|---|---|
+| Name | `Pensa` |
+| Add-on URL | `pensa`, or `pensa-shopping` if that is taken |
+| Summary (250 chars) | the manifest's short description, 127 characters, as above |
+| Description | paste `store/description.txt` |
+| Categories | Shopping |
+| Support email | your email |
+| Support website | `https://github.com/viditChhajed/pensa` |
+| License | Other: paste `LICENSE` (ISC, which AMO does not list by name) |
+| Privacy policy | paste the text of [PRIVACY.md](PRIVACY.md); AMO takes the text, not a link |
+| Icon | taken from the zip |
+| Screenshots | `store/screenshots/01` to `05` (1280×800) |
+
+**Notes to reviewer** (paste into the field on the upload page):
+
+```
+Build: see SOURCE-BUILD.md in the sources zip. `npm ci` then `node scripts/release.mjs --firefox-build` reproduces .output/firefox-mv3 byte for byte.
+
+What it does: reads shopping pages to notice persuasion techniques and, when the shopper clicks Add to Cart or goes to checkout, shows a card with a question about what it saw. To test: install, answer the card that opens, visit a product page on any online shop, click Add to Cart.
+
+Why https://*/*: these techniques appear on small and new shops as often as large ones, and no list of sites would cover them. It never runs on banking, health, government or webmail sites (exclude_matches in the manifest, and again in code before anything is read).
+
+Data collection: none by default. The optional report (declared as optional browsingActivity, websiteContent, websiteActivity) is requested with permissions.request({ data_collection }) only after the user says yes on the install card or in Settings, and is withdrawn if they say no. With it off there are no network requests at all.
+
+The one Function("") in background.js is zod's capability probe, switched off with z.config({ jitless: true }) in src/shared/schema.ts.
+```
+

@@ -10,6 +10,13 @@
 import { z } from "zod";
 import { PATTERN_IDS } from "./taxonomy";
 
+/**
+ * No compiled validators. Zod otherwise probes `Function("")` to decide whether it may build
+ * them, which an extension's CSP refuses anyway, so all it bought was a console error and a
+ * "Function constructor is eval" flag in Firefox's add-on review.
+ */
+z.config({ jitless: true });
+
 // --------------------------------- primitives ---------------------------------
 
 export const FunnelStage = z.enum(["browse", "pdp", "cart", "checkout", "payment"]);

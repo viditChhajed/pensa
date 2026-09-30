@@ -21,9 +21,10 @@ import {
 } from "@/background/sessionLedger";
 import { discardQueue, flush, pendingRecords } from "@/background/telemetry";
 import { shouldAskFrequency, shouldOpenWelcome, stripAnswered } from "@/background/welcome";
+import { hasSharingPermission, IS_FIREFOX, touchesSharing } from "@/shared/browser";
 import { TELEMETRY_ENDPOINT } from "@/shared/constants";
 import { matchesPattern, registrableDomain } from "@/shared/domain";
-import type { ShowDigest } from "@/shared/messages";
+import type { Message as ParsedMessage, ShowDigest } from "@/shared/messages";
 import { Message } from "@/shared/messages.schema";
 import { decodePriceSnapshot } from "@/shared/wire";
 
@@ -104,11 +105,49 @@ export default defineBackground(() => {
     if (a.name === "housekeeping") void housekeeping();
     if (a.name === "telemetry") void flushTelemetry();
   });
+
+  /**
+   * Firefox: its own data-collection permission is the other half of the sharing answer, and
+   * the person can change it in about:addons without ever opening Pensa. Follow it both ways.
+   * Granting it there is as deliberate as the Yes button, so it turns sharing on; removing it
+   * turns sharing off and empties the queue, exactly like the Settings switch.
+   */
+  if (IS_FIREFOX) {
+    chrome.permissions.onAdded.addListener((p) => {
+      if (!touchesSharing(p)) return;
+      void hasSharingPermission().then((granted) =>
+        granted
+          ? writeSettings({ telemetryConsent: true, telemetryConsentAskedAt: Date.now() })
+          : undefined,
+      );
+    });
+    chrome.permissions.onRemoved.addListener((p) => {
+      if (touchesSharing(p)) void withdrawSharing();
+    });
+  }
 });
+
+async function withdrawSharing(): Promise<void> {
+  await writeSettings({ telemetryConsent: false });
+  await discardQueue();
+  await discardViews();
+}
+
+/**
+ * On Firefox, a stored Yes counts only while Firefox's own permission is still granted. Checked
+ * before every flush rather than trusted from the listener above, which cannot have run while
+ * the extension was disabled.
+ */
+async function reconcileSharing(): Promise<void> {
+  if (!IS_FIREFOX) return;
+  const settings = await readSettings();
+  if (settings.telemetryConsent && !(await hasSharingPermission())) await withdrawSharing();
+}
 
 /** Send whatever is consented to and ready to go. Logs its own outcome. */
 async function flushTelemetry(): Promise<void> {
   try {
+    await reconcileSharing();
     const settings = await readSettings();
     // End views that went idle first, so their non-adds travel in this batch rather than
     // waiting six more hours behind it.
@@ -190,7 +229,38 @@ async function handleMessage(raw: unknown): Promise<unknown> {
     };
   }
   const msg = parsed.data;
+  if (LEDGER_MESSAGES.has(msg.type)) {
+    return inOrder((msg as { origin: string }).origin, () => dispatch(msg));
+  }
+  return dispatch(msg);
+}
 
+/**
+ * Messages that read and rewrite a shop's session ledger.
+ *
+ * Each one loads the ledger, changes it, and saves it back, so two of them for the same shop
+ * running at once would each save a copy missing the other's change. That used to be avoided
+ * only because the page waited for one reply before sending the next message, and that waiting
+ * is exactly what lost the card on a navigating Add to Cart: Firefox tears the old page down
+ * the moment the cart page arrives, so a page still waiting on a reply never sent its findings
+ * at all. The page now sends without waiting, and the order is kept here instead.
+ */
+const LEDGER_MESSAGES = new Set<string>(["stage", "trigger", "choice", "candidates"]);
+const ledgerQueues = new Map<string, Promise<unknown>>();
+
+/** Run `fn` after every earlier ledger message for this origin, in the order they arrived. */
+function inOrder<T>(origin: string, fn: () => Promise<T>): Promise<T> {
+  const previous = ledgerQueues.get(origin) ?? Promise.resolve();
+  const next = previous.then(fn, fn);
+  ledgerQueues.set(origin, next);
+  const settle = () => {
+    if (ledgerQueues.get(origin) === next) ledgerQueues.delete(origin);
+  };
+  next.then(settle, settle);
+  return next;
+}
+
+async function dispatch(msg: ParsedMessage): Promise<unknown> {
   switch (msg.type) {
     case "ping":
       return { ok: true };
@@ -289,6 +359,9 @@ async function handleMessage(raw: unknown): Promise<unknown> {
       // once answered or dismissed. A pill has no room to explain it honestly, so it waits.
       const settings = await readSettings();
       const askConsent =
+        // Not on Firefox: its consent prompt can only be opened from an extension page, never
+        // from a card inside a shop's page, so there the install card and Settings ask instead.
+        !IS_FIREFOX &&
         decision.mode === "card" &&
         decision.items.length > 0 &&
         !settings.telemetryConsent &&

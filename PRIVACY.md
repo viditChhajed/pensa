@@ -1,6 +1,6 @@
 # Pensa Privacy Policy
 
-**Last updated: 2026-09-23**
+**Last updated: 2026-09-29**
 
 ## The short version
 
@@ -93,8 +93,8 @@ data").
 
 ## Site permissions
 
-**Pensa asks for access to all https websites at install time, and Chrome will tell you so in
-those words.** You should read that warning as accurate: the permission is broad, and it is
+**Pensa asks for access to all https websites at install time, and your browser (Chrome, Edge
+or Firefox) will tell you so in those words.** You should read that warning as accurate: the permission is broad, and it is
 granted the moment you install rather than site by site.
 
 This is a deliberate change from how Pensa previously worked, and it is worth being plain
@@ -111,7 +111,7 @@ does with it, and that is public and testable:
 
 - **Pensa never runs on banking, health, government, or webmail sites.** This is enforced in
   two independent layers: those hosts are excluded from the content script's match patterns,
-  so Chrome does not inject Pensa there at all; and the script additionally refuses to run on
+  so the browser does not inject Pensa there at all; and the script additionally refuses to run on
   any denied host before it reads anything. The list is in `src/shared/urlScore.ts` and the
   build fails if it is empty.
 - **Only `https` sites.** Plain `http` pages are outside the requested permission entirely.
@@ -122,10 +122,11 @@ does with it, and that is public and testable:
   record of having read it. On shops, what it keeps is listed under "What it stores".
 
 Pensa itself has no per-site off switch. You can turn detection off entirely, or switch off any
-individual technique, from its Settings page. To keep Pensa off particular sites, use Chrome's
-own control: open `chrome://extensions`, choose Pensa's Details, and set Site access to "On
-specific sites". Chrome then enforces that regardless of anything Pensa does. Uninstalling
-removes the permission entirely.
+individual technique, from its Settings page. To keep Pensa off particular sites, use your
+browser's own control. In Chrome, open `chrome://extensions`, choose Pensa's Details, and set
+Site access to "On specific sites"; in Edge, the same under `edge://extensions`. In Firefox,
+open `about:addons`, choose Pensa, and use its Permissions tab. The browser then enforces that
+regardless of anything Pensa does. Uninstalling removes the permission entirely.
 
 ## Optional: helping measure these techniques
 
@@ -139,6 +140,14 @@ in the question itself, or one click away under "More details", rather than behi
 somewhere else. The two answers are the same size and style, and neither is selected for you.
 Closing the install card answers nothing; closing the card without answering is recorded as no. Once answered, you
 are not asked again, and you can change your answer at any time in Settings.
+
+**In Firefox, Firefox asks as well.** Saying yes brings up Firefox's own data collection
+prompt, which lists what would be collected (browsing activity, website content and website
+activity), and sharing is on only if you allow it there too. Firefox only lets that prompt open
+from Pensa's own pages, so in Firefox the question is asked on the install card and in Settings,
+never on a card inside a shop's page. If you later remove the permission in `about:addons`,
+sharing switches off and anything waiting to be sent is deleted, the same as switching it off
+in Settings.
 
 While it is off, nothing is transmitted and nothing is even recorded for transmission. The
 queue is not filled and then withheld, because a queue that accumulates while you have said no

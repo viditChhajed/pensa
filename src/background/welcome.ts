@@ -12,7 +12,8 @@
  *
  * `telemetryConsentAskedAt` is set only by a real click, on the card or in Settings, so
  * closing the tab leaves it unset and the question comes back. The in-page card carries the
- * same question for anyone who never sees this tab (see CONSENT_COPY in content/ui/card.ts).
+ * same question for anyone who never sees this tab (see CONSENT_COPY in content/ui/card.ts),
+ * except on Firefox, where only an extension page can open Firefox's own consent prompt.
  */
 import type { ShowDigest } from "@/shared/messages";
 import type { Settings } from "@/shared/schema";

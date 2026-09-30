@@ -2,6 +2,7 @@ import { cpSync, readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import preact from "@preact/preset-vite";
 import { defineConfig } from "wxt";
+import { DATA_COLLECTION } from "./src/shared/browser";
 import { CONTENT_SCRIPT_FILE } from "./src/shared/constants";
 import { type DenylistShape, toExcludeMatches } from "./src/shared/denylistPatterns";
 
@@ -17,11 +18,16 @@ const denylist = JSON.parse(
 
 const { matches: DENY_EXCLUDES, inexpressible: RUNTIME_ONLY_DENIES } = toExcludeMatches(denylist);
 
+/** Firefox's permanent id for Pensa. Never change it after the first AMO upload. */
+const FIREFOX_ID = "pensa@viditchhajed";
+
 /** The one pattern Pensa asks for, and the only one this build will let through. */
 const REQUIRED_HOST = "https://*/*";
 
 export default defineConfig({
   srcDir: "src",
+  // Every browser gets MV3. WXT otherwise defaults a Firefox build to MV2.
+  manifestVersion: 3,
   modules: [],
   /**
    * A stamp so a loaded extension can say which build it is.
@@ -35,7 +41,11 @@ export default defineConfig({
   vite: () => ({
     plugins: [preact()],
     define: {
-      __BUILD_STAMP__: JSON.stringify(new Date().toISOString().replace("T", " ").slice(0, 16)),
+      // A release pins it (scripts/release.mjs): Firefox's reviewers rebuild from source and
+      // compare, and a clock in the bundle would make no two builds identical.
+      __BUILD_STAMP__: JSON.stringify(
+        process.env.BUILD_STAMP ?? new Date().toISOString().replace("T", " ").slice(0, 16),
+      ),
       /**
        * Where anonymous counts are POSTed. Empty unless the build says otherwise.
        *
@@ -51,8 +61,33 @@ export default defineConfig({
     },
   }),
 
-  manifest: {
-    manifest_version: 3,
+  /**
+   * Firefox publishing needs the reviewers to rebuild the exact bundle from source, so
+   * `wxt zip -b firefox` also writes a sources zip. It carries what the build reads and
+   * nothing else: no corpus, no dataset, no research notes, no store art, no server.
+   */
+  zip: {
+    excludeSources: [
+      "corpus/**",
+      "dataset/**",
+      "research/**",
+      "store/**",
+      "assets/**",
+      "server/**",
+      "tests/**",
+      "test-results/**",
+      "dist/**",
+      // Working notes. README.md and SOURCE-BUILD.md (the reviewers' instructions) stay in.
+      "CORPUS.md",
+      "EVAL.md",
+      "MANUAL-VERIFICATION.md",
+      "SPOT-CHECK*.md",
+      "STORE-LISTING.md",
+      "PRIVACY.md",
+    ],
+  },
+
+  manifest: ({ browser }) => ({
     name: "Pensa",
     short_name: "Pensa",
     description:
@@ -121,7 +156,34 @@ export default defineConfig({
       },
     },
     options_ui: { page: "options.html", open_in_tab: true },
-  },
+
+    /**
+     * Firefox only. An MV3 add-on needs a fixed id to be signed, and it can never change once
+     * published, since it is how Firefox recognises an update.
+     *
+     * `data_collection_permissions` is Mozilla's required declaration (mandatory for new
+     * add-ons since November 2025). Nothing is collected by default, so `required` is "none";
+     * the opt-in reports are OPTIONAL, which puts Firefox's own consent prompt in front of
+     * them. The three categories are the honest reading of what a report contains, listed
+     * with reasons in src/shared/browser.ts (DATA_COLLECTION), which is what asks for them.
+     *
+     * 140 is the first Firefox with that consent system, and an ESR.
+     */
+    ...(browser === "firefox"
+      ? {
+          browser_specific_settings: {
+            gecko: {
+              id: FIREFOX_ID,
+              strict_min_version: "140.0",
+              data_collection_permissions: {
+                required: ["none"],
+                optional: [...DATA_COLLECTION],
+              },
+            },
+          },
+        }
+      : {}),
+  }),
 
   hooks: {
     /**
@@ -244,6 +306,9 @@ export default defineConfig({
      * than by remembering to use the right script.
      */
     "build:done": (wxt) => {
+      // Chrome only. `dist` is what the unpacked Chrome load points at, and a Firefox build
+      // copied over it would leave Chrome trying to load a manifest with no service worker.
+      if (wxt.config.browser !== "chrome") return;
       const out = wxt.config.outDir;
       const stable = resolve(wxt.config.root, "dist");
       rmSync(stable, { recursive: true, force: true });

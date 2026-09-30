@@ -8,8 +8,10 @@
  *
  * Closing this tab answers nothing, deliberately. `telemetryConsentAskedAt` is only set by an
  * actual click, so someone who never saw this page still gets the one-time question on their
- * first card (see CONSENT_COPY in src/content/ui/card.ts).
+ * first card (see CONSENT_COPY in src/content/ui/card.ts). Not on Firefox: its consent prompt
+ * cannot open from a shop's page, so there this page and Settings are the only places asking.
  */
+import { releaseSharingPermission, requestSharingPermission } from "@/shared/browser";
 import { send } from "@/shared/messages";
 
 const answers = document.getElementById("answers") as HTMLElement;
@@ -20,14 +22,24 @@ answers.addEventListener("click", (ev) => {
   if (!btn) return;
   const yes = btn.dataset.consent === "true";
 
-  for (const b of answers.querySelectorAll("button")) b.disabled = true;
-  result.textContent = yes
-    ? "Thank you. Sharing is on, and you can turn it off in Settings at any time."
-    : "Understood. Nothing will be shared, and you can turn it on later in Settings.";
+  // Firefox asks its own question before anything is shared, and only inside this click, so
+  // the request goes out before the first await. Chrome and Edge answer yes immediately.
+  const permitted = yes ? requestSharingPermission() : releaseSharingPermission().then(() => false);
 
-  void send({
-    type: "set-settings",
-    patch: { telemetryConsent: yes, telemetryConsentAskedAt: Date.now() },
+  for (const b of answers.querySelectorAll("button")) b.disabled = true;
+
+  void permitted.then((allowed) => {
+    const on = yes && allowed;
+    result.textContent = on
+      ? "Thank you. Sharing is on, and you can turn it off in Settings at any time."
+      : yes
+        ? "Firefox's permission was not given, so nothing will be shared. You can turn it on later in Settings."
+        : "Understood. Nothing will be shared, and you can turn it on later in Settings.";
+
+    return send({
+      type: "set-settings",
+      patch: { telemetryConsent: on, telemetryConsentAskedAt: Date.now() },
+    });
   });
 });
 

@@ -16,6 +16,7 @@
     "fixtures:scan": "tsx scripts/scan-fixtures.ts",
     "fixtures:normalize": "tsx scripts/normalize-fixture.ts",
     "test:e2e": "playwright test",
+    "test:firefox": "wxt build -b firefox && node tests/firefox/smoke.mjs",
     "measure:perf": "node scripts/measure-perf.mjs",
     "corpus:collect": "node scripts/collect-corpus.mjs",
     "label": "node scripts/label.mjs",
@@ -28,7 +29,8 @@
     "screenshots": "node scripts/screenshots.mjs",
     "dataset": "node scripts/dataset.mjs",
     "sink:deploy": "wrangler deploy --config server/cloudflare/wrangler.toml",
-    "sink:schema": "wrangler d1 execute pensa-counts --remote --config server/cloudflare/wrangler.toml --file server/cloudflare/schema.sql"
+    "sink:schema": "wrangler d1 execute pensa-counts --remote --config server/cloudflare/wrangler.toml --file server/cloudflare/schema.sql",
+    "release": "node scripts/release.mjs"
   },
   "author": "Vidit Chhajed",
   "license": "ISC",
@@ -52,6 +54,7 @@
     "tsx": "4.23.13",
     "typescript": "7.0.2",
     "vitest": "5.0.0",
+    "web-ext": "^10.7.0",
     "wrangler": "4.133.0"
   }
 }

@@ -219,10 +219,10 @@ describe("the docs agree with the build", () => {
    */
   const RETIRED =
     /no longer|not called|nothing calls|nowhere|never called|removed|gone|obsolete|deliberately absent|used to|there is no/i;
-  function unmarkedMentions(doc: string, needle: string): string[] {
+  function unmarkedMentions(doc: string, needle: string, skip?: RegExp): string[] {
     const lines = readFileSync(doc, "utf8").split("\n");
     return lines.flatMap((line, i) => {
-      if (!line.includes(needle)) return [];
+      if (!line.includes(needle) || skip?.test(line)) return [];
       const around = [lines[i - 1] ?? "", line, lines[i + 1] ?? ""].join(" ");
       return RETIRED.test(around) ? [] : [`${doc}:${i + 1}  ${line.trim().slice(0, 90)}`];
     });
@@ -237,9 +237,11 @@ describe("the docs agree with the build", () => {
   });
 
   it("does not describe the per-site permission flow as current", () => {
+    // Firefox's sharing consent is also a `permissions.request`, but for `data_collection`,
+    // not a host. That one is current and correct, so it is not a hit.
     const hits = DOCS.flatMap((d) =>
       ["permissions.request", "Enable on this site", "declarativeContent"].flatMap((needle) =>
-        unmarkedMentions(d, needle),
+        unmarkedMentions(d, needle, /data_collection/),
       ),
     );
     expect(hits, `a retired permission flow is described as current:\n${hits.join("\n")}`).toEqual(

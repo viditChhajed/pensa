@@ -38,6 +38,10 @@ and submit 1.3.0 in its place.
 Every upload needs a higher version than the published one, which is why this is 1.3.0.
 [STORE-LISTING.md](STORE-LISTING.md) has the checklist.
 
+**Edge and Firefox packages are built, and neither is submitted.** Edge takes the Chrome zip
+unchanged. Firefox has its own build, and its sharing question goes through Firefox's built-in
+consent prompt, which Mozilla requires. See [Edge and Firefox](#edge-and-firefox).
+
 The privacy policy is live at <https://viditchhajed.github.io/pensa-docs/privacy.html> and is
 generated verbatim from [PRIVACY.md](PRIVACY.md), so the published and committed copies cannot
 drift. The older `vero-docs` address still redirects to it.
@@ -206,10 +210,12 @@ does it.
 
 Sharing is off until someone says yes. They are asked twice at most:
 
-1. **At install.** `chrome.runtime.onInstalled` (fresh installs only) opens `welcome.html`: one
-   card, one question, Yes or No, with the full disclosure behind "More details". Closing it
-   answers nothing.
+1. **At install.** `chrome.runtime.onInstalled` opens `welcome.html` on every install, update
+   or reload until the question has been answered: one card, one question, Yes or No, with the
+   full disclosure behind "More details". Closing it answers nothing.
 2. **On the first in-page card**, and only if the install card went unanswered. Same rules.
+   Not on Firefox, where the sharing permission can only be requested from Pensa's own pages
+   (see "Edge and Firefox" below).
 
 The first card that is NOT asking about sharing asks one more thing, once: how often cards
 should appear (every checkout, once per shop, or summary only). That setting used to live only
@@ -328,11 +334,11 @@ npm run test:e2e
 npm run compile
 ```
 
-The build that gets uploaded is the only one that can send anything, so it is built
-deliberately:
+The builds that get uploaded are the only ones that can send anything, so they are built
+deliberately, all three stores at once, each checked before the command finishes:
 
 ```bash
-TELEMETRY_ENDPOINT=https://pensa-counts.viditchhajed.workers.dev/counts npm run zip
+npm run release
 ```
 
 To run a local copy that actually reports, load `.output/chrome-mv3-live` instead of
@@ -348,6 +354,43 @@ a trap worth avoiding once: the live directory is untouched by those rebuilds.
 
 Listing images: `npm run screenshots` writes `store/screenshots/01..04`, and
 `npx playwright test tests/e2e/welcome.spec.ts` writes `05-welcome.png`.
+
+## Edge and Firefox
+
+**Edge** is Chromium, so the Chrome zip is the Edge zip. The only Edge-specific code is naming
+it: the popup and Settings say "Edge" and point at `edge://extensions`, decided at runtime in
+`src/shared/browser.ts`.
+
+**Firefox** is a separate build from the same source:
+
+```bash
+npx wxt build -b firefox
+```
+
+Load it at `about:debugging`, This Firefox, Load Temporary Add-on, choosing
+`.output/firefox-mv3/manifest.json`. What differs:
+
+- **Background.** An event page instead of a service worker. WXT writes the right manifest
+  key; the code is the same.
+- **Sharing consent.** Mozilla requires new add-ons to declare data collection in the manifest
+  (`browser_specific_settings.gecko.data_collection_permissions`) and to route optional
+  collection through Firefox's own prompt. Pensa declares nothing required and three optional
+  categories, and asks for them with `permissions.request({ data_collection })` when someone
+  says yes. Sharing is on only while Firefox's permission and Pensa's setting both say yes, and
+  a change in `about:addons` is followed both ways.
+- **No sharing question on the in-page card.** That prompt can only open from an extension
+  page, never from a content script, so the install card and Settings ask instead.
+- **Firefox 140+, desktop only.** 140 is the first version with the built-in consent.
+- **Review needs source.** The bundle is minified, so AMO asks for source code;
+  `npm run release` writes `pensa-<version>-sources.zip` with
+  [SOURCE-BUILD.md](SOURCE-BUILD.md) in it, and a rebuild from it matches the upload byte for
+  byte because release builds pin the build stamp.
+
+`npx web-ext lint --source-dir .output/firefox-mv3` runs the same validator AMO does.
+
+Not yet done: the e2e suite drives Chromium only (Playwright cannot load an extension into
+Firefox), so the Firefox build has been linted and unit-tested but not driven through a shop by
+automation.
 
 ## Things worth knowing before changing this
 
